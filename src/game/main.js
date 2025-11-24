@@ -16,10 +16,10 @@ export const Game = {
         // Setup initial party: create default units and populate active slots
         // Starting party: titania lvl 5, goblin lvl 3, empty, pixie lvl 2, empty, empty
         const startSetup = [
-            { species: 'titania', lvl: 5 },
-            { species: 'goblin', lvl: 3 },
+            { species: 'inori', lvl: 5 },
+            { species: 'shiva', lvl: 3 },
             null,
-            { species: 'pixie', lvl: 2 },
+            { species: 'nurse', lvl: 2 },
             null,
             null
         ];
