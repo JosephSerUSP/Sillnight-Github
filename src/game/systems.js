@@ -1182,9 +1182,146 @@ export const Systems = {
      * It renders HUD, party grid, modals, and handles user interactions.
      */
     UI: {
+        activeModalUnit: null,
         updateHUD() {
             document.getElementById('hud-floor').innerText = GameState.run.floor;
             document.getElementById('hud-gold').innerText = GameState.run.gold;
+        },
+        getEquipmentPool(forUnit) {
+            const poolIds = new Set();
+            Object.entries(GameState.inventory.equipment).forEach(([id, count]) => { if (count > 0) poolIds.add(id); });
+            GameState.roster.forEach(u => { if (u.equipmentId) poolIds.add(u.equipmentId); });
+            const pool = [];
+            poolIds.forEach(id => {
+                const def = Data.equipment[id];
+                const bagCount = GameState.inventory.equipment[id] || 0;
+                const owners = GameState.roster.filter(u => u.equipmentId === id && u.uid !== forUnit.uid);
+                pool.push({ id, def, bagCount, owners });
+            });
+            return pool.sort((a, b) => a.def.name.localeCompare(b.def.name));
+        },
+        unequipUnit(unit) {
+            if (!unit.equipmentId) return;
+            GameState.inventory.equipment[unit.equipmentId] = (GameState.inventory.equipment[unit.equipmentId] || 0) + 1;
+            unit.equipmentId = null;
+            this.renderParty();
+            this.showCreatureModal(unit);
+        },
+        equipUnit(unit, equipId) {
+            if (!equipId) return this.unequipUnit(unit);
+            const def = Data.equipment[equipId];
+            if (!def) return false;
+            if (unit.equipmentId === equipId) return true;
+            const bagCount = GameState.inventory.equipment[equipId] || 0;
+            const donor = GameState.roster.find(u => u.equipmentId === equipId && u.uid !== unit.uid);
+            if (!bagCount && !donor) {
+                alert('No available copy of this equipment.');
+                return false;
+            }
+            // Return current gear to the bag
+            if (unit.equipmentId) {
+                GameState.inventory.equipment[unit.equipmentId] = (GameState.inventory.equipment[unit.equipmentId] || 0) + 1;
+            }
+            // Consume from bag or pull from another creature
+            if (bagCount > 0) {
+                GameState.inventory.equipment[equipId] = bagCount - 1;
+            } else if (donor) {
+                donor.equipmentId = null;
+            }
+            unit.equipmentId = equipId;
+            this.renderParty();
+            this.showCreatureModal(unit);
+            return true;
+        },
+        renderEquipmentOptions(unit) {
+            const list = document.getElementById('equipment-options');
+            list.innerHTML = '';
+            const pool = this.getEquipmentPool(unit);
+            const emptyBtn = document.createElement('button');
+            emptyBtn.className = 'w-full border border-gray-700 bg-black/60 hover:bg-gray-800 text-left px-3 py-2 text-xs text-gray-400';
+            emptyBtn.innerText = 'Unequip current item';
+            emptyBtn.onclick = () => this.unequipUnit(unit);
+            list.appendChild(emptyBtn);
+            if (pool.length === 0) {
+                const none = document.createElement('div');
+                none.className = 'text-gray-500 text-sm';
+                none.innerText = 'No equipment owned yet. Find or buy gear first!';
+                list.appendChild(none);
+                return;
+            }
+            pool.forEach(entry => {
+                const row = document.createElement('div');
+                row.className = 'border border-gray-800 bg-gray-900/60 p-2 rounded hover:border-yellow-700 transition';
+                const ownerNames = [];
+                if (unit.equipmentId === entry.id) ownerNames.push('This creature');
+                if (entry.owners.length > 0) ownerNames.push(...entry.owners.map(o => `${o.name}${o.slotIndex >= 0 ? ' (Active)' : ''}`));
+                const ownerText = ownerNames.length > 0
+                    ? `<div class="text-[11px] text-orange-200">Equipped by ${ownerNames.join(', ')}</div>`
+                    : '<div class="text-[11px] text-gray-500">Not equipped</div>';
+                const bagText = `<div class="text-[11px] text-gray-500">In bag: ${entry.bagCount}</div>`;
+                row.innerHTML = `
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <div class="text-yellow-200">${entry.def.name}</div>
+                            <div class="text-xs text-gray-400">${entry.def.description}</div>
+                            ${bagText}
+                            ${ownerText}
+                        </div>
+                        <button class="text-xs border border-gray-600 px-2 py-1 hover:bg-yellow-700 hover:text-black">Equip</button>
+                    </div>
+                `;
+                row.querySelector('button').onclick = () => this.equipUnit(unit, entry.id);
+                list.appendChild(row);
+            });
+        },
+        startEquipFlow(equipId) {
+            const def = Data.equipment[equipId];
+            const wrap = document.createElement('div');
+            wrap.className = 'rpg-window bg-black/90 p-4 w-2/3 max-h-[70vh] flex flex-col gap-3 border border-gray-700';
+            wrap.innerHTML = `
+                <div class="flex justify-between items-center border-b border-gray-700 pb-2">
+                    <div>
+                        <div class="text-yellow-200 text-lg">${def.name}</div>
+                        <div class="text-xs text-gray-400">${def.description}</div>
+                    </div>
+                    <button class="text-red-400 border border-gray-700 px-2 py-1 hover:bg-red-900">Close</button>
+                </div>
+            `;
+            wrap.querySelector('button').onclick = () => this.closeModal();
+            const list = document.createElement('div');
+            list.className = 'space-y-2 overflow-y-auto no-scrollbar flex-1 pr-1';
+            if (GameState.roster.length === 0) {
+                list.innerHTML = '<div class="text-gray-500">No creatures recruited yet.</div>';
+            } else {
+                GameState.roster.forEach(u => {
+                    const row = document.createElement('div');
+                    const status = u.slotIndex >= 0 ? `Active Slot ${u.slotIndex + 1}` : 'Reserve';
+                    row.className = 'flex justify-between items-center border border-gray-800 bg-gray-900/60 p-2 rounded';
+                    row.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <span class="text-2xl">${u.sprite}</span>
+                            <div>
+                                <div class="text-yellow-200">${u.name}</div>
+                                <div class="text-[11px] text-gray-500">${status}</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="text-xs text-gray-400">${u.equipmentId ? (Data.equipment[u.equipmentId]?.name || 'Unknown gear') : 'No gear'}</div>
+                            <button class="text-xs border border-gray-600 px-2 py-1 hover:bg-yellow-700 hover:text-black">Equip here</button>
+                        </div>
+                    `;
+                    row.querySelector('button').onclick = () => {
+                        const success = this.equipUnit(u, equipId);
+                        if (success) {
+                            this.closeModal();
+                            this.showCreatureModal(u);
+                        }
+                    };
+                    list.appendChild(row);
+                });
+            }
+            wrap.appendChild(list);
+            this.showModal(wrap);
         },
         renderParty() {
             const grid = document.getElementById('party-grid');
@@ -1353,12 +1490,9 @@ export const Systems = {
                         btn.className = 'text-xs border border-gray-600 px-2 py-1 hover:bg-white hover:text-black';
                         btn.innerText = 'EQUIP';
                         btn.onclick = () => {
-                            // select a party member to equip
-                            alert('Select a party member by clicking their slot to equip this item.');
-                            // handle equipping on click. We'll set a temporary item to equip; UI will use this equip mode.
-                            Systems.UI.pendingEquip = id;
-                            // close inventory
+                            // Launch the dedicated equipment selector
                             Systems.UI.toggleInventory();
+                            Systems.UI.startEquipFlow(id);
                         };
                         row.appendChild(btn);
                         list.appendChild(row);
@@ -1396,10 +1530,13 @@ export const Systems = {
             }
         },
         showCreatureModal(unit) {
+            this.activeModalUnit = unit;
+            const maxhp = Systems.Battle.getMaxHp(unit);
+            const equipDef = unit.equipmentId ? Data.equipment[unit.equipmentId] : null;
             document.getElementById('modal-sprite').innerText = unit.sprite;
             document.getElementById('modal-name').innerText = unit.name;
             document.getElementById('modal-lvl').innerText = unit.level;
-            const maxhp = Systems.Battle.getMaxHp(unit);
+            document.getElementById('modal-temperament').innerText = unit.temperament || (Data.creatures[unit.speciesId]?.temperament || 'Unknown');
             document.getElementById('modal-hp').innerText = `${unit.hp}/${maxhp}`;
             document.getElementById('modal-xp').innerText = `${unit.exp}`;
             const actList = document.getElementById('modal-actions');
@@ -1407,12 +1544,37 @@ export const Systems = {
             const acts = [...unit.acts[0], ...(unit.acts[1] || [])];
             acts.forEach(a => {
                 const div = document.createElement('div');
-                div.className = 'flex gap-2';
+                div.className = 'border border-gray-700 bg-gray-900/70 px-2 py-1 rounded text-center';
                 const skill = Data.skills[a] || Data.skills[a.toLowerCase()];
                 const label = skill ? skill.name : a;
-                div.innerHTML = `<span class="bg-gray-800 px-1 border border-gray-600 text-xs">${label}</span>`;
+                div.innerText = label;
                 actList.appendChild(div);
             });
+            const overview = document.getElementById('modal-overview');
+            overview.innerHTML = '';
+            const slotText = unit.slotIndex >= 0 ? `Active slot ${unit.slotIndex + 1}` : 'Reserve';
+            const overviewEntries = [
+                `Position: ${slotText}`,
+                `Temperament: ${unit.temperament || 'Unknown'}`,
+                `Gear bonus: ${equipDef?.hpBonus ? `+${Math.round(equipDef.hpBonus * 100)}% HP` : 'None'}`
+            ];
+            overviewEntries.forEach(text => {
+                const line = document.createElement('div');
+                line.innerText = text;
+                overview.appendChild(line);
+            });
+            const equipName = document.getElementById('modal-equip-name');
+            const equipDesc = document.getElementById('modal-equip-desc');
+            if (equipDef) {
+                equipName.innerText = equipDef.name;
+                equipDesc.innerText = equipDef.description;
+            } else {
+                equipName.innerText = 'Empty Slot';
+                equipDesc.innerText = 'Select a piece of gear to equip.';
+            }
+            document.getElementById('modal-equip-slot').onclick = () => this.renderEquipmentOptions(unit);
+            document.getElementById('modal-unequip').onclick = () => this.unequipUnit(unit);
+            this.renderEquipmentOptions(unit);
             document.getElementById('creature-modal').classList.remove('hidden');
         },
         switchScene(toBattle) {
@@ -1460,9 +1622,11 @@ export const Systems = {
                 btn.onclick = () => Systems.Battle.requestPlayerTurn();
             }
         },
-        showModal(html) {
+        showModal(content) {
             const m = document.getElementById('center-modal');
-            m.innerHTML = html;
+            m.innerHTML = '';
+            if (typeof content === 'string') m.innerHTML = content;
+            else if (content instanceof HTMLElement) m.appendChild(content);
             m.classList.remove('hidden');
         },
         closeModal() {
