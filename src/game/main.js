@@ -1,20 +1,28 @@
-import { Data } from './data.js';
 import { GameState } from './state.js';
 import { Log } from './log.js';
 import { Systems } from './systems.js';
+import { createUnitFromDef } from './objects.js';
+import { SceneManager, InputManager } from './managers.js';
+import { Scene_Explore, Scene_Battle } from './scenes.js';
 
 // Group systems under a single Game object for easy access in HTML event handlers
 export const Game = {
     Systems,
     Views: { UI: Systems.UI },
+    SceneManager,
+    InputManager,
     init() {
+        SceneManager.init({ systems: Systems, ui: Systems.UI });
+        Systems.sceneHooks = {
+            enterBattle: () => SceneManager.changeScene(new Scene_Battle(Systems, Systems.UI)),
+            returnToExplore: () => SceneManager.changeScene(new Scene_Explore(Systems, Systems.UI))
+        };
         // Initial map generation
         Systems.Map.generateFloor();
         // Initialize canvas and 3D
         Systems.Explore.init();
         Systems.Battle3D.init();
-        // Setup initial party: create default units and populate active slots
-        // Starting party: titania lvl 5, goblin lvl 3, empty, pixie lvl 2, empty, empty
+        // Setup initial party
         const startSetup = [
             { species: 'inori', lvl: 5 },
             { species: 'shiva', lvl: 3 },
@@ -25,56 +33,25 @@ export const Game = {
         ];
         startSetup.forEach((slot, idx) => {
             if (slot) {
-                const def = Data.creatures[slot.species];
-                const maxhp = Math.round(def.baseHp * (1 + def.hpGrowth * (slot.lvl - 1)));
-                const unit = {
-                    uid: `p${idx}_${Date.now()}`,
-                    speciesId: def.id,
-                    name: def.name,
-                    sprite: def.sprite,
-                    spriteAsset: def.spriteAsset,
-                    level: slot.lvl,
-                    maxhp: maxhp,
-                    hp: maxhp,
-                    exp: 0,
-                    temperament: def.temperament,
-                    elements: def.elements ? [...def.elements] : [],
-                    acts: def.acts,
-                    equipmentId: null,
-                    slotIndex: idx
-                };
+                const unit = createUnitFromDef(slot.species, slot.lvl, idx);
                 GameState.roster.push(unit);
                 GameState.party.activeSlots[idx] = unit;
             } else {
                 GameState.party.activeSlots[idx] = null;
             }
         });
-        // Render party UI and update HUD
         Systems.UI.renderParty();
-        // Log welcome message
         Log.add('Welcome to Stillnight.');
+        SceneManager.changeScene(new Scene_Explore(Systems, Systems.UI));
+        InputManager.start();
+        InputManager.onAction((action) => SceneManager.handleAction(action));
     }
 };
 
-// Event listeners for resizing and keyboard input
+// Event listeners for resizing
 window.addEventListener('resize', () => {
     Systems.Explore.resize();
     Systems.Battle3D.resize();
-});
-window.addEventListener('keydown', (e) => {
-    if (GameState.ui.mode === 'EXPLORE') {
-        if (e.key === 'ArrowUp') Systems.Explore.move(0, -1);
-        if (e.key === 'ArrowDown') Systems.Explore.move(0, 1);
-        if (e.key === 'ArrowLeft') Systems.Explore.move(-1, 0);
-        if (e.key === 'ArrowRight') Systems.Explore.move(1, 0);
-        if (e.key === 'p' || e.key === 'P') Systems.UI.toggleParty();
-        if (e.key === 'b' || e.key === 'B') Systems.UI.toggleInventory();
-    } else if (GameState.ui.mode === 'BATTLE' || GameState.ui.mode === 'BATTLE_WIN') {
-        if (e.code === 'Space') {
-            if (GameState.battle && GameState.battle.phase === 'PLAYER_INPUT') Systems.Battle.resumeAuto();
-            else Systems.Battle.requestPlayerTurn();
-        }
-    }
 });
 
 // Start the game once the page loads
