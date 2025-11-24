@@ -38,6 +38,7 @@ export const Game = {
                     hp: maxhp,
                     exp: 0,
                     temperament: def.temperament,
+                    elements: def.elements ? [...def.elements] : [],
                     acts: def.acts,
                     equipmentId: null,
                     slotIndex: idx
