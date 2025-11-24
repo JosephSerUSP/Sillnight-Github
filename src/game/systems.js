@@ -110,11 +110,13 @@ export const Systems = {
         init() {
             // Called once to set canvas size and draw initial view
             this.resize();
+            Systems.Explore3D.init();
         },
         resize() {
             const canvas = document.getElementById('explore-canvas');
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+            Systems.Explore3D.resize();
             this.render();
         },
         move(dx, dy) {
@@ -188,6 +190,12 @@ export const Systems = {
                     }
                 }
             }
+            Systems.Explore3D.updateMap({
+                map: GameState.exploration.map,
+                visited: GameState.exploration.visited,
+                playerPos: GameState.exploration.playerPos,
+                viewDistance: cfg.viewDistance
+            });
             // Draw the player
             const playerX = GameState.exploration.playerPos.x * cfg.tileSize;
             const playerY = GameState.exploration.playerPos.y * cfg.tileSize;
@@ -198,6 +206,92 @@ export const Systems = {
             ctx.shadowBlur = 15;
             ctx.fillText('🧙‍♂️', playerX + cfg.tileSize / 2, playerY + cfg.tileSize / 2);
             ctx.restore();
+        }
+    },
+    /*
+     * Exploration 3D renderer: visualizes the dungeon layout with extruded walls.
+     */
+    Explore3D: {
+        scene: null,
+        camera: null,
+        renderer: null,
+        mapGroup: null,
+        floorGeometry: null,
+        wallGeometry: null,
+        materials: null,
+        currentCenter: { x: 0, y: 0 },
+        init() {
+            const container = document.getElementById('explore-three');
+            if (!container) return;
+            this.scene = new THREE.Scene();
+            this.scene.background = new THREE.Color(0x050505);
+            this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            this.camera.up.set(0, 0, 1);
+            this.camera.position.set(0, -18, 14);
+            this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+            this.renderer.setPixelRatio(window.devicePixelRatio || 1);
+            container.appendChild(this.renderer.domElement);
+            const amb = new THREE.AmbientLight(0xffffff, 0.6);
+            const dir = new THREE.DirectionalLight(0xffffff, 0.75);
+            dir.position.set(10, -12, 14);
+            this.scene.add(amb);
+            this.scene.add(dir);
+            this.mapGroup = new THREE.Group();
+            this.scene.add(this.mapGroup);
+            this.floorGeometry = new THREE.PlaneGeometry(1, 1);
+            this.wallGeometry = new THREE.BoxGeometry(1, 1, 1.6);
+            this.materials = {
+                floorLight: new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.1, roughness: 0.9 }),
+                floorDark: new THREE.MeshStandardMaterial({ color: 0x0c0c0c, metalness: 0.1, roughness: 1 }),
+                wallLit: new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.2, roughness: 0.8 }),
+                wallDim: new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.2, roughness: 0.9 })
+            };
+            this.animate();
+        },
+        resize() {
+            if (!this.camera || !this.renderer) return;
+            this.camera.aspect = window.innerWidth / window.innerHeight;
+            this.camera.updateProjectionMatrix();
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+        },
+        clearMap() {
+            if (!this.mapGroup) return;
+            while (this.mapGroup.children.length > 0) {
+                const obj = this.mapGroup.children.pop();
+                if (obj.parent) obj.parent.remove(obj);
+            }
+        },
+        updateMap({ map, visited, playerPos, viewDistance }) {
+            if (!this.scene || !map || !visited) return;
+            this.clearMap();
+            for (let y = 0; y < map.length; y++) {
+                for (let x = 0; x < map[y].length; x++) {
+                    if (!visited[y][x]) continue;
+                    const dist = Math.hypot(x - playerPos.x, y - playerPos.y);
+                    const isLit = dist < viewDistance;
+                    const tile = map[y][x];
+                    const baseX = x;
+                    const baseY = y;
+                    const floor = new THREE.Mesh(this.floorGeometry, isLit ? this.materials.floorLight : this.materials.floorDark);
+                    floor.rotation.x = -Math.PI / 2;
+                    floor.position.set(baseX, baseY, 0);
+                    this.mapGroup.add(floor);
+                    if (tile === 1) {
+                        const wall = new THREE.Mesh(this.wallGeometry, isLit ? this.materials.wallLit : this.materials.wallDim);
+                        wall.position.set(baseX, baseY, 0.8);
+                        this.mapGroup.add(wall);
+                    }
+                }
+            }
+            this.mapGroup.position.set(-playerPos.x, -playerPos.y, 0);
+            this.currentCenter = { x: playerPos.x, y: playerPos.y };
+        },
+        animate() {
+            if (!this.renderer || !this.scene || !this.camera) return;
+            requestAnimationFrame(() => this.animate());
+            this.camera.lookAt(0, 0, 0);
+            this.renderer.render(this.scene, this.camera);
         }
     },
     /*
