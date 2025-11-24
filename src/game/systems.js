@@ -1408,7 +1408,9 @@ export const Systems = {
             acts.forEach(a => {
                 const div = document.createElement('div');
                 div.className = 'flex gap-2';
-                div.innerHTML = `<span class="bg-gray-800 px-1 border border-gray-600 text-xs">${Data.skills[a.toLowerCase()].name}</span>`;
+                const skill = Data.skills[a] || Data.skills[a.toLowerCase()];
+                const label = skill ? skill.name : a;
+                div.innerHTML = `<span class="bg-gray-800 px-1 border border-gray-600 text-xs">${label}</span>`;
                 actList.appendChild(div);
             });
             document.getElementById('creature-modal').classList.remove('hidden');
