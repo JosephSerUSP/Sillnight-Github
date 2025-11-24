@@ -1353,12 +1353,7 @@ export const Systems = {
                         btn.className = 'text-xs border border-gray-600 px-2 py-1 hover:bg-white hover:text-black';
                         btn.innerText = 'EQUIP';
                         btn.onclick = () => {
-                            // select a party member to equip
-                            alert('Select a party member by clicking their slot to equip this item.');
-                            // handle equipping on click. We'll set a temporary item to equip; UI will use this equip mode.
-                            Systems.UI.pendingEquip = id;
-                            // close inventory
-                            Systems.UI.toggleInventory();
+                            Systems.UI.showEquipmentAssignModal(id);
                         };
                         row.appendChild(btn);
                         list.appendChild(row);
@@ -1396,22 +1391,225 @@ export const Systems = {
             }
         },
         showCreatureModal(unit) {
-            document.getElementById('modal-sprite').innerText = unit.sprite;
-            document.getElementById('modal-name').innerText = unit.name;
-            document.getElementById('modal-lvl').innerText = unit.level;
+            this.activeCreature = unit;
+            const def = Data.creatures[unit.speciesId];
             const maxhp = Systems.Battle.getMaxHp(unit);
-            document.getElementById('modal-hp').innerText = `${unit.hp}/${maxhp}`;
-            document.getElementById('modal-xp').innerText = `${unit.exp}`;
-            const actList = document.getElementById('modal-actions');
-            actList.innerHTML = '';
-            const acts = [...unit.acts[0], ...(unit.acts[1] || [])];
-            acts.forEach(a => {
-                const div = document.createElement('div');
-                div.className = 'flex gap-2';
-                div.innerHTML = `<span class="bg-gray-800 px-1 border border-gray-600 text-xs">${Data.skills[a.toLowerCase()].name}</span>`;
-                actList.appendChild(div);
-            });
+            const baseMax = Math.round(def.baseHp * (1 + def.hpGrowth * (unit.level - 1)));
+            const hpPct = Math.max(0, Math.min(100, (unit.hp / maxhp) * 100));
+            const equipment = unit.equipmentId ? Data.equipment[unit.equipmentId] : null;
+            const actions = [...unit.acts[0], ...(unit.acts[1] || [])]
+                .map(a => {
+                    const skill = Data.skills[a] || Data.skills[a.toLowerCase()];
+                    return `<span class="px-2 py-1 border border-gray-600 bg-gray-900 text-xs rounded">${skill ? skill.name : a}</span>`;
+                })
+                .join('');
+
+            const body = document.getElementById('creature-modal-body');
+            body.innerHTML = `
+                <div class="w-1/3 flex flex-col gap-4 border-r border-gray-700 pr-4">
+                    <div class="w-full flex justify-center">
+                        <div class="w-32 h-32 border-2 border-dashed border-gray-600 flex items-center justify-center text-6xl bg-black">
+                            <span>${unit.sprite}</span>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="text-center w-full">
+                            <h2 class="text-2xl text-yellow-500">${unit.name}</h2>
+                            <div class="text-sm text-gray-400">Lv. ${unit.level}</div>
+                        </div>
+                        <div class="p-3 border border-gray-800 bg-black/70 rounded text-sm leading-5">
+                            <div class="flex justify-between text-gray-400 text-xs">
+                                <span>Temperament</span>
+                                <span class="text-yellow-400 uppercase tracking-wide">${def.temperament || 'Unknown'}</span>
+                            </div>
+                            <div class="mt-2 text-gray-300">${def.description || 'A mysterious ally with untold potential.'}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="w-2/3 flex flex-col gap-3 overflow-y-auto pr-1">
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="p-3 border border-gray-800 bg-black/70 rounded">
+                            <div class="text-xs text-gray-400">HP</div>
+                            <div class="flex items-center justify-between">
+                                <div class="text-lg text-green-400">${unit.hp}/${maxhp}</div>
+                                <div class="text-[10px] text-gray-500">Base ${baseMax}</div>
+                            </div>
+                            <div class="w-full h-2 bg-gray-800 mt-2 rounded-full overflow-hidden">
+                                <div class="h-full bg-green-600" style="width:${hpPct}%"></div>
+                            </div>
+                        </div>
+                        <div class="p-3 border border-gray-800 bg-black/70 rounded">
+                            <div class="text-xs text-gray-400">XP</div>
+                            <div class="text-lg text-blue-300">${unit.exp}</div>
+                            <div class="text-[10px] text-gray-500 mt-2">Earn XP by winning battles to level up.</div>
+                        </div>
+                        <div class="p-3 border border-gray-800 bg-black/70 rounded">
+                            <div class="text-xs text-gray-400">Equipment Bonus</div>
+                            <div class="text-lg text-yellow-300">${equipment && equipment.hpBonus ? `+${Math.round(equipment.hpBonus * 100)}% HP` : equipment ? equipment.description : 'None'}</div>
+                            <div class="text-[10px] text-gray-500 mt-2">Click equipment to manage gear.</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="p-3 border border-gray-800 bg-black/70 rounded">
+                            <div class="flex items-center justify-between">
+                                <div class="text-gray-300">Equipment</div>
+                                <button id="modal-equip-toggle" class="text-xs border border-gray-700 px-2 py-1 hover:bg-gray-200 hover:text-black">Change</button>
+                            </div>
+                            <div id="modal-equip-slot" class="mt-2 p-2 border border-dashed border-gray-700 rounded cursor-pointer hover:border-yellow-500 flex items-start gap-3">
+                                <div class="text-2xl">${equipment ? '🎗️' : '➕'}</div>
+                                <div>
+                                    <div class="text-yellow-200 font-semibold">${equipment ? equipment.name : 'Empty Slot'}</div>
+                                    <div class="text-xs text-gray-400">${equipment ? equipment.description : 'Choose an accessory to bolster this ally.'}</div>
+                                </div>
+                            </div>
+                            <div id="modal-equip-options" class="hidden mt-3 grid grid-cols-1 gap-2"></div>
+                        </div>
+                        <div class="p-3 border border-gray-800 bg-black/70 rounded">
+                            <div class="text-gray-300 mb-2">Battle Style</div>
+                            <div class="text-sm text-gray-300 leading-6">${def.lore || 'Reliable in a pinch and ready to act when commanded.'}</div>
+                        </div>
+                    </div>
+
+                    <div class="p-3 border border-gray-800 bg-black/70 rounded">
+                        <div class="text-gray-300 mb-2 flex justify-between items-center">
+                            <span>Actions</span>
+                            <span class="text-[10px] text-gray-500">${actions ? 'Tap a skill to review its name' : 'No skills learned yet.'}</span>
+                        </div>
+                        <div id="modal-actions" class="flex flex-wrap gap-2 text-sm">${actions}</div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('modal-equip-slot').onclick = () => this.toggleEquipmentOptions(unit);
+            document.getElementById('modal-equip-toggle').onclick = () => this.toggleEquipmentOptions(unit);
+            this.renderEquipmentOptions(unit);
             document.getElementById('creature-modal').classList.remove('hidden');
+        },
+        renderEquipmentOptions(unit) {
+            const list = document.getElementById('modal-equip-options');
+            if (!list) return;
+            const availability = this.buildEquipmentAvailability(unit);
+            list.innerHTML = '';
+
+            const noneOption = document.createElement('div');
+            noneOption.className = 'border border-gray-700 rounded p-2 bg-black/60 hover:border-yellow-500 cursor-pointer flex items-center justify-between';
+            noneOption.innerHTML = `<div><div class="text-yellow-200 font-semibold">No Equipment</div><div class="text-xs text-gray-400">Unequip current accessory.</div></div><span class="text-sm text-gray-500">--</span>`;
+            noneOption.onclick = () => this.chooseEquipment(unit, null);
+            list.appendChild(noneOption);
+
+            Object.keys(availability).forEach(id => {
+                const entry = availability[id];
+                const def = Data.equipment[id];
+                if (!def) return;
+                const owners = entry.owners.filter(o => o.uid !== unit.uid);
+                const tag = document.createElement('div');
+                tag.className = 'border border-gray-700 rounded p-2 bg-black/60 hover:border-yellow-500 cursor-pointer flex items-center justify-between gap-2';
+                const ownerLabel = owners.length > 0 ? `<div class="text-[10px] text-red-300">Equipped by: ${owners.map(o => o.name).join(', ')}</div>` : '<div class="text-[10px] text-gray-500">In bag</div>';
+                tag.innerHTML = `
+                    <div>
+                        <div class="text-yellow-200 font-semibold">${def.name}</div>
+                        <div class="text-xs text-gray-400">${def.description}</div>
+                        ${ownerLabel}
+                    </div>
+                    <div class="text-right text-sm text-gray-300">x${entry.inventory + entry.owners.length}</div>
+                `;
+                tag.onclick = () => this.chooseEquipment(unit, id);
+                list.appendChild(tag);
+            });
+        },
+        toggleEquipmentOptions(unit) {
+            const list = document.getElementById('modal-equip-options');
+            if (!list) return;
+            list.classList.toggle('hidden');
+            if (!list.classList.contains('hidden')) {
+                this.renderEquipmentOptions(unit);
+            }
+        },
+        chooseEquipment(unit, equipmentId) {
+            const inventory = GameState.inventory.equipment;
+            const current = unit.equipmentId;
+            if (equipmentId === current) return;
+
+            // Return current gear to inventory if unequipping or swapping
+            const returnCurrent = () => {
+                if (current) {
+                    inventory[current] = (inventory[current] || 0) + 1;
+                }
+            };
+
+            if (!equipmentId) {
+                returnCurrent();
+                unit.equipmentId = null;
+                this.renderParty();
+                this.showCreatureModal(unit);
+                return;
+            }
+
+            let takenFromInventory = false;
+            if (inventory[equipmentId] && inventory[equipmentId] > 0) {
+                inventory[equipmentId] -= 1;
+                if (inventory[equipmentId] === 0) delete inventory[equipmentId];
+                takenFromInventory = true;
+            }
+
+            if (!takenFromInventory) {
+                const donor = GameState.roster.find(u => u.uid !== unit.uid && u.equipmentId === equipmentId);
+                if (donor) donor.equipmentId = null;
+                else {
+                    Log.add('No available copy of that equipment.');
+                    return; // no available copy
+                }
+            }
+
+            returnCurrent();
+            unit.equipmentId = equipmentId;
+            this.renderParty();
+            this.showCreatureModal(unit);
+        },
+        buildEquipmentAvailability(unit) {
+            const availability = {};
+            Object.entries(GameState.inventory.equipment).forEach(([id, count]) => {
+                availability[id] = availability[id] || { inventory: 0, owners: [] };
+                availability[id].inventory += count;
+            });
+            GameState.roster.forEach(u => {
+                if (!u.equipmentId) return;
+                availability[u.equipmentId] = availability[u.equipmentId] || { inventory: 0, owners: [] };
+                availability[u.equipmentId].owners.push(u);
+            });
+            return availability;
+        },
+        showEquipmentAssignModal(equipmentId) {
+            const def = Data.equipment[equipmentId];
+            const inventoryModal = document.getElementById('inventory-modal');
+            if (inventoryModal && !inventoryModal.classList.contains('hidden')) {
+                this.toggleInventory();
+            }
+            const list = GameState.roster.map(u => {
+                const eqLabel = u.equipmentId ? `Equipped: ${Data.equipment[u.equipmentId].name}` : 'No equipment';
+                return `<div class="flex items-center justify-between border border-gray-700 p-2 bg-black/70"><div class="flex items-center gap-2"><span class="text-xl">${u.sprite}</span><div><div class="text-yellow-100">${u.name}</div><div class="text-xs text-gray-500">${eqLabel}</div></div></div><button class="text-xs border border-gray-600 px-2 py-1 hover:bg-yellow-500 hover:text-black" data-uid="${u.uid}">Equip</button></div>`;
+            }).join('');
+            this.showModal(`
+                <div class="rpg-window w-2/3 max-h-[70vh] overflow-y-auto bg-[#0a0a0a] p-4 space-y-3">
+                    <div class="flex justify-between items-center border-b border-gray-800 pb-2">
+                        <div>
+                            <div class="text-lg text-yellow-300">Equip ${def.name}</div>
+                            <div class="text-xs text-gray-400">${def.description}</div>
+                        </div>
+                        <button id="assign-close" class="text-red-500 px-2">Close</button>
+                    </div>
+                    ${list}
+                </div>
+            `);
+            document.getElementById('assign-close').onclick = () => this.closeModal();
+            document.querySelectorAll('#center-modal button[data-uid]').forEach(btn => {
+                btn.onclick = () => {
+                    const target = GameState.roster.find(u => u.uid === btn.dataset.uid);
+                    if (target) this.chooseEquipment(target, equipmentId);
+                    this.closeModal();
+                };
+            });
         },
         switchScene(toBattle) {
             const swipe = document.getElementById('swipe-overlay');
