@@ -2,6 +2,12 @@ import { Data } from './data.js';
 import { GameState } from './state.js';
 import { Log } from './log.js';
 
+const resolveAssetPath = (assetPath) => {
+    if (!assetPath) return null;
+    const normalizedPath = assetPath.replace(/^\.\//, '').replace(/^\//, '');
+    return normalizedPath.startsWith('src/') ? normalizedPath : `src/${normalizedPath}`;
+};
+
 // ------------------- SYSTEMS DEFINITIONS -------------------
 // All gameplay logic is organized under a single Systems object. Each system operates
 // exclusively on GameState and Data, without direct DOM manipulation.
@@ -286,7 +292,7 @@ export const Systems = {
             offers.forEach(def => {
                 const row = document.createElement('div');
                 row.className = 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700';
-                row.innerHTML = `<div class="flex items-center gap-2"><span class="text-2xl">${def.sprite}</span><div><div class="text-yellow-100">${def.name}</div><div class="text-xs text-gray-500">HP ${def.baseHp}</div></div></div>`;
+                row.innerHTML = `<div class="flex items-center gap-2">${Systems.UI.spriteMarkup(def, 'h-10 w-10 object-contain')}<div><div class="text-yellow-100">${def.name}</div><div class="text-xs text-gray-500">HP ${def.baseHp}</div></div></div>`;
                 const btn = document.createElement('button');
                 btn.className = 'text-xs border border-gray-600 px-2 py-1 hover:bg-white hover:text-black';
                 btn.innerText = 'RECRUIT';
@@ -378,6 +384,7 @@ export const Systems = {
         sprites: {},
         textureLoader: null,
         textureCache: {},
+        spriteScaleFactor: 3,
         cameraState: { angle: -Math.PI / 4, targetAngle: -Math.PI / 4, targetX: 0, targetY: 0 },
         init() {
             const container = document.getElementById('three-container');
@@ -428,13 +435,8 @@ export const Systems = {
             const loadTexture = (assetPath, ready) => {
                 if (!assetPath || !this.textureLoader) return ready(null);
 
-                // Normalize paths from data (e.g. "assets/images/…") to the actual location
-                // served by index.html, which lives under "src/assets".
-                const normalizedPath = assetPath.replace(/^\.\//, '').replace(/^\//, '');
-                const resolvedPath = normalizedPath.startsWith('src/')
-                    ? normalizedPath
-                    : `src/${normalizedPath}`;
-
+                const resolvedPath = resolveAssetPath(assetPath);
+                if (!resolvedPath) return ready(null);
                 if (this.textureCache[resolvedPath]) return ready(this.textureCache[resolvedPath]);
                 this.textureLoader.load(
                     resolvedPath,
@@ -446,6 +448,13 @@ export const Systems = {
                     undefined,
                     () => ready(null)
                 );
+            };
+            const computeSpriteScale = (texture) => {
+                const aspect = (texture?.image?.width && texture?.image?.height)
+                    ? texture.image.width / texture.image.height
+                    : 1;
+                const height = this.spriteScaleFactor;
+                return { x: height * aspect, y: height };
             };
             const createSprite = (unit, isEnemy) => {
                 if (!unit) return;
@@ -468,7 +477,9 @@ export const Systems = {
                     const mat = new THREE.SpriteMaterial({ map: texture });
                     const sprite = new THREE.Sprite(mat);
                     sprite.position.set(pos.x, pos.y, 1.5);
-                    sprite.scale.set(3, 3, 1);
+                    const baseScale = computeSpriteScale(texture);
+                    sprite.scale.set(baseScale.x, baseScale.y, 1);
+                    sprite.userData.baseScale = baseScale;
                     // Add drop shadow
                     const shadow = new THREE.Mesh(
                         new THREE.CircleGeometry(0.8, 16),
@@ -550,7 +561,8 @@ export const Systems = {
                 sprite.material.color.setHex(0xffffff);
                 sprite.material.blending = THREE.NormalBlending;
                 sprite.material.opacity = 1.0;
-                sprite.scale.set(3, 3, 1);
+                const baseScale = sprite.userData?.baseScale || { x: this.spriteScaleFactor, y: this.spriteScaleFactor };
+                sprite.scale.set(baseScale.x, baseScale.y, 1);
             }
         },
         // Plays various battle animations based on action type and value. Accepts a callback
@@ -1196,6 +1208,13 @@ export const Systems = {
             document.getElementById('hud-floor').innerText = GameState.run.floor;
             document.getElementById('hud-gold').innerText = GameState.run.gold;
         },
+        spriteMarkup(unit, sizeClasses = 'h-10 w-10 object-contain', extraClasses = '', textClass = 'text-2xl') {
+            const url = resolveAssetPath(unit?.spriteAsset);
+            if (url) {
+                return `<img src="${url}" alt="${unit?.name || 'creature'}" class="sprite-img ${sizeClasses} ${extraClasses}">`;
+            }
+            return `<span class="${sizeClasses} ${textClass} ${extraClasses} flex items-center justify-center">${unit?.sprite || ''}</span>`;
+        },
         renderParty() {
             const grid = document.getElementById('party-grid');
             grid.innerHTML = '';
@@ -1210,7 +1229,7 @@ export const Systems = {
                         <div class="flex justify-between text-xs text-gray-300">
                             <span>${u.name}</span> <span class="text-[10px]">Lv${u.level}</span>
                         </div>
-                        <div class="absolute inset-0 flex items-center justify-center opacity-10 text-3xl pointer-events-none">${u.sprite}</div>
+                        <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">${this.spriteMarkup(u, 'h-16 w-16 object-contain', '', 'text-3xl')}</div>
                         <div class="mt-auto w-full h-1 bg-gray-800"><div class="${color} h-full transition-all duration-300" style="width:${hpPct}%"></div></div>
                         <div class="text-[10px] text-right text-gray-500">${u.hp}/${maxhp}</div>
                     `;
@@ -1300,7 +1319,7 @@ export const Systems = {
                 reserve.forEach(u => {
                     const row = document.createElement('div');
                     row.className = 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1';
-                    row.innerHTML = `<div class="flex items-center gap-2"><span class="text-2xl">${u.sprite}</span><div><div class="text-yellow-100">${u.name}</div><div class="text-xs text-gray-500">Lv${u.level}</div></div></div>`;
+                    row.innerHTML = `<div class="flex items-center gap-2">${this.spriteMarkup(u, 'h-10 w-10 object-contain')}<div><div class="text-yellow-100">${u.name}</div><div class="text-xs text-gray-500">Lv${u.level}</div></div></div>`;
                     const btn = document.createElement('button');
                     btn.className = 'text-xs border border-gray-600 px-2 py-1 hover:bg-white hover:text-black';
                     btn.innerText = 'SET';
@@ -1323,7 +1342,7 @@ export const Systems = {
                     const row = document.createElement('div');
                     row.className = 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1';
                     if (u) {
-                        row.innerHTML = `<div class="flex items-center gap-2"><span class="text-2xl">${u.sprite}</span><div><div class="text-yellow-100">${u.name}</div><div class="text-xs text-gray-500">Lv${u.level}</div></div></div>`;
+                        row.innerHTML = `<div class="flex items-center gap-2">${this.spriteMarkup(u, 'h-10 w-10 object-contain')}<div><div class="text-yellow-100">${u.name}</div><div class="text-xs text-gray-500">Lv${u.level}</div></div></div>`;
                         const btn = document.createElement('button');
                         btn.className = 'text-xs border border-gray-600 px-2 py-1 hover:bg-white hover:text-black';
                         btn.innerText = 'REMOVE';
@@ -1410,7 +1429,7 @@ export const Systems = {
             const unit = this.activeModalUnit;
             if (!unit) return;
             const def = Data.creatures[unit.speciesId];
-            document.getElementById('modal-sprite').innerText = unit.sprite;
+            document.getElementById('modal-sprite').innerHTML = this.spriteMarkup(unit, 'h-full w-full object-contain');
             document.getElementById('modal-name').innerText = unit.name;
             document.getElementById('modal-lvl').innerText = unit.level;
             document.getElementById('modal-temperament').innerText = `Temperament: ${def.temperament.toUpperCase()}`;
@@ -1468,7 +1487,7 @@ export const Systems = {
             GameState.roster.forEach(u => {
                 const card = document.createElement('button');
                 card.className = 'rpg-window border border-gray-700 bg-gray-900 hover:border-yellow-500 flex flex-col items-start text-left px-3 py-2';
-                card.innerHTML = `<div class="text-2xl">${u.sprite}</div><div class="text-yellow-100">${u.name}</div><div class="text-xs text-gray-500">Lv${u.level}</div>`;
+                card.innerHTML = `${this.spriteMarkup(u, 'h-12 w-12 object-contain text-2xl')}<div class="text-yellow-100">${u.name}</div><div class="text-xs text-gray-500">Lv${u.level}</div>`;
                 card.onclick = () => {
                     this.equipmentPickerPreset = { id: equipmentId, source: 'inventory' };
                     this.showCreatureModal(u);
