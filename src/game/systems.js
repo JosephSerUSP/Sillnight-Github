@@ -427,12 +427,20 @@ export const Systems = {
             };
             const loadTexture = (assetPath, ready) => {
                 if (!assetPath || !this.textureLoader) return ready(null);
-                if (this.textureCache[assetPath]) return ready(this.textureCache[assetPath]);
+
+                // Normalize paths from data (e.g. "assets/images/…") to the actual location
+                // served by index.html, which lives under "src/assets".
+                const normalizedPath = assetPath.replace(/^\.\//, '').replace(/^\//, '');
+                const resolvedPath = normalizedPath.startsWith('src/')
+                    ? normalizedPath
+                    : `src/${normalizedPath}`;
+
+                if (this.textureCache[resolvedPath]) return ready(this.textureCache[resolvedPath]);
                 this.textureLoader.load(
-                    assetPath,
+                    resolvedPath,
                     (texture) => {
                         texture.magFilter = THREE.NearestFilter;
-                        this.textureCache[assetPath] = texture;
+                        this.textureCache[resolvedPath] = texture;
                         ready(texture);
                     },
                     undefined,
