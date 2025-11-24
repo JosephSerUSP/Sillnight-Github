@@ -952,7 +952,11 @@ export const Data = {
     },
     // Equipment definitions for single-slot equipment. hpBonus is a multiplier on max HP; powerBonus can influence future scaling if needed.
     equipment: {
-        charm_hp: { id: 'charm_hp', name: 'Vitality Charm', description: '+20% Max HP', hpBonus: 0.2, cost: 150 },
+        hp_boost1: { id: 'hp_boost1', name: 'Vitality Seal 1', description: '+10% Max HP', hpBonus: 0.1, cost: 125 },
+        hp_boost2: { id: 'hp_boost2', name: 'Vitality Seal 2', description: '+20% Max HP', hpBonus: 0.2, cost: 400 },
+        hp_boost3: { id: 'hp_boost3', name: 'Vitality Seal 3', description: '+30% Max HP', hpBonus: 0.3, cost: 2800 },
+        rabbits_foot: { id: 'rabbits_foot', name: "Rabbit's Foot", description: 'greatly improves Critical Hit chance', critBonus: 0.15, cost: 250 },
+        straw_doll: { id: 'straw_doll', name: 'Straw Doll', description: 'can survive a fatal blow once per battle', surviveKO:1, cost: 2500 },
         charm_magic: { id: 'charm_magic', name: 'Arcane Charm', description: '+1 Power', powerBonus: 1, cost: 120 }
     },
     // Consumable item definitions. healRatio defines percent of max HP to heal; reviveHpRatio defines percent restored on revival.
