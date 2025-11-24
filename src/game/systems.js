@@ -1224,6 +1224,4 @@ export const Systems = {
             }
         }
     },
-    
-    }
 };
