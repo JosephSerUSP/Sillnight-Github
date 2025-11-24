@@ -25,6 +25,98 @@ export const Data = {
         ray: { id: 'ray', name: 'Ray', category: 'damage', target: 'enemy-single', speed: 0, power: 2, scaling: 1, repeat: 3, element: 'W', animation: 'flash' },
         curse: { id: 'curse', name: 'Curse', category: 'damage', target: 'enemy-single', speed: 0, power: 16, scaling: 2, element: 'K', animation: 'flash' }
     },
+    // Animation registry: describes how each battle animation behaves. Systems.Battle3D
+    // uses these definitions to dispatch reusable animation steps instead of hard-coded
+    // branches.
+    animations: {
+        jump: {
+            steps: [
+                { type: 'verticalSine', axis: 'z', amplitude: 0.75, speed: 0.6, duration: Math.PI, interval: 30 }
+            ]
+        },
+        flash: {
+            steps: [
+                { type: 'colorPulse', blend: 'additive', colors: { negative: 0x00ff00, positive: 0xff0000, neutral: 0x8888ff }, cycles: 6, interval: 50 }
+            ]
+        },
+        thunder: {
+            steps: [
+                {
+                    type: 'iconAbove',
+                    icon: '⛈️',
+                    scale: 0.8,
+                    behavior: 'riseFade',
+                    startHeight: 0.8,
+                    stayDuration: 0.2,
+                    riseSpeed: 0.05,
+                    fadeRate: 0.6,
+                    flashStart: 0.4,
+                    flashEnd: 1.4,
+                    flashColors: [0xffff00, 0xffffff],
+                    timeStep: 0.1,
+                    interval: 30,
+                    ttl: 2
+                }
+            ]
+        },
+        cure: {
+            steps: [
+                { type: 'sparkleSpiral', count: 3, angularVelocity: 0.3, descent: 0.1, duration: 3, interval: 30, scale: 0.5 }
+            ]
+        },
+        tornado: {
+            steps: [
+                {
+                    type: 'parallel',
+                    steps: [
+                        { type: 'lift', height: 3, duration: 2.5, wobble: { axis: 'x', amplitude: 0.25, frequency: 4 }, bounce: { amplitude: 0.5, duration: 1 }, interval: 30 },
+                        { type: 'orbitBillboards', icon: '🍃', count: 4, scale: 0.4, radius: 1, angularVelocity: 0.4, verticalOffset: 0.5, duration: 2.5, interval: 30 }
+                    ]
+                }
+            ]
+        },
+        hit: {
+            steps: [
+                { type: 'shake', axis: 'x', magnitude: 0.4, iterations: 8, interval: 40 },
+                { type: 'damageNumber' }
+            ]
+        },
+        die: {
+            steps: [
+                { type: 'scaleFade', duration: 1, interval: 32, scaleIncrease: 2 }
+            ]
+        },
+        apocalypse: {
+            steps: [
+                { type: 'colorPulse', blend: 'additive', colors: { neutral: 0xff4400 }, cycles: 8, interval: 60 },
+                {
+                    type: 'parallel',
+                    steps: [
+                        { type: 'lift', height: 2.5, duration: 2.5, wobble: { axis: 'x', amplitude: 0.3, frequency: 5 }, bounce: { amplitude: 0.8, duration: 1 }, interval: 32 },
+                        { type: 'orbitBillboards', icon: '☄️', count: 6, scale: 0.6, radius: 1.6, angularVelocity: 0.5, verticalOffset: 0.6, jitter: 0.2, duration: 2.5, interval: 32, fadeOut: true }
+                    ]
+                },
+                { type: 'shake', axis: 'y', magnitude: 0.5, iterations: 6, interval: 50 }
+            ]
+        },
+        anvil: {
+            steps: [
+                {
+                    type: 'iconAbove',
+                    icon: '🪨',
+                    scale: 0.9,
+                    behavior: 'easeDrop',
+                    startHeight: 3,
+                    landHeight: 0.8,
+                    ease: 0.08,
+                    impactBounce: { amplitude: 0.6, duration: 0.7 },
+                    fadeAfterImpact: true,
+                    interval: 24
+                },
+                { type: 'shake', axis: 'x', magnitude: 0.35, iterations: 6, interval: 35 }
+            ]
+        }
+    },
     // Creatures database defines base stats and move sets for each species.
     // Extended with hpGrowth (per level) and xpCurve (xp cost per level).
     creatures: {
