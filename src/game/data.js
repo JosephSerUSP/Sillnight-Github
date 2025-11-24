@@ -9,7 +9,7 @@ export const Data = {
         baseGoldPerEnemy: 20,
         baseXpPerEnemy: 5
     },
-    // Element symbols used for skills (currently cosmetic).
+    // Element symbols used for skills and creatures. Elements can stack.
     elements: { R: '🔴', G: '🟢', B: '🔵', W: '⚪', K: '⚫' },
     // Skills are defined declaratively here. Each skill has a
     // category (damage/heal/guard), a target selection rule, a base power,

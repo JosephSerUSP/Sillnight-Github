@@ -310,6 +310,7 @@ export const Systems = {
                         hp: Math.round(def.baseHp * (1 + def.hpGrowth * (GameState.run.floor - 1))),
                         exp: 0,
                         temperament: def.temperament,
+                        elements: def.elements ? [...def.elements] : [],
                         acts: def.acts,
                         equipmentId: null,
                         slotIndex: -1
@@ -914,8 +915,30 @@ export const Systems = {
      * GameState to determine combatants, their actions, and outcomes. It
      * interacts with UI and Battle3D modules via callbacks to present the
      * fight to the player.
-     */
+    */
     Battle: {
+        elementStrengths: { G: 'B', B: 'R', R: 'G', W: 'K', K: 'W' },
+        elementWeaknesses: { G: 'R', B: 'G', R: 'B', W: 'W', K: 'K' },
+        // Computes how a single element instance interacts with an action's element.
+        elementRelation(actionElement, creatureElement, role) {
+            if (!actionElement || !creatureElement) return 1;
+            const strongAgainst = this.elementStrengths[actionElement];
+            const weakAgainst = this.elementWeaknesses[actionElement];
+            if (role === 'attacker') {
+                if (creatureElement === actionElement) return 1.25;
+                if (this.elementStrengths[creatureElement] === actionElement) return 0.75;
+                return 1;
+            }
+            if (creatureElement === actionElement && (creatureElement === 'W' || creatureElement === 'K')) return 0.75;
+            if (strongAgainst === creatureElement) return 1.25;
+            if (weakAgainst === creatureElement || this.elementStrengths[creatureElement] === actionElement) return 0.75;
+            return 1;
+        },
+        elementMultiplier(actionElement, unit, role) {
+            if (!actionElement) return 1;
+            const elems = unit.elements || [];
+            return elems.reduce((mult, e) => mult * this.elementRelation(actionElement, e, role), 1);
+        },
         getMaxHp(unit) {
             const def = Data.creatures[unit.speciesId];
             let baseMax = Math.round(def.baseHp * (1 + def.hpGrowth * (unit.level - 1)));
@@ -960,6 +983,7 @@ export const Systems = {
                         hp: Math.floor(def.baseHp * mult),
                         maxhp: Math.floor(def.baseHp * mult),
                         temperament: def.temperament,
+                        elements: def.elements ? [...def.elements] : [],
                         acts: def.acts,
                         slotIndex: i
                     });
@@ -1102,7 +1126,11 @@ export const Systems = {
                     if (action.category === 'damage' || action.category === 'heal') {
                         const pow = action.power || 0;
                         const sc = action.scaling || 0;
-                        value = Math.floor(pow + sc * unit.level);
+                        const base = Math.floor(pow + sc * unit.level);
+                        const element = action.element;
+                        const attackMult = this.elementMultiplier(element, unit, 'attacker');
+                        const defenseMult = this.elementMultiplier(element, t, 'defender');
+                        value = Math.floor(base * attackMult * defenseMult);
                         if (action.category === 'heal') value = -value; // negative for heals
                         const animType = resolveAnimation(action.animation);
                         const apply = () => {
@@ -1434,7 +1462,8 @@ export const Systems = {
             document.getElementById('modal-lvl').innerText = unit.level;
             document.getElementById('modal-temperament').innerText = `Temperament: ${def.temperament.toUpperCase()}`;
             document.getElementById('modal-race').innerText = def.race || 'Unknown';
-            const elems = def.elements && def.elements.length > 0 ? def.elements.map(e => Data.elements[e] || '?').join(' ') : '—';
+            const elementList = unit.elements && unit.elements.length > 0 ? unit.elements : (def.elements || []);
+            const elems = elementList.length > 0 ? elementList.map(e => Data.elements[e] || '?').join(' ') : '—';
             document.getElementById('modal-elements').innerText = elems;
             document.getElementById('modal-passive').innerText = def.passive || 'Details coming soon.';
             document.getElementById('modal-desc').innerText = def.description;
