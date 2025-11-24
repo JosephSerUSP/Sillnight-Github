@@ -107,14 +107,51 @@ export const Systems = {
      * Exploration system: handles movement and field-of-view updates. Has no DOM.
      */
     Explore: {
+        scene: null,
+        renderer: null,
+        camera: null,
+        mapGroup: null,
+        emojiCache: {},
         init() {
-            // Called once to set canvas size and draw initial view
+            const canvas = document.getElementById('explore-canvas');
+            this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+            this.scene = new THREE.Scene();
+            this.scene.background = new THREE.Color(0x050505);
+            const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+            const dir = new THREE.DirectionalLight(0xffffff, 0.4);
+            dir.position.set(1, -1, 1).normalize();
+            this.scene.add(ambient, dir);
+            this.mapGroup = new THREE.Group();
+            this.scene.add(this.mapGroup);
+            this.createCamera();
             this.resize();
+        },
+        createCamera() {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            this.camera = new THREE.OrthographicCamera(-w / 2, w / 2, h / 2, -h / 2, 0.1, 1000);
+            this.camera.up.set(0, 0, -1);
+            this.camera.position.set(0, 400, 0);
+            this.camera.lookAt(new THREE.Vector3(0, 0, 0));
         },
         resize() {
             const canvas = document.getElementById('explore-canvas');
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            canvas.width = w;
+            canvas.height = h;
+            if (!this.camera) this.createCamera();
+            else {
+                this.camera.left = -w / 2;
+                this.camera.right = w / 2;
+                this.camera.top = h / 2;
+                this.camera.bottom = -h / 2;
+                this.camera.updateProjectionMatrix();
+            }
+            if (this.renderer) {
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.renderer.setSize(w, h, false);
+            }
             this.render();
         },
         move(dx, dy) {
@@ -134,70 +171,104 @@ export const Systems = {
             // Update HUD after potential gold change
             Systems.UI.updateHUD();
         },
-        render() {
-            const canvas = document.getElementById('explore-canvas');
+        createEmojiSprite(symbol, size = 32) {
+            if (this.emojiCache[symbol]) {
+                const sprite = new THREE.Sprite(this.emojiCache[symbol].material);
+                sprite.scale.copy(this.emojiCache[symbol].scale);
+                sprite.userData.sharedMaterial = true;
+                return sprite;
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
             const ctx = canvas.getContext('2d');
+            ctx.font = `${size}px serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(symbol, canvas.width / 2, canvas.height / 2 + 8);
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(Data.config.tileSize * 0.8, Data.config.tileSize * 0.8, 1);
+            sprite.userData.sharedMaterial = true;
+            this.emojiCache[symbol] = sprite;
+            return this.createEmojiSprite(symbol, size);
+        },
+        clearMapMeshes() {
+            while (this.mapGroup.children.length > 0) {
+                const child = this.mapGroup.children.pop();
+                if (child.geometry) child.geometry.dispose();
+                if (child.material && !child.userData.sharedMaterial) {
+                    if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                    else child.material.dispose();
+                }
+                if (child.texture) child.texture.dispose?.();
+            }
+        },
+        render() {
+            if (!this.renderer || !this.scene || !this.camera) return;
             const cfg = Data.config;
-            const w = canvas.width;
-            const h = canvas.height;
-            ctx.fillStyle = '#050505';
-            ctx.fillRect(0, 0, w, h);
-            // Center offset to keep player in the middle of screen
-            const offsetX = (w / 2) - (GameState.exploration.playerPos.x * cfg.tileSize);
-            const offsetY = (h / 2) - (GameState.exploration.playerPos.y * cfg.tileSize);
-            ctx.save();
-            ctx.translate(offsetX, offsetY);
-            // Draw map tiles with fog-of-war
+            this.clearMapMeshes();
+
+            const tileSize = cfg.tileSize;
+            const wallHeight = tileSize * 1.2;
+            const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9, metalness: 0 });
+            const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8, metalness: 0.1 });
+            const fogMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.7 });
+
             for (let y = 0; y < cfg.mapHeight; y++) {
                 for (let x = 0; x < cfg.mapWidth; x++) {
                     const dist = Math.hypot(x - GameState.exploration.playerPos.x, y - GameState.exploration.playerPos.y);
                     if (dist < cfg.viewDistance) GameState.exploration.visited[y][x] = true;
                     if (!GameState.exploration.visited[y][x]) continue;
                     const tile = GameState.exploration.map[y][x];
-                    const px = x * cfg.tileSize;
-                    const py = y * cfg.tileSize;
-                    // Walls vs floor
-                    if (tile === 1) {
-                        ctx.fillStyle = '#333';
-                        ctx.fillRect(px, py, cfg.tileSize, cfg.tileSize);
-                        ctx.strokeStyle = '#111';
-                        ctx.strokeRect(px, py, cfg.tileSize, cfg.tileSize);
-                    } else {
-                        ctx.fillStyle = '#1a1a1a';
-                        ctx.fillRect(px, py, cfg.tileSize, cfg.tileSize);
-                        ctx.strokeStyle = '#222';
-                        ctx.strokeRect(px, py, cfg.tileSize, cfg.tileSize);
-                        // Draw icons for special tiles
-                        ctx.font = '32px serif';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        const cx = px + cfg.tileSize / 2;
-                        const cy = py + cfg.tileSize / 2;
-                        if (tile === 2) ctx.fillText('👹', cx, cy);
-                        else if (tile === 3) ctx.fillText('🪜', cx, cy);
-                        else if (tile === 4) ctx.fillText('💰', cx, cy);
-                        else if (tile === 5) ctx.fillText('🛒', cx, cy);
-                        else if (tile === 6) ctx.fillText('🤝', cx, cy);
-                        else if (tile === 7) ctx.fillText('⛪', cx, cy);
-                        else if (tile === 8) ctx.fillText('☠️', cx, cy);
+                    const worldX = x * tileSize;
+                    const worldZ = y * tileSize;
+                    const isWall = tile === 1;
+                    const geom = isWall
+                        ? new THREE.BoxGeometry(tileSize, wallHeight, tileSize)
+                        : new THREE.PlaneGeometry(tileSize, tileSize);
+                    const mesh = new THREE.Mesh(geom, isWall ? wallMaterial.clone() : floorMaterial.clone());
+                    mesh.position.set(worldX, isWall ? wallHeight / 2 : 0, worldZ);
+                    if (!isWall) mesh.rotation.x = -Math.PI / 2;
+                    this.mapGroup.add(mesh);
+
+                    if (!isWall && tile !== 0) {
+                        let emoji = null;
+                        if (tile === 2) emoji = '👹';
+                        else if (tile === 3) emoji = '🪜';
+                        else if (tile === 4) emoji = '💰';
+                        else if (tile === 5) emoji = '🛒';
+                        else if (tile === 6) emoji = '🤝';
+                        else if (tile === 7) emoji = '⛪';
+                        else if (tile === 8) emoji = '☠️';
+                        if (emoji) {
+                            const sprite = this.createEmojiSprite(emoji, 64);
+                            sprite.position.set(worldX, tileSize * 0.6, worldZ);
+                            this.mapGroup.add(sprite);
+                        }
                     }
-                    // Draw fog beyond view distance
+
                     if (dist >= cfg.viewDistance) {
-                        ctx.fillStyle = 'rgba(0,0,0,0.7)';
-                        ctx.fillRect(px, py, cfg.tileSize, cfg.tileSize);
+                        const fogPlane = new THREE.Mesh(new THREE.PlaneGeometry(tileSize, tileSize), fogMaterial.clone());
+                        fogPlane.rotation.x = -Math.PI / 2;
+                        fogPlane.position.set(worldX, 0.5, worldZ);
+                        this.mapGroup.add(fogPlane);
                     }
                 }
             }
-            // Draw the player
-            const playerX = GameState.exploration.playerPos.x * cfg.tileSize;
-            const playerY = GameState.exploration.playerPos.y * cfg.tileSize;
-            ctx.font = '36px serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.shadowColor = '#d4af37';
-            ctx.shadowBlur = 15;
-            ctx.fillText('🧙‍♂️', playerX + cfg.tileSize / 2, playerY + cfg.tileSize / 2);
-            ctx.restore();
+
+            const playerX = GameState.exploration.playerPos.x * tileSize;
+            const playerZ = GameState.exploration.playerPos.y * tileSize;
+            const player = this.createEmojiSprite('🧙‍♂️', 72);
+            player.position.set(playerX, tileSize, playerZ);
+            this.mapGroup.add(player);
+
+            this.camera.position.x = playerX;
+            this.camera.position.z = playerZ;
+            this.camera.lookAt(new THREE.Vector3(playerX, 0, playerZ));
+
+            this.renderer.render(this.scene, this.camera);
         }
     },
     /*
