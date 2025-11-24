@@ -2,6 +2,7 @@ import { Data } from './data.js';
 import { GameState } from './state.js';
 import { Log } from './log.js';
 import { Systems } from './systems.js';
+import { UI } from './ui/uiManager.js';
 
 // Group systems under a single Game object for easy access in HTML event handlers
 export const Game = {
@@ -13,6 +14,7 @@ export const Game = {
         // Initialize canvas and 3D
         Systems.Explore.init();
         Systems.Battle3D.init();
+        UI.systemHooks.requestPlayerTurn = () => Systems.Battle.requestPlayerTurn();
         // Setup initial party: create default units and populate active slots
         // Starting party: titania lvl 5, goblin lvl 3, empty, pixie lvl 2, empty, empty
         const startSetup = [
@@ -51,6 +53,7 @@ export const Game = {
         });
         // Render party UI and update HUD
         Systems.UI.renderParty();
+        UI.refreshAll();
         // Log welcome message
         Log.add('Welcome to Stillnight.');
     }
