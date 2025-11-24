@@ -522,164 +522,307 @@ export const Systems = {
         // to be invoked after the animation completes.
         playAnim(uid, type, val, cb) {
             const sprite = this.sprites[uid];
-            if (!sprite) { if (cb) cb(); return; }
+            const animDef = Data.animations[type];
+            if (!sprite || !animDef) { if (cb) cb(); return; }
             // Ensure sprite resets before each animation
             this.resetSprite(uid);
-            if (type === 'jump') {
-                let t = 0;
-                const startZ = sprite.position.z;
-                const jump = setInterval(() => {
-                    t += 0.6;
-                    sprite.position.z = startZ + Math.sin(t) * 0.75;
-                    if (t >= Math.PI) {
-                        clearInterval(jump);
-                        sprite.position.z = startZ;
-                        if (cb) cb();
-                    }
-                }, 30);
-            } else if (type === 'flash') {
-                sprite.material.blending = THREE.AdditiveBlending;
-                const targetColor = val < 0 ? 0x00ff00 : (val > 0 ? 0xff0000 : 0x8888ff);
-                let count = 0;
-                const f = setInterval(() => {
-                    count++;
-                    if (count % 2 === 0) sprite.material.color.setHex(0xffffff);
-                    else sprite.material.color.setHex(targetColor);
-                    if (count > 5) {
-                        clearInterval(f);
-                        this.resetSprite(uid);
-                        if (cb) cb();
-                    }
-                }, 50);
-            } else if (type === 'thunder') {
-                // Create cloud billboard
-                const cloudGrp = this.createBillboard('⛈️', sprite.position.x, sprite.position.y, sprite.position.z + 0.5, 0.8);
-                const cloudSprite = cloudGrp.children[0];
-                cloudSprite.material.blending = THREE.AdditiveBlending;
-                this.group.add(cloudGrp);
-                let ct = 0;
-                const anim = setInterval(() => {
-                    ct += 0.1;
-                    cloudSprite.position.z += 0.05;
-                    cloudSprite.material.opacity = Math.max(0, 1 - ct * 0.5);
-                    if (ct > 0.5 && ct < 1.5) {
-                        sprite.material.blending = THREE.AdditiveBlending;
-                        sprite.material.color.setHex(ct % 0.2 < 0.1 ? 0xffff00 : 0xffffff);
-                    }
-                    if (ct > 2) {
-                        clearInterval(anim);
-                        this.group.remove(cloudGrp);
-                        this.resetSprite(uid);
-                        if (cb) cb();
-                    }
-                }, 30);
-            } else if (type === 'cure') {
-                // Sparkles swirl down and heal
-                const sparkles = [];
-                for (let i = 0; i < 3; i++) {
-                    const s = this.createBillboard('✨', sprite.position.x, sprite.position.y, sprite.position.z + 3, 0.5);
-                    s.children[0].material.blending = THREE.AdditiveBlending;
-                    this.group.add(s);
-                    sparkles.push({ m: s, ang: i * (Math.PI * 2 / 3) });
-                }
-                let t = 0;
-                const anim = setInterval(() => {
-                    t += 0.1;
-                    sparkles.forEach(s => {
-                        s.ang += 0.3;
-                        s.m.children[0].position.z -= 0.1;
-                        s.m.children[0].position.x = sprite.position.x + Math.cos(s.ang) * 0.5;
-                        s.m.children[0].position.y = sprite.position.y + Math.sin(s.ang) * 0.5;
-                    });
-                    if (t > 3) {
-                        clearInterval(anim);
-                        sparkles.forEach(s => this.group.remove(s.m));
-                        if (cb) cb();
-                    }
-                }, 30);
-            } else if (type === 'tornado') {
-                let t = 0;
-                const startZ = sprite.position.z;
-                const startX = sprite.position.x;
-                const leaves = [];
-                for (let i = 0; i < 4; i++) {
-                    const l = this.createBillboard('🍃', startX, sprite.position.y, startZ + Math.random(), 0.4);
-                    this.group.add(l);
-                    leaves.push({ m: l, ang: i * (Math.PI / 2) });
-                }
-                const lift = setInterval(() => {
-                    t += 0.1;
-                    if (t < Math.PI) sprite.position.z = startZ + Math.sin(t * 0.5) * 3;
-                    leaves.forEach(l => {
-                        l.ang += 0.4;
-                        l.m.children[0].position.x = sprite.position.x + Math.cos(l.ang) * 1;
-                        l.m.children[0].position.y = sprite.position.y + Math.sin(l.ang) * 1;
-                        l.m.children[0].position.z = sprite.position.z + 0.5;
-                    });
-                    sprite.position.x = startX + Math.cos(t * 4) * 0.2;
-                    if (t > 4) {
-                        clearInterval(lift);
-                        sprite.position.z = startZ;
-                        sprite.position.x = startX;
-                        leaves.forEach(l => this.group.remove(l.m));
-                        let bt = 0;
-                        const bounce = setInterval(() => {
-                            bt += 0.5;
-                            sprite.position.z = startZ + Math.abs(Math.sin(bt)) * 0.5 * (Math.PI - bt);
-                            if (bt >= Math.PI) {
-                                clearInterval(bounce);
-                                sprite.position.z = startZ;
-                                if (cb) cb();
+
+            const stepHandlers = {
+                verticalSine: (step) => new Promise(resolve => {
+                    let t = 0;
+                    const axis = step.axis || 'z';
+                    const startPos = sprite.position[axis];
+                    const interval = step.interval || 30;
+                    const amp = step.amplitude || 1;
+                    const speed = step.speed || 0.5;
+                    const duration = step.duration || Math.PI;
+                    const jump = setInterval(() => {
+                        t += speed;
+                        sprite.position[axis] = startPos + Math.sin(t) * amp;
+                        if (t >= duration) {
+                            clearInterval(jump);
+                            sprite.position[axis] = startPos;
+                            resolve();
+                        }
+                    }, interval);
+                }),
+                colorPulse: (step) => new Promise(resolve => {
+                    if (step.blend === 'additive') sprite.material.blending = THREE.AdditiveBlending;
+                    const colors = step.colors || {};
+                    const targetColor = val < 0 ? (colors.negative || 0xffffff) : (val > 0 ? (colors.positive || 0xffffff) : (colors.neutral || 0xffffff));
+                    let count = 0;
+                    const cycles = step.cycles || 6;
+                    const interval = step.interval || 50;
+                    const f = setInterval(() => {
+                        count++;
+                        if (count % 2 === 0) sprite.material.color.setHex(0xffffff);
+                        else sprite.material.color.setHex(targetColor);
+                        if (count >= cycles) {
+                            clearInterval(f);
+                            this.resetSprite(uid);
+                            resolve();
+                        }
+                    }, interval);
+                }),
+                iconAbove: (step) => new Promise(resolve => {
+                    const startHeight = step.startHeight ?? 1;
+                    const group = this.createBillboard(step.icon || '✨', sprite.position.x, sprite.position.y, sprite.position.z + startHeight, step.scale || 1);
+                    const iconSprite = group.children[0];
+                    if (step.blend === 'additive') iconSprite.material.blending = THREE.AdditiveBlending;
+                    this.group.add(group);
+                    const interval = step.interval || 30;
+                    const behavior = step.behavior || 'riseFade';
+                    const cleanUp = () => {
+                        this.group.remove(group);
+                        resolve();
+                    };
+                    if (behavior === 'riseFade') {
+                        let elapsed = 0;
+                        const timeStep = step.timeStep || 0.1;
+                        const stayDuration = step.stayDuration || 0;
+                        const riseSpeed = step.riseSpeed || 0.05;
+                        const fadeRate = step.fadeRate || 0.5;
+                        const flashStart = step.flashStart || 0;
+                        const flashEnd = step.flashEnd || 1;
+                        const ttl = step.ttl || 2;
+                        const flashColors = step.flashColors || [0xffff00, 0xffffff];
+                        const anim = setInterval(() => {
+                            elapsed += timeStep;
+                            const motionTime = Math.max(0, elapsed - stayDuration);
+                            group.children[0].position.z = startHeight + (motionTime * riseSpeed);
+                            iconSprite.material.opacity = Math.max(0, 1 - motionTime * fadeRate);
+                            if (elapsed > flashStart && elapsed < flashEnd) {
+                                sprite.material.blending = THREE.AdditiveBlending;
+                                const idx = Math.floor((elapsed / timeStep)) % flashColors.length;
+                                sprite.material.color.setHex(flashColors[idx]);
                             }
-                        }, 30);
+                            if (elapsed > ttl) {
+                                clearInterval(anim);
+                                this.resetSprite(uid);
+                                cleanUp();
+                            }
+                        }, interval);
+                    } else if (behavior === 'easeDrop') {
+                        const targetZ = sprite.position.z + (step.landHeight ?? 1);
+                        group.position.z = sprite.position.z + startHeight;
+                        const ease = step.ease || 0.1;
+                        const fadeAfterImpact = step.fadeAfterImpact !== false;
+                        const impactBounce = step.impactBounce || { amplitude: 0.5, duration: 0.6 };
+                        const startSpriteZ = sprite.position.z;
+                        const drop = setInterval(() => {
+                            const dz = targetZ - group.position.z;
+                            group.position.z += dz * ease;
+                            if (Math.abs(dz) < 0.05) {
+                                clearInterval(drop);
+                                let bt = 0;
+                                const bounceInterval = interval;
+                                const bounceDuration = impactBounce.duration || 0.6;
+                                const bounceAmplitude = impactBounce.amplitude || 0.5;
+                                const bounceAnim = setInterval(() => {
+                                    bt += bounceInterval / 1000;
+                                    const falloff = Math.max(0, 1 - (bt / bounceDuration));
+                                    sprite.position.z = startSpriteZ + Math.abs(Math.sin(bt * Math.PI)) * bounceAmplitude * falloff;
+                                    group.position.z = targetZ + Math.sin(bt * Math.PI) * (bounceAmplitude / 2) * falloff;
+                                    iconSprite.material.opacity = fadeAfterImpact ? Math.max(0, 1 - (bt / bounceDuration)) : iconSprite.material.opacity;
+                                    if (bt >= bounceDuration) {
+                                        clearInterval(bounceAnim);
+                                        sprite.position.z = startSpriteZ;
+                                        group.position.z = targetZ;
+                                        if (fadeAfterImpact) iconSprite.material.opacity = 0;
+                                        cleanUp();
+                                    }
+                                }, bounceInterval);
+                            }
+                        }, interval);
+                    } else {
+                        cleanUp();
                     }
-                }, 30);
-            } else if (type === 'hit') {
-                // Shake horizontally and display damage numbers
-                let jiggle = 0;
-                const baseX = sprite.position.x;
-                const shake = setInterval(() => {
-                    jiggle++;
-                    sprite.position.x = baseX + (Math.random() - 0.5) * 0.4;
-                    if (jiggle > 8) {
-                        clearInterval(shake);
-                        sprite.position.x = baseX;
+                }),
+                sparkleSpiral: (step) => new Promise(resolve => {
+                    const sparkles = [];
+                    const count = step.count || 3;
+                    for (let i = 0; i < count; i++) {
+                        const s = this.createBillboard('✨', sprite.position.x, sprite.position.y, sprite.position.z + 3, step.scale || 1);
+                        s.children[0].material.blending = THREE.AdditiveBlending;
+                        this.group.add(s);
+                        sparkles.push({ m: s, ang: i * (Math.PI * 2 / count) });
                     }
-                }, 40);
-                // Show number overlay
-                const screenPos = this.toScreen(sprite);
-                const el = document.createElement('div');
-                el.className = `damage-number ${val < 0 ? 'text-green-400' : 'text-white'}`;
-                el.innerText = Math.abs(val);
-                el.style.left = (screenPos.x / window.devicePixelRatio) + 'px';
-                el.style.top = (screenPos.y / window.devicePixelRatio) + 'px';
-                document.getElementById('battle-ui-overlay').appendChild(el);
-                setTimeout(() => el.remove(), 1500);
-                if (cb) cb();
-            } else if (type === 'die') {
-                sprite.material.color.setHex(0xff00ff);
-                sprite.material.blending = THREE.AdditiveBlending;
-                let t = 0;
-                const startScaleX = sprite.scale.x;
-                const startScaleY = sprite.scale.y;
-                const anim = setInterval(() => {
-                    t += 0.02;
-                    const p = 1 - Math.pow(1 - t, 3);
-                    const newH = startScaleY * (1 + p * 2);
-                    sprite.scale.x = startScaleX * (1 - p);
-                    sprite.scale.y = newH;
-                    sprite.position.z = newH / 2;
-                    sprite.material.opacity = 1 - p;
-                    if (t >= 1) {
-                        clearInterval(anim);
-                        sprite.visible = false;
-                        if (cb) cb();
+                    let t = 0;
+                    const interval = step.interval || 30;
+                    const angVel = step.angularVelocity || 0.3;
+                    const descent = step.descent || 0.1;
+                    const duration = step.duration || 3;
+                    const anim = setInterval(() => {
+                        t += (interval / 1000) * 3.333; // preserve similar speed to original (0.1 per 30ms)
+                        sparkles.forEach(s => {
+                            s.ang += angVel;
+                            s.m.children[0].position.z -= descent;
+                            s.m.children[0].position.x = sprite.position.x + Math.cos(s.ang) * 0.5;
+                            s.m.children[0].position.y = sprite.position.y + Math.sin(s.ang) * 0.5;
+                        });
+                        if (t > duration) {
+                            clearInterval(anim);
+                            sparkles.forEach(s => this.group.remove(s.m));
+                            resolve();
+                        }
+                    }, interval);
+                }),
+                orbitBillboards: (step) => new Promise(resolve => {
+                    const count = step.count || 4;
+                    const radius = step.radius || 1;
+                    const angularVelocity = step.angularVelocity || 0.4;
+                    const interval = step.interval || 30;
+                    const duration = step.duration || 2;
+                    const verticalOffset = step.verticalOffset || 0;
+                    const jitter = step.jitter || 0;
+                    const fadeOut = step.fadeOut || false;
+                    const follow = step.follow !== false;
+                    const rise = step.rise || 0;
+                    const orbiters = [];
+                    for (let i = 0; i < count; i++) {
+                        const orb = this.createBillboard(step.icon || '🔆', sprite.position.x, sprite.position.y, sprite.position.z + verticalOffset, step.scale || 1);
+                        orb.children[0].material.blending = THREE.AdditiveBlending;
+                        this.group.add(orb);
+                        orbiters.push({ m: orb, ang: i * ((Math.PI * 2) / count) });
                     }
-                }, 32);
-            } else {
-                // Unknown animation: just callback
-                if (cb) cb();
-            }
+                    const startX = sprite.position.x;
+                    const startY = sprite.position.y;
+                    const startZ = sprite.position.z + verticalOffset;
+                    let t = 0;
+                    const anim = setInterval(() => {
+                        t += interval / 1000;
+                        orbiters.forEach(o => {
+                            o.ang += angularVelocity;
+                            const baseX = follow ? sprite.position.x : startX;
+                            const baseY = follow ? sprite.position.y : startY;
+                            o.m.children[0].position.x = baseX + Math.cos(o.ang) * radius + (Math.random() - 0.5) * jitter;
+                            o.m.children[0].position.y = baseY + Math.sin(o.ang) * radius + (Math.random() - 0.5) * jitter;
+                            o.m.children[0].position.z = (follow ? sprite.position.z : startZ) + verticalOffset + (rise * t);
+                            if (fadeOut) {
+                                const decay = Math.max(0, 1 - (t / duration));
+                                o.m.children[0].material.opacity = decay;
+                            }
+                        });
+                        if (t >= duration) {
+                            clearInterval(anim);
+                            orbiters.forEach(o => this.group.remove(o.m));
+                            resolve();
+                        }
+                    }, interval);
+                }),
+                lift: (step) => new Promise(resolve => {
+                    const axis = step.axis || 'z';
+                    const startPos = sprite.position[axis];
+                    const baseWobbleAxis = step.wobble?.axis || 'x';
+                    const wobbleAmplitude = step.wobble?.amplitude || 0;
+                    const wobbleFreq = step.wobble?.frequency || 4;
+                    const wobbleBase = sprite.position[baseWobbleAxis];
+                    const height = step.height || 2;
+                    const duration = step.duration || 2;
+                    const interval = step.interval || 30;
+                    const bounce = step.bounce;
+                    let t = 0;
+                    const lift = setInterval(() => {
+                        t += interval / 1000;
+                        const progress = Math.min(t / duration, 1);
+                        sprite.position[axis] = startPos + Math.sin(progress * Math.PI) * height;
+                        if (wobbleAmplitude) {
+                            sprite.position[baseWobbleAxis] = wobbleBase + Math.sin(progress * Math.PI * wobbleFreq) * wobbleAmplitude;
+                        }
+                        if (progress >= 1) {
+                            clearInterval(lift);
+                            if (bounce) {
+                                let bt = 0;
+                                const bounceInterval = interval;
+                                const bounceDuration = bounce.duration || 0.6;
+                                const bounceAmplitude = bounce.amplitude || 0.5;
+                                const bounceAnim = setInterval(() => {
+                                    bt += bounceInterval / 1000;
+                                    const falloff = Math.max(0, 1 - (bt / bounceDuration));
+                                    sprite.position[axis] = startPos + Math.abs(Math.sin(bt * Math.PI)) * bounceAmplitude * falloff;
+                                    if (bt >= bounceDuration) {
+                                        clearInterval(bounceAnim);
+                                        sprite.position[axis] = startPos;
+                                        sprite.position[baseWobbleAxis] = wobbleBase;
+                                        resolve();
+                                    }
+                                }, bounceInterval);
+                            } else {
+                                sprite.position[axis] = startPos;
+                                sprite.position[baseWobbleAxis] = wobbleBase;
+                                resolve();
+                            }
+                        }
+                    }, interval);
+                }),
+                parallel: (step) => Promise.all((step.steps || []).map(s => runStep(s))).then(() => {}),
+                shake: (step) => new Promise(resolve => {
+                    let jiggle = 0;
+                    const axis = step.axis || 'x';
+                    const base = sprite.position[axis];
+                    const interval = step.interval || 40;
+                    const magnitude = step.magnitude || 0.4;
+                    const iterations = step.iterations || 8;
+                    const shake = setInterval(() => {
+                        jiggle++;
+                        sprite.position[axis] = base + (Math.random() - 0.5) * magnitude;
+                        if (jiggle > iterations) {
+                            clearInterval(shake);
+                            sprite.position[axis] = base;
+                            resolve();
+                        }
+                    }, interval);
+                }),
+                damageNumber: () => new Promise(resolve => {
+                    const screenPos = this.toScreen(sprite);
+                    const el = document.createElement('div');
+                    el.className = `damage-number ${val < 0 ? 'text-green-400' : 'text-white'}`;
+                    el.innerText = Math.abs(val);
+                    el.style.left = (screenPos.x / window.devicePixelRatio) + 'px';
+                    el.style.top = (screenPos.y / window.devicePixelRatio) + 'px';
+                    document.getElementById('battle-ui-overlay').appendChild(el);
+                    setTimeout(() => el.remove(), 1500);
+                    resolve();
+                }),
+                scaleFade: (step) => new Promise(resolve => {
+                    sprite.material.color.setHex(0xff00ff);
+                    sprite.material.blending = THREE.AdditiveBlending;
+                    let t = 0;
+                    const duration = step.duration || 1;
+                    const interval = step.interval || 32;
+                    const scaleIncrease = step.scaleIncrease || 2;
+                    const startScaleX = sprite.scale.x;
+                    const startScaleY = sprite.scale.y;
+                    const anim = setInterval(() => {
+                        t += (interval / 1000) / duration;
+                        const p = 1 - Math.pow(1 - t, 3);
+                        const newH = startScaleY * (1 + p * scaleIncrease);
+                        sprite.scale.x = startScaleX * (1 - p);
+                        sprite.scale.y = newH;
+                        sprite.position.z = newH / 2;
+                        sprite.material.opacity = 1 - p;
+                        if (t >= 1) {
+                            clearInterval(anim);
+                            sprite.visible = false;
+                            resolve();
+                        }
+                    }, interval);
+                })
+            };
+
+            const runStep = (step) => {
+                const handler = stepHandlers[step.type];
+                if (!handler) return Promise.resolve();
+                return handler(step);
+            };
+
+            const steps = animDef.steps || [];
+            const runSequence = (idx) => {
+                if (idx >= steps.length) { if (cb) cb(); return; }
+                runStep(steps[idx]).then(() => runSequence(idx + 1));
+            };
+            if (steps.length === 0) { if (cb) cb(); return; }
+            runSequence(0);
         },
         // Helper to create a billboard sprite with optional shadow
         createBillboard(text, x, y, z, scale = 1.0) {
@@ -905,6 +1048,7 @@ export const Systems = {
             // Jump animation before executing
             Systems.Battle3D.playAnim(unit.uid, 'jump', 0);
             setTimeout(() => {
+                const resolveAnimation = (key) => (key && Data.animations[key]) ? key : 'flash';
                 targets.forEach(t => {
                     let value = 0;
                     if (action.category === 'damage' || action.category === 'heal') {
@@ -912,32 +1056,32 @@ export const Systems = {
                         const sc = action.scaling || 0;
                         value = Math.floor(pow + sc * unit.level);
                         if (action.category === 'heal') value = -value; // negative for heals
-                        const animType = action.animation === 'cure' ? 'cure' : action.animation;
+                        const animType = resolveAnimation(action.animation);
                         const apply = () => {
                             if (value < 0) {
                                 const maxhp = Systems.Battle.getMaxHp(t);
                                 t.hp = Math.min(maxhp, t.hp - value);
                                 Log.battle(`> ${t.name} healed for ${Math.abs(value)}.`);
-                                Systems.Battle3D.playAnim(t.uid, 'flash', -1);
+                                Systems.Battle3D.playAnim(t.uid, resolveAnimation('flash'), -1);
                             } else {
                                 t.hp = Math.max(0, t.hp - value);
-                                Systems.Battle3D.playAnim(t.uid, 'hit', value);
+                                Systems.Battle3D.playAnim(t.uid, resolveAnimation('hit'), value);
                                 Log.battle(`> ${unit.name} hits ${t.name} for ${value}.`);
                                 if (t.hp <= 0) {
-                                    Systems.Battle3D.playAnim(t.uid, 'die', 0);
+                                    Systems.Battle3D.playAnim(t.uid, resolveAnimation('die'), 0);
                                     Log.battle(`> ${t.name} was defeated!`);
                                 }
                             }
                         };
                         if (animType === 'flash') {
                             apply();
-                            Systems.Battle3D.playAnim(t.uid, 'flash', value > 0 ? 1 : -1);
+                            Systems.Battle3D.playAnim(t.uid, animType, value > 0 ? 1 : -1);
                         } else {
                             Systems.Battle3D.playAnim(t.uid, animType, 0, apply);
                         }
                     } else if (action.category === 'effect') {
                         Log.battle(`> ${unit.name} stands ready.`);
-                        Systems.Battle3D.playAnim(t.uid, 'flash', 0);
+                        Systems.Battle3D.playAnim(t.uid, resolveAnimation('flash'), 0);
                     }
                 });
                 // Re-render party HP bars and check for end-of-battle
