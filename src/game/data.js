@@ -23,7 +23,7 @@ export const Data = {
         cure:      { id: 'cure',      name: 'Cure',       category: 'heal',   target: 'ally-single', speed: 1,  power: 4, scaling: 2,   element: 'W', animation: 'cure' },
 
         tornado:   { id: 'tornado',   name: 'Tornado',    category: 'damage', target: 'enemy-all',   speed: -1, power: 4, scaling: 1,   element: 'G', animation: 'tornado' },
-        thunder:   { id: 'thunder',   name: 'Thunder',    category: 'damage', target: 'enemy-single',speed: 1,  power: 6, scaling: 2,   element: 'G', animation: 'thunder' },
+        thunder:   { id: 'thunder',   name: '🟢Thunder',   category: 'damage', target: 'enemy-single',speed: 1,  power: 6, scaling: 2,   element: 'G', animation: 'thunder' },
         ray:       { id: 'ray',       name: 'Ray',        category: 'damage', target: 'enemy-single',speed: 0,  power: 2, scaling: 1,   repeat: 3,   element: 'W', animation: 'flash' },
         curse:     { id: 'curse',     name: 'Curse',      category: 'damage', target: 'enemy-single',speed: 0,  power: 16,scaling: 2,   element: 'K', animation: 'flash' },
 
@@ -567,13 +567,146 @@ export const Data = {
     // Creatures database defines base stats and move sets for each species.
     // Extended with hpGrowth (per level) and xpCurve (xp cost per level).
     creatures: {
-pixie: { id: 'pixie', name: 'Pixie', description: "A flicker of innocent light in the deep gloom. Their minds know no distinction between the conscious and unconscious, and as such, they say as they please.", sprite: '🧚', spriteAsset: 'assets/images/creatures/Pixie.png', baseHp: 12, hpGrowth: 0.15, xpCurve: 10, baseXp: 2, cost: 100, temperament: 'kind', acts: [ ['attack'], ['cure'] ] },
-        goblin: { id: 'goblin', name: 'Goblin', description: "Grinning wide with avarice and malice, this scuttling horror will snatch any opportunity to make a profit, even if it means sacrificing an ally.", sprite: '👺', spriteAsset: 'assets/images/creatures/Goblin.png', baseHp: 18, hpGrowth: 0.20, xpCurve: 12, baseXp: 3, cost: 150, temperament: 'selfish', acts: [ ['attack', 'wait'], ['guard'] ] },
-        skeleton: { id: 'skeleton', name: 'Skeleton', description: "Animated by residual will or dark sorcery, these rattling bones are eternally bound to wander the abyss, devoid of emotion but not instinct.", sprite: '💀', spriteAsset: 'assets/images/creatures/Skeleton.png', baseHp: 14, hpGrowth: 0.18, xpCurve: 10, baseXp: 2, cost: 120, temperament: 'free', acts: [ ['attack'], ['guard', 'attack'] ] },
-        angel: { id: 'angel', name: 'Angel', description: "A seraphic figure whose radiant purity often masks a chilling, unwavering obedience to an incomprehensible divine will. Mercy is not guaranteed.", sprite: '😇', spriteAsset: 'assets/images/creatures/Angel.png', baseHp: 20, hpGrowth: 0.22, xpCurve: 15, baseXp: 5, cost: 300, temperament: 'kind', acts: [ ['cure'], ['ray', 'attack'] ] },
-        titania: { id: 'titania', name: 'Titania', description: "The capricious Queen of the Fae. Her realm is woven from dreams and shadows, and her beauty holds the terrifying power of untamed nature and ancient magic.", sprite: '🧚‍♀️', spriteAsset: 'assets/images/creatures/Titania.png', baseHp: 30, hpGrowth: 0.25, xpCurve: 18, baseXp: 10, cost: 500, temperament: 'kind', acts: [ ['tornado', 'cure'], ['thunder'] ] },
-        golem: { id: 'golem', name: 'Golem', description: "A crude mass of clay and stone given life through a sacred word or binding ritual. It moves with devastating, methodical force, feeling no pain or fear.", sprite: '🗿', spriteAsset: 'assets/images/creatures/Golem.png', baseHp: 40, hpGrowth: 0.30, xpCurve: 20, baseXp: 8, cost: 400, temperament: 'free', acts: [ ['wait'], ['attackRow'] ] },
-        lich: { id: 'lich', name: 'Lich', description: "A sorcerer who cheated death by shackling their soul to a physical vessel. Their power grows with every blasphemous ritual, and their gaze is eternal winter.", sprite: '🩻', spriteAsset: 'assets/images/creatures/LichKing.png', baseHp: 35, hpGrowth: 0.28, xpCurve: 22, baseXp: 12, cost: 600, temperament: 'ruthless', acts: [ ['curse'], ['attack'] ] },
+        pixie: {
+            id: 'pixie',
+            name: 'Pixie',
+            description: "A flicker of innocent light in the deep gloom. Their minds know no distinction between the conscious and unconscious, and as such, they say as they please.",
+            sprite: '🧚',
+            spriteAsset: 'assets/images/creatures/Pixie.png',
+            baseHp: 12,
+            hpGrowth: 0.15,
+            xpCurve: 10,
+            baseXp: 2,
+            cost: 100,
+            temperament: 'kind',
+            race: 'Fey',
+            elements: ['G', 'G'],
+            passive: null,
+            acts: [
+                ['attack'],
+                ['cure']
+            ]
+        },
+        goblin: {
+            id: 'goblin',
+            name: 'Goblin',
+            description: "Grinning wide with avarice and malice, this scuttling horror will snatch any opportunity to make a profit, even if it means sacrificing an ally.",
+            sprite: '👺',
+            spriteAsset: 'assets/images/creatures/Goblin.png',
+            baseHp: 18,
+            hpGrowth: 0.20,
+            xpCurve: 12,
+            baseXp: 3,
+            cost: 150,
+            temperament: 'selfish',
+            race: 'Unknown',
+            elements: [],
+            passive: null,
+            acts: [
+                ['attack', 'wait'],
+                ['guard']
+            ]
+        },
+        skeleton: {
+            id: 'skeleton',
+            name: 'Skeleton',
+            description: "Animated by residual will or dark sorcery, these rattling bones are eternally bound to wander the abyss, devoid of emotion but not instinct.",
+            sprite: '💀',
+            spriteAsset: 'assets/images/creatures/Skeleton.png',
+            baseHp: 14,
+            hpGrowth: 0.18,
+            xpCurve: 10,
+            baseXp: 2,
+            cost: 120,
+            temperament: 'free',
+            race: 'Undead',
+            elements: [],
+            passive: null,
+            acts: [
+                ['attack'],
+                ['guard', 'attack']
+            ]
+        },
+        angel: {
+            id: 'angel',
+            name: 'Angel',
+            description: "A seraphic figure whose radiant purity often masks a chilling, unwavering obedience to an incomprehensible divine will. Mercy is not guaranteed.",
+            sprite: '😇',
+            spriteAsset: 'assets/images/creatures/Angel.png',
+            baseHp: 20,
+            hpGrowth: 0.22,
+            xpCurve: 15,
+            baseXp: 5,
+            cost: 300,
+            temperament: 'kind',
+            race: 'Celestial',
+            elements: [],
+            passive: null,
+            acts: [
+                ['cure'],
+                ['ray', 'attack']
+            ]
+        },
+        titania: {
+            id: 'titania',
+            name: 'Titania',
+            description: "The capricious Queen of the Fae. Her realm is woven from dreams and shadows, and her beauty holds the terrifying power of untamed nature and ancient magic.",
+            sprite: '🧚‍♀️',
+            spriteAsset: 'assets/images/creatures/Titania.png',
+            baseHp: 30,
+            hpGrowth: 0.25,
+            xpCurve: 18,
+            baseXp: 10,
+            cost: 500,
+            temperament: 'kind',
+            race: 'Fey',
+            elements: ['G'],
+            passive: null,
+            acts: [
+                ['tornado', 'cure'],
+                ['thunder']
+            ]
+        },
+        golem: {
+            id: 'golem',
+            name: 'Golem',
+            description: "A crude mass of clay and stone given life through a sacred word or binding ritual. It moves with devastating, methodical force, feeling no pain or fear.",
+            sprite: '🗿',
+            spriteAsset: 'assets/images/creatures/Golem.png',
+            baseHp: 40,
+            hpGrowth: 0.30,
+            xpCurve: 20,
+            baseXp: 8,
+            cost: 400,
+            temperament: 'free',
+            race: 'Construct',
+            elements: ['R'],
+            passive: null,
+            acts: [
+                ['wait'],
+                ['attackRow']
+            ]
+        },
+        lich: {
+            id: 'lich',
+            name: 'Lich',
+            description: "A sorcerer who cheated death by shackling their soul to a physical vessel. Their power grows with every blasphemous ritual, and their gaze is eternal winter.",
+            sprite: '🩻',
+            spriteAsset: 'assets/images/creatures/LichKing.png',
+            baseHp: 35,
+            hpGrowth: 0.28,
+            xpCurve: 22,
+            baseXp: 12,
+            cost: 600,
+            temperament: 'ruthless',
+            race: 'Undead',
+            elements: ['K'],
+            passive: null,
+            acts: [
+                ['curse'],
+                ['attack']
+            ]
+        },
         stargazer: {
             id: 'stargazer',
             name: 'Stargazer',
@@ -586,6 +719,9 @@ pixie: { id: 'pixie', name: 'Pixie', description: "A flicker of innocent light i
             baseXp: 7,
             cost: 350,
             temperament: 'free',
+            race: 'Eldritch',
+            elements: ['B'],
+            passive: null,
             // Front: single-target snipe; Back: slower AoE control
             acts: [
                 ['cosmicRay', 'ray'],
@@ -605,6 +741,9 @@ pixie: { id: 'pixie', name: 'Pixie', description: "A flicker of innocent light i
             baseXp: 4,
             cost: 250,
             temperament: 'kind',
+            race: 'Undead',
+            elements: [],
+            passive: null,
             // Front: row bash; Back: double-duty healer
             acts: [
                 ['silverTray', 'attack'],
@@ -624,6 +763,9 @@ pixie: { id: 'pixie', name: 'Pixie', description: "A flicker of innocent light i
             baseXp: 6,
             cost: 300,
             temperament: 'kind',
+            race: 'Human',
+            elements: ['W'],
+            passive: null,
             // Front: premium heals; Back: holy nukes
             acts: [
                 ['latexPrayer', 'cure'],
@@ -643,6 +785,9 @@ pixie: { id: 'pixie', name: 'Pixie', description: "A flicker of innocent light i
             baseXp: 9,
             cost: 450,
             temperament: 'free',
+            race: 'Eldritch',
+            elements: ['G'],
+            passive: null,
             // Front: dreamy AoE caster; Back: wind + healing
             acts: [
                 ['sleepMist', 'wait'],
@@ -662,6 +807,9 @@ pixie: { id: 'pixie', name: 'Pixie', description: "A flicker of innocent light i
             baseXp: 11,
             cost: 550,
             temperament: 'ruthless',
+            race: 'Elemental',
+            elements: ['B'],
+            passive: null,
             // Row-freeze plus huge all-enemy finisher
             acts: [
                 ['diamondDust', 'attack'],
@@ -681,6 +829,9 @@ pixie: { id: 'pixie', name: 'Pixie', description: "A flicker of innocent light i
             baseXp: 10,
             cost: 500,
             temperament: 'ruthless',
+            race: 'Undead',
+            elements: ['K'],
+            passive: null,
             // Heavy ST physical plus dark nuke
             acts: [
                 ['shadowSpike', 'anvil'],
@@ -700,6 +851,9 @@ pixie: { id: 'pixie', name: 'Pixie', description: "A flicker of innocent light i
             baseXp: 13,
             cost: 650,
             temperament: 'ruthless',
+            race: 'Elemental',
+            elements: ['R'],
+            passive: null,
             // Row pressure and huge fire AoE
             acts: [
                 ['attackRow', 'hellfire'],
@@ -719,6 +873,9 @@ pixie: { id: 'pixie', name: 'Pixie', description: "A flicker of innocent light i
             baseXp: 5,
             cost: 280,
             temperament: 'kind',
+            race: 'Human',
+            elements: ['W'],
+            passive: null,
             // Front: poke & pressure; Back: fast heals
             acts: [
                 ['injection', 'attack'],
@@ -738,6 +895,9 @@ pixie: { id: 'pixie', name: 'Pixie', description: "A flicker of innocent light i
             baseXp: 9,
             cost: 480,
             temperament: 'ruthless',
+            race: 'Human',
+            elements: ['G'],
+            passive: null,
             // Always aggressive, very fast row DPS
             acts: [
                 ['windBlades', 'attack'],
@@ -757,6 +917,9 @@ pixie: { id: 'pixie', name: 'Pixie', description: "A flicker of innocent light i
             baseXp: 7,
             cost: 350,
             temperament: 'free',
+            race: 'Unknown',
+            elements: ['K'],
+            passive: null,
             // Dark single-target pressure + curse
             acts: [
                 ['maskTear', 'ray'],
@@ -776,6 +939,9 @@ pixie: { id: 'pixie', name: 'Pixie', description: "A flicker of innocent light i
             baseXp: 14,
             cost: 700,
             temperament: 'selfish',
+            race: 'Beast',
+            elements: ['R'],
+            passive: null,
             // Big row/ ST damage and greedy self-heal
             acts: [
                 ['attackRow', 'anvil'],
@@ -786,7 +952,11 @@ pixie: { id: 'pixie', name: 'Pixie', description: "A flicker of innocent light i
     },
     // Equipment definitions for single-slot equipment. hpBonus is a multiplier on max HP; powerBonus can influence future scaling if needed.
     equipment: {
-        charm_hp: { id: 'charm_hp', name: 'Vitality Charm', description: '+20% Max HP', hpBonus: 0.2, cost: 150 },
+        hp_boost1: { id: 'hp_boost1', name: 'Vitality Seal 1', description: '+10% Max HP', hpBonus: 0.1, cost: 125 },
+        hp_boost2: { id: 'hp_boost2', name: 'Vitality Seal 2', description: '+20% Max HP', hpBonus: 0.2, cost: 400 },
+        hp_boost3: { id: 'hp_boost3', name: 'Vitality Seal 3', description: '+30% Max HP', hpBonus: 0.3, cost: 2800 },
+        rabbits_foot: { id: 'rabbits_foot', name: "Rabbit's Foot", description: 'greatly improves Critical Hit chance', critBonus: 0.15, cost: 250 },
+        straw_doll: { id: 'straw_doll', name: 'Straw Doll', description: 'can survive a fatal blow once per battle', surviveKO:1, cost: 2500 },
         charm_magic: { id: 'charm_magic', name: 'Arcane Charm', description: '+1 Power', powerBonus: 1, cost: 120 }
     },
     // Consumable item definitions. healRatio defines percent of max HP to heal; reviveHpRatio defines percent restored on revival.

@@ -1433,6 +1433,10 @@ export const Systems = {
             document.getElementById('modal-name').innerText = unit.name;
             document.getElementById('modal-lvl').innerText = unit.level;
             document.getElementById('modal-temperament').innerText = `Temperament: ${def.temperament.toUpperCase()}`;
+            document.getElementById('modal-race').innerText = def.race || 'Unknown';
+            const elems = def.elements && def.elements.length > 0 ? def.elements.map(e => Data.elements[e] || '?').join(' ') : '—';
+            document.getElementById('modal-elements').innerText = elems;
+            document.getElementById('modal-passive').innerText = def.passive || 'Details coming soon.';
             document.getElementById('modal-desc').innerText = def.description;
             const maxhp = Systems.Battle.getMaxHp(unit);
             document.getElementById('modal-hp').innerText = `${unit.hp}/${maxhp}`;
@@ -1445,7 +1449,8 @@ export const Systems = {
                 div.className = 'flex gap-2 items-center border border-gray-700 bg-gray-900 px-2 py-1';
                 const skill = Data.skills[a] || Data.skills[a.toLowerCase()];
                 const label = skill ? skill.name : a;
-                div.innerHTML = `<span class="bg-gray-800 px-1 border border-gray-600 text-xs">${label}</span>`;
+                const elementIcon = skill?.element ? Data.elements[skill.element] || '' : '';
+                div.innerHTML = `<span class="bg-gray-800 px-1 border border-gray-600 text-xs flex items-center gap-1">${elementIcon ? `<span>${elementIcon}</span>` : ''}<span>${label}</span></span>`;
                 actList.appendChild(div);
             });
             const equipButton = document.getElementById('modal-equip-slot');
@@ -1456,7 +1461,6 @@ export const Systems = {
             document.getElementById('modal-close-picker').classList.add('hidden');
             const optionsGrid = document.getElementById('equipment-options');
             optionsGrid.innerHTML = '';
-            document.getElementById('equipment-picker-overlay').classList.add('hidden');
         },
         buildEquipmentOptions(unit) {
             const options = [];
@@ -1512,9 +1516,6 @@ export const Systems = {
             const hint = document.getElementById('equipment-empty-hint');
             hint.classList.add('hidden');
             document.getElementById('modal-close-picker').classList.remove('hidden');
-            const overlay = document.getElementById('equipment-picker-overlay');
-            overlay.classList.remove('hidden');
-            overlay.onclick = () => this.closeEquipmentPicker();
             const options = this.buildEquipmentOptions(unit);
             const unequipCard = document.createElement('div');
             unequipCard.className = 'border border-gray-700 bg-gray-900 p-3 flex flex-col gap-1';
@@ -1549,7 +1550,6 @@ export const Systems = {
             document.getElementById('equipment-empty-hint').classList.remove('hidden');
             document.getElementById('modal-close-picker').classList.add('hidden');
             document.getElementById('equipment-options').innerHTML = '';
-            document.getElementById('equipment-picker-overlay').classList.add('hidden');
             this.equipmentPickerPreset = null;
         },
         equipFromInventory(target, equipmentId) {
