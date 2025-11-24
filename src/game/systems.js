@@ -65,6 +65,7 @@ export const Systems = {
             // Save to GameState
             GameState.exploration.map = map;
             GameState.exploration.visited = Array(cfg.mapHeight).fill().map(() => Array(cfg.mapWidth).fill(false));
+            if (Systems.Explore && Systems.Explore.ready) Systems.Explore.rebuildMap();
             Log.add(`Floor ${GameState.run.floor} generated.`);
         },
         // Returns the tile code at the given coordinates, or 1 if out of bounds
@@ -107,14 +108,73 @@ export const Systems = {
      * Exploration system: handles movement and field-of-view updates. Has no DOM.
      */
     Explore: {
+        scene: null,
+        camera: null,
+        renderer: null,
+        tileGroup: null,
+        wallGroup: null,
+        spriteGroup: null,
+        tileObjects: [],
+        playerSprite: null,
+        unitSize: 1,
+        wallHeight: 0.7,
+        ready: false,
         init() {
             // Called once to set canvas size and draw initial view
+            const container = document.getElementById('explore-layer');
+            container.innerHTML = '';
+
+            this.scene = new THREE.Scene();
+            this.scene.background = new THREE.Color(0x050505);
+
+            const aspect = window.innerWidth / window.innerHeight;
+            const frustumSize = Data.config.viewDistance * 2 + 6;
+            this.camera = new THREE.OrthographicCamera(
+                (-frustumSize * aspect) / 2,
+                (frustumSize * aspect) / 2,
+                frustumSize / 2,
+                -frustumSize / 2,
+                0.01,
+                100
+            );
+            this.camera.up.set(0, 0, -1);
+            this.camera.position.set(0, 20, 0);
+
+            this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            this.renderer.setPixelRatio(window.devicePixelRatio || 1);
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(this.renderer.domElement);
+
+            const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+            this.scene.add(ambient);
+            const dir = new THREE.DirectionalLight(0xffffff, 0.35);
+            dir.position.set(5, 10, 5);
+            this.scene.add(dir);
+
+            this.tileGroup = new THREE.Group();
+            this.wallGroup = new THREE.Group();
+            this.spriteGroup = new THREE.Group();
+            this.scene.add(this.tileGroup);
+            this.scene.add(this.wallGroup);
+            this.scene.add(this.spriteGroup);
+
+            this.createPlayerSprite();
+            this.rebuildMap();
+            this.ready = true;
             this.resize();
         },
         resize() {
-            const canvas = document.getElementById('explore-canvas');
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+            if (!this.renderer || !this.camera) return;
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            this.renderer.setSize(w, h);
+            const aspect = w / h;
+            const frustumSize = Data.config.viewDistance * 2 + 6;
+            this.camera.left = (-frustumSize * aspect) / 2;
+            this.camera.right = (frustumSize * aspect) / 2;
+            this.camera.top = frustumSize / 2;
+            this.camera.bottom = -frustumSize / 2;
+            this.camera.updateProjectionMatrix();
             this.render();
         },
         move(dx, dy) {
@@ -135,69 +195,157 @@ export const Systems = {
             Systems.UI.updateHUD();
         },
         render() {
-            const canvas = document.getElementById('explore-canvas');
-            const ctx = canvas.getContext('2d');
+            if (!this.renderer || !this.camera) return;
             const cfg = Data.config;
-            const w = canvas.width;
-            const h = canvas.height;
-            ctx.fillStyle = '#050505';
-            ctx.fillRect(0, 0, w, h);
-            // Center offset to keep player in the middle of screen
-            const offsetX = (w / 2) - (GameState.exploration.playerPos.x * cfg.tileSize);
-            const offsetY = (h / 2) - (GameState.exploration.playerPos.y * cfg.tileSize);
-            ctx.save();
-            ctx.translate(offsetX, offsetY);
-            // Draw map tiles with fog-of-war
+            const map = GameState.exploration.map;
+            const view = cfg.viewDistance;
+            const px = GameState.exploration.playerPos.x;
+            const py = GameState.exploration.playerPos.y;
+
             for (let y = 0; y < cfg.mapHeight; y++) {
                 for (let x = 0; x < cfg.mapWidth; x++) {
-                    const dist = Math.hypot(x - GameState.exploration.playerPos.x, y - GameState.exploration.playerPos.y);
-                    if (dist < cfg.viewDistance) GameState.exploration.visited[y][x] = true;
-                    if (!GameState.exploration.visited[y][x]) continue;
-                    const tile = GameState.exploration.map[y][x];
-                    const px = x * cfg.tileSize;
-                    const py = y * cfg.tileSize;
-                    // Walls vs floor
-                    if (tile === 1) {
-                        ctx.fillStyle = '#333';
-                        ctx.fillRect(px, py, cfg.tileSize, cfg.tileSize);
-                        ctx.strokeStyle = '#111';
-                        ctx.strokeRect(px, py, cfg.tileSize, cfg.tileSize);
-                    } else {
-                        ctx.fillStyle = '#1a1a1a';
-                        ctx.fillRect(px, py, cfg.tileSize, cfg.tileSize);
-                        ctx.strokeStyle = '#222';
-                        ctx.strokeRect(px, py, cfg.tileSize, cfg.tileSize);
-                        // Draw icons for special tiles
-                        ctx.font = '32px serif';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        const cx = px + cfg.tileSize / 2;
-                        const cy = py + cfg.tileSize / 2;
-                        if (tile === 2) ctx.fillText('👹', cx, cy);
-                        else if (tile === 3) ctx.fillText('🪜', cx, cy);
-                        else if (tile === 4) ctx.fillText('💰', cx, cy);
-                        else if (tile === 5) ctx.fillText('🛒', cx, cy);
-                        else if (tile === 6) ctx.fillText('🤝', cx, cy);
-                        else if (tile === 7) ctx.fillText('⛪', cx, cy);
-                        else if (tile === 8) ctx.fillText('☠️', cx, cy);
+                    const dist = Math.hypot(x - px, y - py);
+                    if (dist < view) GameState.exploration.visited[y][x] = true;
+
+                    const objs = this.tileObjects[y]?.[x];
+                    if (!objs) continue;
+                    const tile = map[y][x];
+                    if (objs.code !== tile) this.updateTileVisual(x, y, tile);
+
+                    const visited = GameState.exploration.visited[y][x];
+                    const fogged = dist >= view;
+                    if (objs.floor) {
+                        objs.floor.visible = visited;
+                        objs.floor.material.color.setHex(fogged ? 0x0f0f0f : 0x1a1a1a);
+                        objs.floor.material.transparent = fogged;
+                        objs.floor.material.opacity = fogged ? 0.6 : 1;
                     }
-                    // Draw fog beyond view distance
-                    if (dist >= cfg.viewDistance) {
-                        ctx.fillStyle = 'rgba(0,0,0,0.7)';
-                        ctx.fillRect(px, py, cfg.tileSize, cfg.tileSize);
+                    if (objs.wall) {
+                        objs.wall.visible = visited && tile === 1;
+                        objs.wall.material.color.setHex(fogged ? 0x222222 : 0x444444);
+                        objs.wall.material.transparent = fogged;
+                        objs.wall.material.opacity = fogged ? 0.7 : 1;
+                    }
+                    if (objs.sprite) {
+                        objs.sprite.visible = visited && tile !== 1;
+                        objs.sprite.material.opacity = fogged ? 0.75 : 1;
                     }
                 }
             }
-            // Draw the player
-            const playerX = GameState.exploration.playerPos.x * cfg.tileSize;
-            const playerY = GameState.exploration.playerPos.y * cfg.tileSize;
-            ctx.font = '36px serif';
+
+            if (this.playerSprite) {
+                this.playerSprite.position.set(px * this.unitSize, 0.35, py * this.unitSize);
+                this.playerSprite.material.opacity = 1;
+            }
+            this.camera.position.x = px * this.unitSize;
+            this.camera.position.z = py * this.unitSize;
+            this.camera.lookAt(px * this.unitSize, 0, py * this.unitSize);
+            this.renderer.render(this.scene, this.camera);
+        },
+        rebuildMap() {
+            if (!this.scene) return;
+            this.clearGroup(this.tileGroup);
+            this.clearGroup(this.wallGroup);
+            this.clearGroup(this.spriteGroup);
+            this.tileObjects = [];
+            const cfg = Data.config;
+            for (let y = 0; y < cfg.mapHeight; y++) {
+                this.tileObjects[y] = [];
+                for (let x = 0; x < cfg.mapWidth; x++) {
+                    const floor = this.createFloorTile(x, y);
+                    const wall = null;
+                    const sprite = null;
+                    this.tileObjects[y][x] = { floor, wall, sprite, code: GameState.exploration.map[y][x] };
+                    this.updateTileVisual(x, y, GameState.exploration.map[y][x]);
+                }
+            }
+            this.render();
+        },
+        clearGroup(group) {
+            while (group && group.children.length) {
+                const child = group.children.pop();
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                    else child.material.dispose();
+                }
+            }
+        },
+        createFloorTile(x, y) {
+            const geom = new THREE.PlaneGeometry(this.unitSize, this.unitSize);
+            const mat = new THREE.MeshPhongMaterial({ color: 0x1a1a1a, side: THREE.DoubleSide });
+            const mesh = new THREE.Mesh(geom, mat);
+            mesh.rotation.x = -Math.PI / 2;
+            mesh.position.set(x * this.unitSize, 0, y * this.unitSize);
+            this.tileGroup.add(mesh);
+            return mesh;
+        },
+        updateTileVisual(x, y, code) {
+            const objs = this.tileObjects[y][x];
+            if (!objs) return;
+            objs.code = code;
+            if (objs.wall) {
+                this.wallGroup.remove(objs.wall);
+                if (objs.wall.geometry) objs.wall.geometry.dispose();
+                if (objs.wall.material) objs.wall.material.dispose();
+                objs.wall = null;
+            }
+            if (objs.sprite) {
+                this.spriteGroup.remove(objs.sprite);
+                if (objs.sprite.material && objs.sprite.material.map) objs.sprite.material.map.dispose();
+                if (objs.sprite.material) objs.sprite.material.dispose();
+                objs.sprite = null;
+            }
+            if (code === 1) {
+                const geom = new THREE.BoxGeometry(this.unitSize, this.wallHeight, this.unitSize);
+                const mat = new THREE.MeshPhongMaterial({ color: 0x333333 });
+                const mesh = new THREE.Mesh(geom, mat);
+                mesh.position.set(x * this.unitSize, this.wallHeight / 2, y * this.unitSize);
+                this.wallGroup.add(mesh);
+                objs.wall = mesh;
+            } else {
+                const emoji = this.tileEmoji(code);
+                if (emoji) {
+                    const sprite = this.createEmojiSprite(emoji);
+                    sprite.position.set(x * this.unitSize, 0.05, y * this.unitSize);
+                    this.spriteGroup.add(sprite);
+                    objs.sprite = sprite;
+                }
+            }
+        },
+        tileEmoji(code) {
+            if (code === 2) return '👹';
+            if (code === 3) return '🪜';
+            if (code === 4) return '💰';
+            if (code === 5) return '🛒';
+            if (code === 6) return '🤝';
+            if (code === 7) return '⛪';
+            if (code === 8) return '☠️';
+            return null;
+        },
+        createEmojiSprite(emoji) {
+            const size = 128;
+            const canvas = document.createElement('canvas');
+            canvas.width = canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = 'rgba(0,0,0,0)';
+            ctx.fillRect(0, 0, size, size);
+            ctx.font = `${Math.floor(size * 0.72)}px serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.shadowColor = '#d4af37';
-            ctx.shadowBlur = 15;
-            ctx.fillText('🧙‍♂️', playerX + cfg.tileSize / 2, playerY + cfg.tileSize / 2);
-            ctx.restore();
+            ctx.fillText(emoji, size / 2, size / 2 + size * 0.08);
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.needsUpdate = true;
+            const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: true });
+            const sprite = new THREE.Sprite(mat);
+            sprite.scale.set(this.unitSize * 0.9, this.unitSize * 0.9, 1);
+            return sprite;
+        },
+        createPlayerSprite() {
+            this.playerSprite = this.createEmojiSprite('🧙‍♂️');
+            this.playerSprite.scale.set(this.unitSize * 1.1, this.unitSize * 1.1, 1);
+            this.playerSprite.material.opacity = 1;
+            this.scene.add(this.playerSprite);
         }
     },
     /*
