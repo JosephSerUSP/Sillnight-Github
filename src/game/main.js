@@ -1,13 +1,17 @@
-import { Data } from './data.js';
 import { GameState } from './state.js';
 import { Log } from './log.js';
 import { Systems } from './systems.js';
+import { InputManager, SceneManager } from './managers.js';
+import { registerScenes } from './scenes.js';
+import { UI } from './windows.js';
+import { createUnit, swapPartySlots } from './objects.js';
 
 // Group systems under a single Game object for easy access in HTML event handlers
 export const Game = {
     Systems,
-    Views: { UI: Systems.UI },
+    Views: { UI },
     init() {
+        UI.initializeShell();
         // Initial map generation
         Systems.Map.generateFloor();
         // Initialize canvas and 3D
@@ -25,34 +29,36 @@ export const Game = {
         ];
         startSetup.forEach((slot, idx) => {
             if (slot) {
-                const def = Data.creatures[slot.species];
-                const maxhp = Math.round(def.baseHp * (1 + def.hpGrowth * (slot.lvl - 1)));
-                const unit = {
-                    uid: `p${idx}_${Date.now()}`,
-                    speciesId: def.id,
-                    name: def.name,
-                    sprite: def.sprite,
-                    spriteAsset: def.spriteAsset,
-                    level: slot.lvl,
-                    maxhp: maxhp,
-                    hp: maxhp,
-                    exp: 0,
-                    temperament: def.temperament,
-                    elements: def.elements ? [...def.elements] : [],
-                    acts: def.acts,
-                    equipmentId: null,
-                    slotIndex: idx
-                };
+                const unit = createUnit(slot.species, slot.lvl, idx);
                 GameState.roster.push(unit);
                 GameState.party.activeSlots[idx] = unit;
             } else {
                 GameState.party.activeSlots[idx] = null;
             }
         });
+        UI.on('party-swap', ({ from, to }) => {
+            if (GameState.ui.mode === 'BATTLE') {
+                Systems.Battle.swapUnits(from, to);
+            } else {
+                swapPartySlots(from, to);
+                UI.renderParty();
+            }
+        });
         // Render party UI and update HUD
-        Systems.UI.renderParty();
+        UI.renderParty();
         // Log welcome message
         Log.add('Welcome to Stillnight.');
+        registerScenes(Systems, UI);
+        SceneManager.change('explore');
+        InputManager.bind('arrowup', 'up');
+        InputManager.bind('arrowdown', 'down');
+        InputManager.bind('arrowleft', 'left');
+        InputManager.bind('arrowright', 'right');
+        InputManager.bind('p', 'party');
+        InputManager.bind('b', 'inventory');
+        InputManager.bind('f', 'formation');
+        InputManager.bind(' ', 'confirm');
+        InputManager.attach();
     }
 };
 
@@ -60,21 +66,6 @@ export const Game = {
 window.addEventListener('resize', () => {
     Systems.Explore.resize();
     Systems.Battle3D.resize();
-});
-window.addEventListener('keydown', (e) => {
-    if (GameState.ui.mode === 'EXPLORE') {
-        if (e.key === 'ArrowUp') Systems.Explore.move(0, -1);
-        if (e.key === 'ArrowDown') Systems.Explore.move(0, 1);
-        if (e.key === 'ArrowLeft') Systems.Explore.move(-1, 0);
-        if (e.key === 'ArrowRight') Systems.Explore.move(1, 0);
-        if (e.key === 'p' || e.key === 'P') Systems.UI.toggleParty();
-        if (e.key === 'b' || e.key === 'B') Systems.UI.toggleInventory();
-    } else if (GameState.ui.mode === 'BATTLE' || GameState.ui.mode === 'BATTLE_WIN') {
-        if (e.code === 'Space') {
-            if (GameState.battle && GameState.battle.phase === 'PLAYER_INPUT') Systems.Battle.resumeAuto();
-            else Systems.Battle.requestPlayerTurn();
-        }
-    }
 });
 
 // Start the game once the page loads
