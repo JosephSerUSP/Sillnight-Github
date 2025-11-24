@@ -120,13 +120,13 @@ export const Data = {
     // Creatures database defines base stats and move sets for each species.
     // Extended with hpGrowth (per level) and xpCurve (xp cost per level).
     creatures: {
-        pixie: { id: 'pixie', name: 'Pixie', sprite: '🧚', baseHp: 12, hpGrowth: 0.15, xpCurve: 10, baseXp: 2, cost: 100, temperament: 'kind', acts: [ ['attack'], ['cure'] ] },
-        goblin: { id: 'goblin', name: 'Goblin', sprite: '👺', baseHp: 18, hpGrowth: 0.20, xpCurve: 12, baseXp: 3, cost: 150, temperament: 'selfish', acts: [ ['attack', 'wait'], ['guard'] ] },
-        skeleton: { id: 'skeleton', name: 'Skeleton', sprite: '💀', baseHp: 14, hpGrowth: 0.18, xpCurve: 10, baseXp: 2, cost: 120, temperament: 'free', acts: [ ['attack'], ['guard', 'attack'] ] },
-        angel: { id: 'angel', name: 'Angel', sprite: '😇', baseHp: 20, hpGrowth: 0.22, xpCurve: 15, baseXp: 5, cost: 300, temperament: 'kind', acts: [ ['cure'], ['ray', 'attack'] ] },
-        titania: { id: 'titania', name: 'Titania', sprite: '🧚‍♀️', baseHp: 30, hpGrowth: 0.25, xpCurve: 18, baseXp: 10, cost: 500, temperament: 'kind', acts: [ ['tornado', 'cure'], ['thunder'] ] },
-        golem: { id: 'golem', name: 'Golem', sprite: '🗿', baseHp: 40, hpGrowth: 0.30, xpCurve: 20, baseXp: 8, cost: 400, temperament: 'free', acts: [ ['wait'], ['attackRow'] ] },
-        lich: { id: 'lich', name: 'Lich', sprite: '🩻', baseHp: 35, hpGrowth: 0.28, xpCurve: 22, baseXp: 12, cost: 600, temperament: 'ruthless', acts: [ ['curse'], ['attack'] ] }
+        pixie: { id: 'pixie', name: 'Pixie', sprite: '🧚', spriteAsset: 'assets/images/creatures/pixie.png', baseHp: 12, hpGrowth: 0.15, xpCurve: 10, baseXp: 2, cost: 100, temperament: 'kind', acts: [ ['attack'], ['cure'] ] },
+        goblin: { id: 'goblin', name: 'Goblin', sprite: '👺', spriteAsset: 'assets/images/creatures/goblin.png', baseHp: 18, hpGrowth: 0.20, xpCurve: 12, baseXp: 3, cost: 150, temperament: 'selfish', acts: [ ['attack', 'wait'], ['guard'] ] },
+        skeleton: { id: 'skeleton', name: 'Skeleton', sprite: '💀', spriteAsset: 'assets/images/creatures/skeleton.png', baseHp: 14, hpGrowth: 0.18, xpCurve: 10, baseXp: 2, cost: 120, temperament: 'free', acts: [ ['attack'], ['guard', 'attack'] ] },
+        angel: { id: 'angel', name: 'Angel', sprite: '😇', spriteAsset: 'assets/images/creatures/angel.png', baseHp: 20, hpGrowth: 0.22, xpCurve: 15, baseXp: 5, cost: 300, temperament: 'kind', acts: [ ['cure'], ['ray', 'attack'] ] },
+        titania: { id: 'titania', name: 'Titania', sprite: '🧚‍♀️', spriteAsset: 'assets/images/creatures/titania.png', baseHp: 30, hpGrowth: 0.25, xpCurve: 18, baseXp: 10, cost: 500, temperament: 'kind', acts: [ ['tornado', 'cure'], ['thunder'] ] },
+        golem: { id: 'golem', name: 'Golem', sprite: '🗿', spriteAsset: 'assets/images/creatures/golem.png', baseHp: 40, hpGrowth: 0.30, xpCurve: 20, baseXp: 8, cost: 400, temperament: 'free', acts: [ ['wait'], ['attackRow'] ] },
+        lich: { id: 'lich', name: 'Lich', sprite: '🩻', spriteAsset: 'assets/images/creatures/lich.png', baseHp: 35, hpGrowth: 0.28, xpCurve: 22, baseXp: 12, cost: 600, temperament: 'ruthless', acts: [ ['curse'], ['attack'] ] }
     },
     // Equipment definitions for single-slot equipment. hpBonus is a multiplier on max HP; powerBonus can influence future scaling if needed.
     equipment: {

@@ -298,6 +298,7 @@ export const Systems = {
                         speciesId: def.id,
                         name: def.name,
                         sprite: def.sprite,
+                        spriteAsset: def.spriteAsset,
                         level: GameState.run.floor,
                         maxhp: Math.round(def.baseHp * (1 + def.hpGrowth * (GameState.run.floor - 1))),
                         hp: Math.round(def.baseHp * (1 + def.hpGrowth * (GameState.run.floor - 1))),
@@ -375,6 +376,8 @@ export const Systems = {
         renderer: null,
         group: null,
         sprites: {},
+        textureLoader: null,
+        textureCache: {},
         cameraState: { angle: -Math.PI / 4, targetAngle: -Math.PI / 4, targetX: 0, targetY: 0 },
         init() {
             const container = document.getElementById('three-container');
@@ -397,6 +400,7 @@ export const Systems = {
             const grid = new THREE.GridHelper(30, 30, 0x444444, 0x111111);
             grid.rotation.x = Math.PI / 2;
             this.scene.add(grid);
+            this.textureLoader = new THREE.TextureLoader();
             // Group to hold sprites
             this.group = new THREE.Group();
             this.scene.add(this.group);
@@ -421,34 +425,57 @@ export const Systems = {
                 const col = slot % 3;
                 return { x: xMap[col], y: rowOffset + (isBack ? backOffset : 0) };
             };
+            const loadTexture = (assetPath, ready) => {
+                if (!assetPath || !this.textureLoader) return ready(null);
+                if (this.textureCache[assetPath]) return ready(this.textureCache[assetPath]);
+                this.textureLoader.load(
+                    assetPath,
+                    (texture) => {
+                        texture.magFilter = THREE.NearestFilter;
+                        this.textureCache[assetPath] = texture;
+                        ready(texture);
+                    },
+                    undefined,
+                    () => ready(null)
+                );
+            };
             const createSprite = (unit, isEnemy) => {
                 if (!unit) return;
                 const pos = getPos(isEnemy, unit.slotIndex);
-                const canvas = document.createElement('canvas');
-                canvas.width = 128; canvas.height = 128;
-                const cx = canvas.getContext('2d');
-                cx.font = '90px serif';
-                cx.textAlign = 'center';
-                cx.textBaseline = 'middle';
-                cx.fillStyle = 'white';
-                cx.shadowColor = 'black';
-                cx.shadowBlur = 4;
-                cx.fillText(unit.sprite, 64, 74);
-                const tex = new THREE.CanvasTexture(canvas);
-                tex.magFilter = THREE.NearestFilter;
-                const mat = new THREE.SpriteMaterial({ map: tex });
-                const sprite = new THREE.Sprite(mat);
-                sprite.position.set(pos.x, pos.y, 1.5);
-                sprite.scale.set(3, 3, 1);
-                // Add drop shadow
-                const shadow = new THREE.Mesh(
-                    new THREE.CircleGeometry(0.8, 16),
-                    new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.5, transparent: true })
-                );
-                shadow.position.set(pos.x, pos.y, 0.05);
-                this.group.add(sprite);
-                this.group.add(shadow);
-                this.sprites[unit.uid] = sprite;
+                const addSpriteToScene = (texture) => {
+                    if (!texture) {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 128; canvas.height = 128;
+                        const cx = canvas.getContext('2d');
+                        cx.font = '90px serif';
+                        cx.textAlign = 'center';
+                        cx.textBaseline = 'middle';
+                        cx.fillStyle = 'white';
+                        cx.shadowColor = 'black';
+                        cx.shadowBlur = 4;
+                        cx.fillText(unit.sprite, 64, 74);
+                        texture = new THREE.CanvasTexture(canvas);
+                        texture.magFilter = THREE.NearestFilter;
+                    }
+                    const mat = new THREE.SpriteMaterial({ map: texture });
+                    const sprite = new THREE.Sprite(mat);
+                    sprite.position.set(pos.x, pos.y, 1.5);
+                    sprite.scale.set(3, 3, 1);
+                    // Add drop shadow
+                    const shadow = new THREE.Mesh(
+                        new THREE.CircleGeometry(0.8, 16),
+                        new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.5, transparent: true })
+                    );
+                    shadow.position.set(pos.x, pos.y, 0.05);
+                    this.group.add(sprite);
+                    this.group.add(shadow);
+                    this.sprites[unit.uid] = sprite;
+                };
+                if (unit.spriteAsset) {
+                    loadTexture(unit.spriteAsset, addSpriteToScene);
+                } else {
+                    addSpriteToScene(null);
+                }
             };
             allies.forEach(u => createSprite(u, false));
             enemies.forEach(u => createSprite(u, true));
@@ -908,6 +935,7 @@ export const Systems = {
                         speciesId: type,
                         name: def.name,
                         sprite: def.sprite,
+                        spriteAsset: def.spriteAsset,
                         level: GameState.run.floor,
                         hp: Math.floor(def.baseHp * mult),
                         maxhp: Math.floor(def.baseHp * mult),

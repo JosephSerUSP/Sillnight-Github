@@ -32,6 +32,7 @@ export const Game = {
                     speciesId: def.id,
                     name: def.name,
                     sprite: def.sprite,
+                    spriteAsset: def.spriteAsset,
                     level: slot.lvl,
                     maxhp: maxhp,
                     hp: maxhp,
