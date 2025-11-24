@@ -1182,6 +1182,8 @@ export const Systems = {
      * It renders HUD, party grid, modals, and handles user interactions.
      */
     UI: {
+        activeModalUnit: null,
+        equipmentPickerPreset: null,
         updateHUD() {
             document.getElementById('hud-floor').innerText = GameState.run.floor;
             document.getElementById('hud-gold').innerText = GameState.run.gold;
@@ -1353,12 +1355,7 @@ export const Systems = {
                         btn.className = 'text-xs border border-gray-600 px-2 py-1 hover:bg-white hover:text-black';
                         btn.innerText = 'EQUIP';
                         btn.onclick = () => {
-                            // select a party member to equip
-                            alert('Select a party member by clicking their slot to equip this item.');
-                            // handle equipping on click. We'll set a temporary item to equip; UI will use this equip mode.
-                            Systems.UI.pendingEquip = id;
-                            // close inventory
-                            Systems.UI.toggleInventory();
+                            Systems.UI.startEquipFlow(id);
                         };
                         row.appendChild(btn);
                         list.appendChild(row);
@@ -1396,9 +1393,20 @@ export const Systems = {
             }
         },
         showCreatureModal(unit) {
+            this.activeModalUnit = unit;
+            this.equipmentPickerPreset = null;
+            this.renderStatusModal();
+            document.getElementById('creature-modal').classList.remove('hidden');
+        },
+        renderStatusModal() {
+            const unit = this.activeModalUnit;
+            if (!unit) return;
+            const def = Data.creatures[unit.speciesId];
             document.getElementById('modal-sprite').innerText = unit.sprite;
             document.getElementById('modal-name').innerText = unit.name;
             document.getElementById('modal-lvl').innerText = unit.level;
+            document.getElementById('modal-temperament').innerText = `Temperament: ${def.temperament.toUpperCase()}`;
+            document.getElementById('modal-desc').innerText = def.description;
             const maxhp = Systems.Battle.getMaxHp(unit);
             document.getElementById('modal-hp').innerText = `${unit.hp}/${maxhp}`;
             document.getElementById('modal-xp').innerText = `${unit.exp}`;
@@ -1407,13 +1415,160 @@ export const Systems = {
             const acts = [...unit.acts[0], ...(unit.acts[1] || [])];
             acts.forEach(a => {
                 const div = document.createElement('div');
-                div.className = 'flex gap-2';
+                div.className = 'flex gap-2 items-center border border-gray-700 bg-gray-900 px-2 py-1';
                 const skill = Data.skills[a] || Data.skills[a.toLowerCase()];
                 const label = skill ? skill.name : a;
                 div.innerHTML = `<span class="bg-gray-800 px-1 border border-gray-600 text-xs">${label}</span>`;
                 actList.appendChild(div);
             });
-            document.getElementById('creature-modal').classList.remove('hidden');
+            const equipButton = document.getElementById('modal-equip-slot');
+            const equipDef = unit.equipmentId ? Data.equipment[unit.equipmentId] : null;
+            equipButton.innerHTML = equipDef ? `<span>${equipDef.name}</span><span class="text-xs text-gray-400">Tap to swap</span>` : `<span class="text-gray-400">Empty slot</span><span class="text-xs">Tap to equip</span>`;
+            equipButton.onclick = () => this.openEquipmentPicker();
+            document.getElementById('equipment-empty-hint').classList.remove('hidden');
+            document.getElementById('modal-close-picker').classList.add('hidden');
+            const optionsGrid = document.getElementById('equipment-options');
+            optionsGrid.innerHTML = '';
+            document.getElementById('equipment-picker-overlay').classList.add('hidden');
+        },
+        buildEquipmentOptions(unit) {
+            const options = [];
+            Object.entries(GameState.inventory.equipment).forEach(([id, count]) => {
+                if (count > 0) options.push({ id, source: 'inventory', count });
+            });
+            GameState.roster.forEach(u => {
+                if (u.equipmentId && u.uid !== unit.uid) {
+                    options.push({ id: u.equipmentId, source: 'unit', owner: u });
+                }
+            });
+            return options;
+        },
+        startEquipFlow(equipmentId) {
+            const count = GameState.inventory.equipment[equipmentId] || 0;
+            if (count <= 0) return;
+            if (!document.getElementById('inventory-modal').classList.contains('hidden')) {
+                this.toggleInventory();
+            }
+            const center = document.getElementById('center-modal');
+            center.classList.remove('hidden');
+            center.innerHTML = '';
+            const box = document.createElement('div');
+            box.className = 'rpg-window bg-[#0a0a0a] border border-yellow-700 p-4 w-2/3';
+            box.innerHTML = `<div class="flex justify-between items-center mb-3"><div class="text-lg text-yellow-300">Choose a creature to equip ${Data.equipment[equipmentId].name}</div><button class="text-red-500" onclick="Game.Views.UI.closeCenterModal()">Cancel</button></div>`;
+            const grid = document.createElement('div');
+            grid.className = 'grid grid-cols-3 gap-2 max-h-64 overflow-y-auto';
+            GameState.roster.forEach(u => {
+                const card = document.createElement('button');
+                card.className = 'rpg-window border border-gray-700 bg-gray-900 hover:border-yellow-500 flex flex-col items-start text-left px-3 py-2';
+                card.innerHTML = `<div class="text-2xl">${u.sprite}</div><div class="text-yellow-100">${u.name}</div><div class="text-xs text-gray-500">Lv${u.level}</div>`;
+                card.onclick = () => {
+                    this.equipmentPickerPreset = { id: equipmentId, source: 'inventory' };
+                    this.showCreatureModal(u);
+                    this.openEquipmentPicker();
+                    this.closeCenterModal();
+                };
+                grid.appendChild(card);
+            });
+            box.appendChild(grid);
+            center.appendChild(box);
+        },
+        closeCenterModal() {
+            const center = document.getElementById('center-modal');
+            center.classList.add('hidden');
+            center.innerHTML = '';
+        },
+        openEquipmentPicker() {
+            const unit = this.activeModalUnit;
+            if (!unit) return;
+            const optionsGrid = document.getElementById('equipment-options');
+            optionsGrid.innerHTML = '';
+            const hint = document.getElementById('equipment-empty-hint');
+            hint.classList.add('hidden');
+            document.getElementById('modal-close-picker').classList.remove('hidden');
+            const overlay = document.getElementById('equipment-picker-overlay');
+            overlay.classList.remove('hidden');
+            overlay.onclick = () => this.closeEquipmentPicker();
+            const options = this.buildEquipmentOptions(unit);
+            const unequipCard = document.createElement('div');
+            unequipCard.className = 'border border-gray-700 bg-gray-900 p-3 flex flex-col gap-1';
+            unequipCard.innerHTML = `<div class="text-sm text-gray-300">No equipment</div><div class="text-xs text-gray-500">Remove any currently equipped item.</div>`;
+            unequipCard.onclick = () => this.unequipUnit(unit);
+            optionsGrid.appendChild(unequipCard);
+            if (options.length === 0) {
+                const none = document.createElement('div');
+                none.className = 'text-gray-500 text-sm col-span-2';
+                none.innerText = 'No equipment available. Visit shops to buy gear.';
+                optionsGrid.appendChild(none);
+            }
+            options.forEach(opt => {
+                const def = Data.equipment[opt.id];
+                const card = document.createElement('div');
+                card.className = 'border border-gray-700 bg-gray-900 p-3 flex flex-col gap-1 hover:border-yellow-400 cursor-pointer';
+                let subtitle = def.description;
+                if (opt.source === 'unit') subtitle = `Equipped by ${opt.owner.name}`;
+                if (opt.source === 'inventory' && opt.count > 1) subtitle += ` (x${opt.count})`;
+                if (this.equipmentPickerPreset && this.equipmentPickerPreset.id === opt.id && this.equipmentPickerPreset.source === opt.source) {
+                    card.classList.add('border-yellow-500');
+                }
+                card.innerHTML = `<div class="flex justify-between items-center"><div class="text-yellow-200">${def.name}</div><span class="text-xs text-gray-500 uppercase">${opt.source}</span></div><div class="text-xs text-gray-400 leading-tight">${subtitle}</div>`;
+                card.onclick = () => {
+                    if (opt.source === 'unit') this.transferEquipment(unit, opt.owner, def.id);
+                    else this.equipFromInventory(unit, def.id);
+                };
+                optionsGrid.appendChild(card);
+            });
+        },
+        closeEquipmentPicker() {
+            document.getElementById('equipment-empty-hint').classList.remove('hidden');
+            document.getElementById('modal-close-picker').classList.add('hidden');
+            document.getElementById('equipment-options').innerHTML = '';
+            document.getElementById('equipment-picker-overlay').classList.add('hidden');
+            this.equipmentPickerPreset = null;
+        },
+        equipFromInventory(target, equipmentId) {
+            const count = GameState.inventory.equipment[equipmentId] || 0;
+            if (count <= 0) return;
+            const previous = target.equipmentId;
+            if (previous) {
+                GameState.inventory.equipment[previous] = (GameState.inventory.equipment[previous] || 0) + 1;
+            }
+            GameState.inventory.equipment[equipmentId] = count - 1;
+            if (GameState.inventory.equipment[equipmentId] <= 0) delete GameState.inventory.equipment[equipmentId];
+            target.equipmentId = equipmentId;
+            this.recomputeHp(target);
+            Log.add(`${target.name} equipped ${Data.equipment[equipmentId].name}.`);
+            this.renderParty();
+            this.renderStatusModal();
+        },
+        transferEquipment(target, owner, equipmentId) {
+            const previous = target.equipmentId;
+            if (previous === equipmentId && owner.uid === target.uid) return;
+            if (previous) {
+                GameState.inventory.equipment[previous] = (GameState.inventory.equipment[previous] || 0) + 1;
+            }
+            if (owner && owner.equipmentId === equipmentId) {
+                owner.equipmentId = null;
+                this.recomputeHp(owner);
+            }
+            target.equipmentId = equipmentId;
+            this.recomputeHp(target);
+            Log.add(`${target.name} borrowed ${Data.equipment[equipmentId].name} from ${owner.name}.`);
+            this.renderParty();
+            this.renderStatusModal();
+        },
+        unequipUnit(unit) {
+            if (!unit.equipmentId) return;
+            const previous = unit.equipmentId;
+            unit.equipmentId = null;
+            GameState.inventory.equipment[previous] = (GameState.inventory.equipment[previous] || 0) + 1;
+            this.recomputeHp(unit);
+            Log.add(`${unit.name} removed ${Data.equipment[previous].name}.`);
+            this.renderParty();
+            this.renderStatusModal();
+        },
+        recomputeHp(unit) {
+            const maxhp = Systems.Battle.getMaxHp(unit);
+            if (unit.hp > maxhp) unit.hp = maxhp;
         },
         switchScene(toBattle) {
             const swipe = document.getElementById('swipe-overlay');
