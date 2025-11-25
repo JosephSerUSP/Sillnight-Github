@@ -382,6 +382,9 @@ export const Systems = {
         sprites: {},
         textureLoader: null,
         textureCache: {},
+        effekseerContext: null,
+        effekseerEffectCache: {},
+        effekseerHandles: {},
         spriteScaleFactor: 3,
         cameraState: { angle: -Math.PI / 4, targetAngle: -Math.PI / 4, targetX: 0, targetY: 0 },
         init() {
@@ -395,6 +398,15 @@ export const Systems = {
             this.renderer = new THREE.WebGLRenderer({ alpha: false, antialias: false });
             this.renderer.setSize(window.innerWidth, window.innerHeight);
             container.appendChild(this.renderer.domElement);
+            // Effekseer integration
+            if (typeof effekseer !== 'undefined') {
+                try {
+                    this.effekseerContext = effekseer.createContext(this.renderer.getContext());
+                    this.effekseerContext.setRestorationOfStatesFlag(true);
+                } catch (err) {
+                    console.warn('Effekseer initialization failed', err);
+                }
+            }
             // Lighting
             const amb = new THREE.AmbientLight(0xffffff, 0.6);
             const dir = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -420,6 +432,7 @@ export const Systems = {
         },
         // Converts an array of ally and enemy instances into Three.js sprites.
         setupScene(allies, enemies) {
+            this.disposeAllEffekseerHandles();
             this.group.clear();
             this.sprites = {};
             const getPos = (isEnemy, slot) => {
@@ -536,7 +549,14 @@ export const Systems = {
             this.camera.position.y = cs.targetY + Math.sin(cs.angle) * R;
             this.camera.position.z = Z_HEIGHT;
             this.camera.lookAt(cs.targetX, cs.targetY, 2);
+            this.camera.updateMatrixWorld();
+            if (this.effekseerContext) {
+                this.effekseerContext.setProjectionMatrix(this.camera.projectionMatrix.elements);
+                this.effekseerContext.setCameraMatrix(this.camera.matrixWorldInverse.elements);
+                this.effekseerContext.update();
+            }
             this.renderer.render(this.scene, this.camera);
+            if (this.effekseerContext) this.effekseerContext.draw();
         },
         // Converts world coordinates to screen coordinates for UI overlays
         toScreen(obj) {
@@ -562,6 +582,66 @@ export const Systems = {
                 const baseScale = sprite.userData?.baseScale || { x: this.spriteScaleFactor, y: this.spriteScaleFactor };
                 sprite.scale.set(baseScale.x, baseScale.y, 1);
             }
+            this.disposeEffekseerHandles(uid);
+        },
+        disposeEffekseerHandles(uid) {
+            if (!uid) return;
+            const handles = this.effekseerHandles[uid];
+            if (!handles || !handles.length) return;
+            handles.forEach(h => {
+                try { h.stop(); } catch (err) { /* ignore */ }
+            });
+            delete this.effekseerHandles[uid];
+        },
+        disposeAllEffekseerHandles() {
+            Object.keys(this.effekseerHandles).forEach(uid => this.disposeEffekseerHandles(uid));
+        },
+        stopEffekseerHandle(uid, handle) {
+            if (handle) {
+                try { handle.stop(); } catch (err) { /* ignore */ }
+            }
+            if (uid && this.effekseerHandles[uid]) {
+                this.effekseerHandles[uid] = this.effekseerHandles[uid].filter(h => h !== handle);
+                if (this.effekseerHandles[uid].length === 0) delete this.effekseerHandles[uid];
+            }
+        },
+        loadEffekseerEffect(file) {
+            if (!file || !this.effekseerContext) return Promise.resolve(null);
+            const resolvedPath = resolveAssetPath(file);
+            if (!resolvedPath) return Promise.resolve(null);
+            if (this.effekseerEffectCache[resolvedPath]) return Promise.resolve(this.effekseerEffectCache[resolvedPath]);
+            return new Promise(resolve => {
+                this.effekseerContext.loadEffect(resolvedPath, 1.0, (effect) => {
+                    this.effekseerEffectCache[resolvedPath] = effect;
+                    resolve(effect);
+                }, () => resolve(null));
+            });
+        },
+        playEffekseerEffect(uid, effekseerDef, sprite) {
+            if (!effekseerDef || !this.effekseerContext || !sprite) return Promise.resolve();
+            const cfg = typeof effekseerDef === 'string' ? { file: effekseerDef } : effekseerDef;
+            if (!cfg.file) return Promise.resolve();
+            return this.loadEffekseerEffect(cfg.file).then(effect => {
+                if (!effect) return null;
+                const handle = this.effekseerContext.play(effect, cfg.speed ?? 1.0);
+                const offset = cfg.offset || {};
+                const ox = offset.x || 0;
+                const oy = offset.y || 0;
+                const oz = offset.z || 0;
+                handle.setLocation(sprite.position.x + ox, sprite.position.y + oy, sprite.position.z + oz);
+                const scale = cfg.scale ?? 1;
+                handle.setScale(scale, scale, scale);
+                if (cfg.rotation) handle.setRotation(cfg.rotation.x || 0, cfg.rotation.y || 0, cfg.rotation.z || 0);
+                this.effekseerHandles[uid] = this.effekseerHandles[uid] || [];
+                this.effekseerHandles[uid].push(handle);
+                const durationMs = Math.max(0, (cfg.durationSec || cfg.duration || 1.5) * 1000);
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        this.stopEffekseerHandle(uid, handle);
+                        resolve();
+                    }, durationMs);
+                });
+            });
         },
         // Plays various battle animations based on action type and value. Accepts a callback
         // to be invoked after the animation completes.
@@ -862,12 +942,14 @@ export const Systems = {
             };
 
             const steps = animDef.steps || [];
-            const runSequence = (idx) => {
-                if (idx >= steps.length) { if (cb) cb(); return; }
-                runStep(steps[idx]).then(() => runSequence(idx + 1));
+            const runSequence = () => {
+                if (steps.length === 0) return Promise.resolve();
+                return steps.reduce((p, step) => p.then(() => runStep(step)), Promise.resolve());
             };
-            if (steps.length === 0) { if (cb) cb(); return; }
-            runSequence(0);
+            Promise.all([
+                runSequence(),
+                this.playEffekseerEffect(uid, animDef.effekseer, sprite)
+            ]).then(() => { if (cb) cb(); });
         },
         // Helper to create a billboard sprite with optional shadow
         createBillboard(text, x, y, z, scale = 1.0) {

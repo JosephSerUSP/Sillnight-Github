@@ -254,6 +254,7 @@ export const Data = {
             ]
         },
         thunder: {
+            effekseer: { file: 'assets/effects/Thunder.efkefc', duration: 2, scale: 1.2, offset: { z: 0.4 } },
             steps: [
                 {
                     type: 'iconAbove',
@@ -274,11 +275,13 @@ export const Data = {
             ]
         },
         cure: {
+            effekseer: { file: 'assets/effects/Cure.efkefc', duration: 2.2, scale: 0.85, offset: { z: 0.6 } },
             steps: [
                 { type: 'sparkleSpiral', count: 3, angularVelocity: 0.3, descent: 0.1, duration: 3, interval: 30, scale: 0.5 }
             ]
         },
         tornado: {
+            effekseer: { file: 'assets/effects/Tornado.efkefc', duration: 2.5, scale: 0.9 },
             steps: [
                 {
                     type: 'parallel',
@@ -290,6 +293,7 @@ export const Data = {
             ]
         },
         hit: {
+            effekseer: { file: 'assets/effects/BasicHit.efkefc', duration: 1.2, scale: 0.8 },
             steps: [
                 { type: 'shake', axis: 'x', magnitude: 0.4, iterations: 8, interval: 40 },
                 { type: 'damageNumber' }
@@ -301,6 +305,7 @@ export const Data = {
             ]
         },
         apocalypse: {
+            effekseer: { file: 'assets/effects/Apocalypse.efkefc', duration: 3, scale: 1.1 },
             steps: [
                 { type: 'colorPulse', blend: 'additive', colors: { neutral: 0xff4400 }, cycles: 8, interval: 60 },
                 {
@@ -314,6 +319,7 @@ export const Data = {
             ]
         },
         anvil: {
+            effekseer: { file: 'assets/effects/Impact.efkefc', duration: 1.6, scale: 0.9 },
             steps: [
                 {
                     type: 'iconAbove',
@@ -441,6 +447,7 @@ export const Data = {
 
         // Shiva: ice shards
         diamondDust: {
+            effekseer: { file: 'assets/effects/IceWind.efkefc', duration: 2.2, scale: 0.95 },
             steps: [
                 {
                     type: 'parallel',
@@ -454,6 +461,7 @@ export const Data = {
 
         // Shadow Servant: stabbing shadow
         shadowSpike: {
+            effekseer: { file: 'assets/effects/IceSpike.efkefc', duration: 1.6, scale: 0.9, offset: { z: 0.6 } },
             steps: [
                 { type: 'colorPulse', blend: 'additive', colors: { neutral: 0x551188 }, cycles: 4, interval: 50 },
                 {
