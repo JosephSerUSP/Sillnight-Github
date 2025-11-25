@@ -10,6 +10,82 @@ import { UI } from './windows.js';
 
 export const Systems = {
     sceneHooks: { onBattleStart: null, onBattleEnd: null },
+    Effekseer: {
+        context: null,
+        initPromise: null,
+        cache: {},
+        init(renderer) {
+            if (!window.effekseer || !renderer) return Promise.resolve(null);
+            if (this.context) return Promise.resolve(this.context);
+            if (this.initPromise) return this.initPromise;
+
+            const wasmPath = resolveAssetPath('src/libs/effekseer.wasm');
+
+            this.initPromise = new Promise((resolve) => {
+                if (!wasmPath || typeof effekseer.initRuntime !== 'function') {
+                    console.warn('Effekseer runtime is unavailable.');
+                    resolve(null);
+                    return;
+                }
+
+                const onload = () => {
+                    this.context = effekseer.createContext();
+                    const gl = renderer.getContext();
+                    if (!this.context || !gl) {
+                        console.warn('Failed to create Effekseer context.');
+                        resolve(null);
+                        return;
+                    }
+                    this.context.init(gl, { instanceMaxCount: 256, squareMaxCount: 2048 });
+                    this.context.setRestorationOfStatesFlag(true);
+                    resolve(this.context);
+                };
+
+                const onerror = (err) => {
+                    console.error('Effekseer runtime initialization failed.', err);
+                    resolve(null);
+                };
+
+                effekseer.initRuntime(wasmPath, onload, onerror);
+            });
+
+            return this.initPromise;
+        },
+        loadEffect(name, path) {
+            if (!path) return Promise.resolve(null);
+            const ready = this.initPromise || Promise.resolve(this.context);
+            return ready.then(() => {
+                if (!this.context) return null;
+                if (this.cache[name]) return this.cache[name];
+                const resolved = resolveAssetPath(path);
+                if (!resolved) return null;
+                const p = new Promise((resolve) => {
+                    const effect = this.context.loadEffect(resolved, 1.0, (efk) => resolve(efk || effect || null));
+                    if (effect && typeof effect.then !== 'function') {
+                        resolve(effect);
+                    }
+                });
+                this.cache[name] = p;
+                return p;
+            });
+        },
+        play(name, position) {
+            const path = Data.effects?.[name];
+            if (!path) return Promise.resolve(null);
+            const ready = this.initPromise || Promise.resolve(this.context);
+            return ready.then(() => this.loadEffect(name, path)).then(effect => {
+                if (!effect || !this.context) return null;
+                return this.context.play(effect, position.x, position.y, position.z);
+            });
+        },
+        update(camera) {
+            if (!this.context || !camera) return;
+            this.context.setProjectionMatrix(camera.projectionMatrix.elements);
+            this.context.setCameraMatrix(camera.matrixWorldInverse.elements);
+            this.context.update();
+            this.context.draw();
+        }
+    },
     /*
      * Map system: generates and manages dungeon floors, and resolves tile effects.
      */
@@ -395,6 +471,7 @@ export const Systems = {
             this.renderer = new THREE.WebGLRenderer({ alpha: false, antialias: false });
             this.renderer.setSize(window.innerWidth, window.innerHeight);
             container.appendChild(this.renderer.domElement);
+            Systems.Effekseer.init(this.renderer);
             // Lighting
             const amb = new THREE.AmbientLight(0xffffff, 0.6);
             const dir = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -537,6 +614,7 @@ export const Systems = {
             this.camera.position.z = Z_HEIGHT;
             this.camera.lookAt(cs.targetX, cs.targetY, 2);
             this.renderer.render(this.scene, this.camera);
+            Systems.Effekseer.update(this.camera);
         },
         // Converts world coordinates to screen coordinates for UI overlays
         toScreen(obj) {
@@ -563,311 +641,127 @@ export const Systems = {
                 sprite.scale.set(baseScale.x, baseScale.y, 1);
             }
         },
-        // Plays various battle animations based on action type and value. Accepts a callback
-        // to be invoked after the animation completes.
-        playAnim(uid, type, val, cb) {
+        // Executes a high-level action sequence, triggering Effekseer effects and timing
+        // callbacks when damage/heal application should occur.
+        playAnim(uid, steps = [], context = {}) {
             const sprite = this.sprites[uid];
-            const animDef = Data.animations[type];
-            if (!sprite || !animDef) { if (cb) cb(); return; }
-            // Ensure sprite resets before each animation
+            if (!sprite) { context.onComplete?.(); return; }
             this.resetSprite(uid);
+            const origin = sprite.position.clone();
+            const targets = context.targets || [];
+
+            const wait = (ms) => new Promise(res => setTimeout(res, ms));
+            const averageTargetPosition = () => {
+                if (!targets.length) return { x: origin.x, y: origin.y, z: origin.z };
+                const total = targets.reduce((acc, t) => {
+                    const ts = this.sprites[t.uid];
+                    if (ts) {
+                        acc.x += ts.position.x;
+                        acc.y += ts.position.y;
+                        acc.z += ts.position.z;
+                        acc.count++;
+                    }
+                    return acc;
+                }, { x: 0, y: 0, z: 0, count: 0 });
+                const divisor = Math.max(1, total.count);
+                return { x: total.x / divisor, y: total.y / divisor, z: total.z / divisor };
+            };
 
             const stepHandlers = {
-                verticalSine: (step) => new Promise(resolve => {
+                wait: (step) => wait(step.duration || 300),
+                jump: (step) => new Promise(resolve => {
                     let t = 0;
-                    const axis = step.axis || 'z';
+                    const axis = 'z';
                     const startPos = sprite.position[axis];
-                    const interval = step.interval || 30;
-                    const amp = step.amplitude || 1;
-                    const speed = step.speed || 0.5;
-                    const duration = step.duration || Math.PI;
+                    const interval = 30;
+                    const amp = step.height || 0.8;
+                    const duration = step.duration || 500;
                     const jump = setInterval(() => {
-                        t += speed;
-                        sprite.position[axis] = startPos + Math.sin(t) * amp;
-                        if (t >= duration) {
+                        t += interval;
+                        const progress = Math.min(1, t / duration);
+                        sprite.position[axis] = startPos + Math.sin(progress * Math.PI) * amp;
+                        if (progress >= 1) {
                             clearInterval(jump);
                             sprite.position[axis] = startPos;
                             resolve();
                         }
                     }, interval);
                 }),
-                colorPulse: (step) => new Promise(resolve => {
-                    if (step.blend === 'additive') sprite.material.blending = THREE.AdditiveBlending;
-                    const colors = step.colors || {};
-                    const targetColor = val < 0 ? (colors.negative || 0xffffff) : (val > 0 ? (colors.positive || 0xffffff) : (colors.neutral || 0xffffff));
-                    let count = 0;
-                    const cycles = step.cycles || 6;
-                    const interval = step.interval || 50;
-                    const f = setInterval(() => {
-                        count++;
-                        if (count % 2 === 0) sprite.material.color.setHex(0xffffff);
-                        else sprite.material.color.setHex(targetColor);
-                        if (count >= cycles) {
-                            clearInterval(f);
-                            this.resetSprite(uid);
-                            resolve();
-                        }
-                    }, interval);
-                }),
-                iconAbove: (step) => new Promise(resolve => {
-                    const startHeight = step.startHeight ?? 1;
-                    const group = this.createBillboard(step.icon || '✨', sprite.position.x, sprite.position.y, sprite.position.z + startHeight, step.scale || 1);
-                    const iconSprite = group.children[0];
-                    if (step.blend === 'additive') iconSprite.material.blending = THREE.AdditiveBlending;
-                    this.group.add(group);
-                    const interval = step.interval || 30;
-                    const behavior = step.behavior || 'riseFade';
-                    const cleanUp = () => {
-                        this.group.remove(group);
-                        resolve();
+                approach: (step) => new Promise(resolve => {
+                    const targetPos = averageTargetPosition();
+                    const dir = new THREE.Vector3(targetPos.x - origin.x, targetPos.y - origin.y, 0);
+                    if (dir.length() === 0) { resolve(); return; }
+                    dir.normalize();
+                    dir.multiplyScalar(step.distance || 1);
+                    const destination = {
+                        x: origin.x + dir.x,
+                        y: origin.y + dir.y,
+                        z: sprite.position.z
                     };
-                    if (behavior === 'riseFade') {
-                        let elapsed = 0;
-                        const timeStep = step.timeStep || 0.1;
-                        const stayDuration = step.stayDuration || 0;
-                        const riseSpeed = step.riseSpeed || 0.05;
-                        const fadeRate = step.fadeRate || 0.5;
-                        const flashStart = step.flashStart || 0;
-                        const flashEnd = step.flashEnd || 1;
-                        const ttl = step.ttl || 2;
-                        const flashColors = step.flashColors || [0xffff00, 0xffffff];
-                        const anim = setInterval(() => {
-                            elapsed += timeStep;
-                            const motionTime = Math.max(0, elapsed - stayDuration);
-                            group.children[0].position.z = startHeight + (motionTime * riseSpeed);
-                            iconSprite.material.opacity = Math.max(0, 1 - motionTime * fadeRate);
-                            if (elapsed > flashStart && elapsed < flashEnd) {
-                                sprite.material.blending = THREE.AdditiveBlending;
-                                const idx = Math.floor((elapsed / timeStep)) % flashColors.length;
-                                sprite.material.color.setHex(flashColors[idx]);
-                            }
-                            if (elapsed > ttl) {
-                                clearInterval(anim);
-                                this.resetSprite(uid);
-                                cleanUp();
-                            }
-                        }, interval);
-                    } else if (behavior === 'easeDrop') {
-                        const targetZ = sprite.position.z + (step.landHeight ?? 1);
-                        group.position.z = sprite.position.z + startHeight;
-                        const ease = step.ease || 0.1;
-                        const fadeAfterImpact = step.fadeAfterImpact !== false;
-                        const impactBounce = step.impactBounce || { amplitude: 0.5, duration: 0.6 };
-                        const startSpriteZ = sprite.position.z;
-                        const drop = setInterval(() => {
-                            const dz = targetZ - group.position.z;
-                            group.position.z += dz * ease;
-                            if (Math.abs(dz) < 0.05) {
-                                clearInterval(drop);
-                                let bt = 0;
-                                const bounceInterval = interval;
-                                const bounceDuration = impactBounce.duration || 0.6;
-                                const bounceAmplitude = impactBounce.amplitude || 0.5;
-                                const bounceAnim = setInterval(() => {
-                                    bt += bounceInterval / 1000;
-                                    const falloff = Math.max(0, 1 - (bt / bounceDuration));
-                                    sprite.position.z = startSpriteZ + Math.abs(Math.sin(bt * Math.PI)) * bounceAmplitude * falloff;
-                                    group.position.z = targetZ + Math.sin(bt * Math.PI) * (bounceAmplitude / 2) * falloff;
-                                    iconSprite.material.opacity = fadeAfterImpact ? Math.max(0, 1 - (bt / bounceDuration)) : iconSprite.material.opacity;
-                                    if (bt >= bounceDuration) {
-                                        clearInterval(bounceAnim);
-                                        sprite.position.z = startSpriteZ;
-                                        group.position.z = targetZ;
-                                        if (fadeAfterImpact) iconSprite.material.opacity = 0;
-                                        cleanUp();
-                                    }
-                                }, bounceInterval);
-                            }
-                        }, interval);
-                    } else {
-                        cleanUp();
-                    }
-                }),
-                sparkleSpiral: (step) => new Promise(resolve => {
-                    const sparkles = [];
-                    const count = step.count || 3;
-                    for (let i = 0; i < count; i++) {
-                        const s = this.createBillboard('✨', sprite.position.x, sprite.position.y, sprite.position.z + 3, step.scale || 1);
-                        s.children[0].material.blending = THREE.AdditiveBlending;
-                        this.group.add(s);
-                        sparkles.push({ m: s, ang: i * (Math.PI * 2 / count) });
-                    }
-                    let t = 0;
-                    const interval = step.interval || 30;
-                    const angVel = step.angularVelocity || 0.3;
-                    const descent = step.descent || 0.1;
-                    const duration = step.duration || 3;
-                    const anim = setInterval(() => {
-                        t += (interval / 1000) * 3.333; // preserve similar speed to original (0.1 per 30ms)
-                        sparkles.forEach(s => {
-                            s.ang += angVel;
-                            s.m.children[0].position.z -= descent;
-                            s.m.children[0].position.x = sprite.position.x + Math.cos(s.ang) * 0.5;
-                            s.m.children[0].position.y = sprite.position.y + Math.sin(s.ang) * 0.5;
-                        });
-                        if (t > duration) {
-                            clearInterval(anim);
-                            sparkles.forEach(s => this.group.remove(s.m));
-                            resolve();
-                        }
+                    const duration = step.duration || 250;
+                    const interval = 30;
+                    let elapsed = 0;
+                    const move = setInterval(() => {
+                        elapsed += interval;
+                        const p = Math.min(1, elapsed / duration);
+                        sprite.position.x = origin.x + (destination.x - origin.x) * p;
+                        sprite.position.y = origin.y + (destination.y - origin.y) * p;
+                        if (p >= 1) { clearInterval(move); resolve(); }
                     }, interval);
                 }),
-                orbitBillboards: (step) => new Promise(resolve => {
-                    const count = step.count || 4;
-                    const radius = step.radius || 1;
-                    const angularVelocity = step.angularVelocity || 0.4;
-                    const interval = step.interval || 30;
-                    const duration = step.duration || 2;
-                    const verticalOffset = step.verticalOffset || 0;
-                    const jitter = step.jitter || 0;
-                    const fadeOut = step.fadeOut || false;
-                    const follow = step.follow !== false;
-                    const rise = step.rise || 0;
-                    const orbiters = [];
-                    for (let i = 0; i < count; i++) {
-                        const orb = this.createBillboard(step.icon || '🔆', sprite.position.x, sprite.position.y, sprite.position.z + verticalOffset, step.scale || 1);
-                        orb.children[0].material.blending = THREE.AdditiveBlending;
-                        this.group.add(orb);
-                        orbiters.push({ m: orb, ang: i * ((Math.PI * 2) / count) });
-                    }
-                    const startX = sprite.position.x;
-                    const startY = sprite.position.y;
-                    const startZ = sprite.position.z + verticalOffset;
-                    let t = 0;
-                    const anim = setInterval(() => {
-                        t += interval / 1000;
-                        orbiters.forEach(o => {
-                            o.ang += angularVelocity;
-                            const baseX = follow ? sprite.position.x : startX;
-                            const baseY = follow ? sprite.position.y : startY;
-                            o.m.children[0].position.x = baseX + Math.cos(o.ang) * radius + (Math.random() - 0.5) * jitter;
-                            o.m.children[0].position.y = baseY + Math.sin(o.ang) * radius + (Math.random() - 0.5) * jitter;
-                            o.m.children[0].position.z = (follow ? sprite.position.z : startZ) + verticalOffset + (rise * t);
-                            if (fadeOut) {
-                                const decay = Math.max(0, 1 - (t / duration));
-                                o.m.children[0].material.opacity = decay;
-                            }
-                        });
-                        if (t >= duration) {
-                            clearInterval(anim);
-                            orbiters.forEach(o => this.group.remove(o.m));
-                            resolve();
-                        }
+                retreat: (step) => new Promise(resolve => {
+                    const duration = step.duration || 250;
+                    const interval = 30;
+                    const start = sprite.position.clone();
+                    let elapsed = 0;
+                    const move = setInterval(() => {
+                        elapsed += interval;
+                        const p = Math.min(1, elapsed / duration);
+                        sprite.position.lerpVectors(start, origin, p);
+                        if (p >= 1) { clearInterval(move); sprite.position.copy(origin); resolve(); }
                     }, interval);
                 }),
-                lift: (step) => new Promise(resolve => {
-                    const axis = step.axis || 'z';
-                    const startPos = sprite.position[axis];
-                    const baseWobbleAxis = step.wobble?.axis || 'x';
-                    const wobbleAmplitude = step.wobble?.amplitude || 0;
-                    const wobbleFreq = step.wobble?.frequency || 4;
-                    const wobbleBase = sprite.position[baseWobbleAxis];
-                    const height = step.height || 2;
-                    const duration = step.duration || 2;
-                    const interval = step.interval || 30;
-                    const bounce = step.bounce;
-                    let t = 0;
-                    const lift = setInterval(() => {
-                        t += interval / 1000;
-                        const progress = Math.min(t / duration, 1);
-                        sprite.position[axis] = startPos + Math.sin(progress * Math.PI) * height;
-                        if (wobbleAmplitude) {
-                            sprite.position[baseWobbleAxis] = wobbleBase + Math.sin(progress * Math.PI * wobbleFreq) * wobbleAmplitude;
-                        }
-                        if (progress >= 1) {
-                            clearInterval(lift);
-                            if (bounce) {
-                                let bt = 0;
-                                const bounceInterval = interval;
-                                const bounceDuration = bounce.duration || 0.6;
-                                const bounceAmplitude = bounce.amplitude || 0.5;
-                                const bounceAnim = setInterval(() => {
-                                    bt += bounceInterval / 1000;
-                                    const falloff = Math.max(0, 1 - (bt / bounceDuration));
-                                    sprite.position[axis] = startPos + Math.abs(Math.sin(bt * Math.PI)) * bounceAmplitude * falloff;
-                                    if (bt >= bounceDuration) {
-                                        clearInterval(bounceAnim);
-                                        sprite.position[axis] = startPos;
-                                        sprite.position[baseWobbleAxis] = wobbleBase;
-                                        resolve();
-                                    }
-                                }, bounceInterval);
-                            } else {
-                                sprite.position[axis] = startPos;
-                                sprite.position[baseWobbleAxis] = wobbleBase;
-                                resolve();
-                            }
-                        }
-                    }, interval);
-                }),
-                parallel: (step) => Promise.all((step.steps || []).map(s => runStep(s))).then(() => {}),
-                shake: (step) => new Promise(resolve => {
-                    let jiggle = 0;
-                    const axis = step.axis || 'x';
-                    const base = sprite.position[axis];
-                    const interval = step.interval || 40;
-                    const magnitude = step.magnitude || 0.4;
-                    const iterations = step.iterations || 8;
-                    const shake = setInterval(() => {
-                        jiggle++;
-                        sprite.position[axis] = base + (Math.random() - 0.5) * magnitude;
-                        if (jiggle > iterations) {
-                            clearInterval(shake);
-                            sprite.position[axis] = base;
-                            resolve();
-                        }
-                    }, interval);
-                }),
-                damageNumber: () => new Promise(resolve => {
-                    const screenPos = this.toScreen(sprite);
-                    const el = document.createElement('div');
-                    el.className = `damage-number ${val < 0 ? 'text-green-400' : 'text-white'}`;
-                    el.innerText = Math.abs(val);
-                    el.style.left = (screenPos.x / window.devicePixelRatio) + 'px';
-                    el.style.top = (screenPos.y / window.devicePixelRatio) + 'px';
-                    document.getElementById('battle-ui-overlay').appendChild(el);
-                    setTimeout(() => el.remove(), 1500);
-                    resolve();
-                }),
-                scaleFade: (step) => new Promise(resolve => {
-                    sprite.material.color.setHex(0xff00ff);
-                    sprite.material.blending = THREE.AdditiveBlending;
-                    let t = 0;
-                    const duration = step.duration || 1;
-                    const interval = step.interval || 32;
-                    const scaleIncrease = step.scaleIncrease || 2;
-                    const startScaleX = sprite.scale.x;
-                    const startScaleY = sprite.scale.y;
-                    const anim = setInterval(() => {
-                        t += (interval / 1000) / duration;
-                        const p = 1 - Math.pow(1 - t, 3);
-                        const newH = startScaleY * (1 + p * scaleIncrease);
-                        sprite.scale.x = startScaleX * (1 - p);
-                        sprite.scale.y = newH;
-                        sprite.position.z = newH / 2;
-                        sprite.material.opacity = 1 - p;
-                        if (t >= 1) {
-                            clearInterval(anim);
-                            sprite.visible = false;
-                            resolve();
-                        }
-                    }, interval);
-                })
+                effect: (step) => {
+                    const boundSprites = step.bind === 'target' ? targets.map(t => this.sprites[t.uid]).filter(Boolean) : [sprite];
+                    const plays = boundSprites.map(sp => {
+                        const pos = { x: sp.position.x, y: sp.position.y, z: sp.position.z + (step.height || 1) };
+                        return Systems.Effekseer.play(step.effect, pos);
+                    });
+                    const hold = step.hold ?? 300;
+                    return Promise.all(plays).then(() => wait(hold));
+                },
+                apply: (step) => {
+                    context.onApply?.();
+                    return wait(step?.duration || 0);
+                }
             };
 
-            const runStep = (step) => {
+            const runStep = (idx) => {
+                if (idx >= steps.length) {
+                    sprite.position.copy(origin);
+                    context.onComplete?.();
+                    return;
+                }
+                const step = steps[idx];
                 const handler = stepHandlers[step.type];
-                if (!handler) return Promise.resolve();
-                return handler(step);
+                (handler ? handler(step) : Promise.resolve()).then(() => runStep(idx + 1));
             };
 
-            const steps = animDef.steps || [];
-            const runSequence = (idx) => {
-                if (idx >= steps.length) { if (cb) cb(); return; }
-                runStep(steps[idx]).then(() => runSequence(idx + 1));
-            };
-            if (steps.length === 0) { if (cb) cb(); return; }
-            runSequence(0);
+            if (steps.length === 0) { context.onComplete?.(); return; }
+            runStep(0);
+        },
+        showDamageNumber(uid, val) {
+            if (val === 0) return;
+            const sprite = this.sprites[uid];
+            if (!sprite) return;
+            const screenPos = this.toScreen(sprite);
+            const el = document.createElement('div');
+            el.className = `damage-number ${val < 0 ? 'text-green-400' : 'text-white'}`;
+            el.innerText = Math.abs(val);
+            el.style.left = (screenPos.x / window.devicePixelRatio) + 'px';
+            el.style.top = (screenPos.y / window.devicePixelRatio) + 'px';
+            document.getElementById('battle-ui-overlay').appendChild(el);
+            setTimeout(() => el.remove(), 1500);
         },
         // Helper to create a billboard sprite with optional shadow
         createBillboard(text, x, y, z, scale = 1.0) {
@@ -935,6 +829,18 @@ export const Systems = {
             if (!actionElement) return 1;
             const elems = unit.elements || [];
             return elems.reduce((mult, e) => mult * this.elementRelation(actionElement, e, role), 1);
+        },
+        calculateActionValue(action, unit, target) {
+            if (action.category === 'effect') return 0;
+            const pow = action.power || 0;
+            const sc = action.scaling || 0;
+            const base = Math.floor(pow + sc * unit.level);
+            const element = action.element;
+            const attackMult = this.elementMultiplier(element, unit, 'attacker');
+            const defenseMult = this.elementMultiplier(element, target, 'defender');
+            let value = Math.floor(base * attackMult * defenseMult);
+            if (action.category === 'heal') value = -value;
+            return value;
         },
         getMaxHp(unit) {
             const def = Data.creatures[unit.speciesId];
@@ -1115,57 +1021,41 @@ export const Systems = {
             }
             // Show banner for the action
             UI.showBanner(`${unit.name} used ${action.name}!`);
-            // Jump animation before executing
-            Systems.Battle3D.playAnim(unit.uid, 'jump', 0);
-            setTimeout(() => {
-                const resolveAnimation = (key) => (key && Data.animations[key]) ? key : 'flash';
-                targets.forEach(t => {
-                    let value = 0;
-                    if (action.category === 'damage' || action.category === 'heal') {
-                        const pow = action.power || 0;
-                        const sc = action.scaling || 0;
-                        const base = Math.floor(pow + sc * unit.level);
-                        const element = action.element;
-                        const attackMult = this.elementMultiplier(element, unit, 'attacker');
-                        const defenseMult = this.elementMultiplier(element, t, 'defender');
-                        value = Math.floor(base * attackMult * defenseMult);
-                        if (action.category === 'heal') value = -value; // negative for heals
-                        const animType = resolveAnimation(action.animation);
-                        const apply = () => {
-                            if (value < 0) {
-                                const maxhp = Systems.Battle.getMaxHp(t);
-                                t.hp = Math.min(maxhp, t.hp - value);
-                                Log.battle(`> ${t.name} healed for ${Math.abs(value)}.`);
-                                Systems.Battle3D.playAnim(t.uid, resolveAnimation('flash'), -1);
-                            } else {
-                                t.hp = Math.max(0, t.hp - value);
-                                Systems.Battle3D.playAnim(t.uid, resolveAnimation('hit'), value);
-                                Log.battle(`> ${unit.name} hits ${t.name} for ${value}.`);
-                                if (t.hp <= 0) {
-                                    Systems.Battle3D.playAnim(t.uid, resolveAnimation('die'), 0);
-                                    Log.battle(`> ${t.name} was defeated!`);
-                                }
-                            }
-                        };
-                        if (animType === 'flash') {
-                            apply();
-                            Systems.Battle3D.playAnim(t.uid, animType, value > 0 ? 1 : -1);
-                        } else {
-                            Systems.Battle3D.playAnim(t.uid, animType, 0, apply);
+            const results = targets.map(t => ({ target: t, value: this.calculateActionValue(action, unit, t) }));
+            const script = Data.actionScripts[action.script] || Data.actionScripts.attack || [];
+            const applyResults = () => {
+                if (action.category === 'effect' && action.id !== 'wait') {
+                    Log.battle(`> ${unit.name} stands ready.`);
+                }
+                results.forEach(({ target, value }) => {
+                    if (!target) return;
+                    if (value < 0) {
+                        const maxhp = Systems.Battle.getMaxHp(target);
+                        target.hp = Math.min(maxhp, target.hp - value);
+                        Log.battle(`> ${target.name} healed for ${Math.abs(value)}.`);
+                    } else if (value > 0) {
+                        target.hp = Math.max(0, target.hp - value);
+                        Log.battle(`> ${unit.name} hits ${target.name} for ${value}.`);
+                        if (target.hp <= 0) {
+                            Log.battle(`> ${target.name} was defeated!`);
+                            const ts = Systems.Battle3D.sprites[target.uid];
+                            if (ts) ts.visible = false;
                         }
-                    } else if (action.category === 'effect') {
-                        Log.battle(`> ${unit.name} stands ready.`);
-                        Systems.Battle3D.playAnim(t.uid, resolveAnimation('flash'), 0);
                     }
+                    Systems.Battle3D.showDamageNumber(target.uid, value);
                 });
                 // Re-render party HP bars and check for end-of-battle
                 UI.renderParty();
                 if (GameState.battle.allies.every(u => u.hp <= 0) || GameState.battle.enemies.every(u => u.hp <= 0)) {
                     GameState.battle.turnIndex = 999;
                 }
-                const delay = (chosen.toLowerCase() === 'tornado' || chosen.toLowerCase() === 'thunder') ? 1500 : 1000;
-                setTimeout(() => this.processNextTurn(), delay);
-            }, 600);
+            };
+
+            Systems.Battle3D.playAnim(unit.uid, script, {
+                targets,
+                onApply: applyResults,
+                onComplete: () => setTimeout(() => this.processNextTurn(), 600)
+            });
         },
         end(win) {
             // Clear all UI overlays
