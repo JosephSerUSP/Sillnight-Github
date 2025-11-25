@@ -73,6 +73,13 @@ export const Systems = {
                     if (effect && typeof effect.then !== 'function') {
                         resolve(effect);
                     }
+                }).then(effect => {
+                    if (!effect) {
+                        console.error(`Failed to load effect: ${name} from ${path}`);
+                        delete this.cache[name];
+                        return null;
+                    }
+                    return effect;
                 });
                 this.cache[name] = p;
                 return p;
