@@ -58,6 +58,18 @@ window.addEventListener('resize', () => {
     Systems.Battle3D.resize();
 });
 
+window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+        Systems.Battle.togglePause(true);
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    if (e.code === 'Space') {
+        Systems.Battle.togglePause(false);
+    }
+});
+
 window.addEventListener('load', () => {
     Game.init();
 });

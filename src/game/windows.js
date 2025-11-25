@@ -63,13 +63,18 @@ class ShellUI {
         document.getElementById('hud-gold').innerText = GameState.run.gold;
     }
 
-    renderCreaturePanel(unit) {
+    renderCreaturePanel(unit, isEnemy = false) {
         if (!unit) return '';
 
         const maxhp = getMaxHp(unit);
         const hpPct = (unit.hp / maxhp) * 100;
         const hpColor = hpPct < 30 ? 'bg-red-600' : 'bg-green-600';
-        const xpPct = getXpProgress(unit);
+
+        let bottomBarHtml = '';
+        if (!isEnemy) {
+            const xpPct = getXpProgress(unit);
+            bottomBarHtml = `<div class="w-full h-1 bg-gray-800"><div class="bg-blue-500 h-full" style="width:${xpPct}%"></div></div>`;
+        }
 
         return `
             <div class="flex justify-between text-xs text-gray-300">
@@ -79,10 +84,41 @@ class ShellUI {
             <div class="mt-auto w-full space-y-0.5">
             <div class="text-[10px] text-right text-gray-500">${unit.hp}/${maxhp}</div>
                 <div class="w-full h-1 bg-gray-800"><div class="${hpColor} h-full transition-all duration-300" style="width:${hpPct}%"></div></div>
-                <div class="w-full h-1 bg-gray-800"><div class="bg-blue-500 h-full" style="width:${xpPct}%"></div></div>
+                ${bottomBarHtml}
             </div>
-
         `;
+    }
+
+    renderEnemyParty() {
+        const container = document.getElementById('enemy-party-status');
+        if (!container || !GameState.battle) {
+            if (container) container.innerHTML = '';
+            return;
+        }
+
+        const enemies = GameState.battle.enemies;
+        let content = '';
+
+        if (enemies.length > 0) {
+            const grid = document.createElement('div');
+            grid.className = 'rpg-window h-full flex flex-col bg-black/90';
+            grid.innerHTML = `
+                <div class="rpg-header flex justify-between">
+                    <span class="text-sm text-gray-400">ENEMY STATUS</span>
+                </div>
+                <div class="flex-grow grid grid-rows-2 grid-cols-3 gap-1 p-1">
+                    ${enemies.map(u => `
+                        <div class="relative flex flex-col p-1 border border-gray-800 bg-gray-900/50">
+                            ${this.renderCreaturePanel(u, true)}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            container.innerHTML = '';
+            container.appendChild(grid);
+        } else {
+            container.innerHTML = '';
+        }
     }
 
     renderParty() {

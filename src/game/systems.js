@@ -85,7 +85,11 @@ export const Systems = {
             return ready.then(() => this.loadEffect(name, path)).then(effect => {
                 if (!effect || !this.context) return null;
                 const effekseerPos = this.convertToEffekseerPosition(position);
-                return this.context.play(effect, effekseerPos.x, effekseerPos.y, effekseerPos.z);
+                const handle = this.context.play(effect, effekseerPos.x, effekseerPos.y, effekseerPos.z);
+                return {
+                    handle,
+                    isPlaying: () => this.context.exists(handle),
+                };
             });
         },
         update(camera) {
@@ -102,8 +106,20 @@ export const Systems = {
             );
             this.context.setProjectionMatrix(camera.projectionMatrix.elements);
             this.context.setCameraMatrix(viewMatrix.elements);
-            this.context.update();
+            if (!GameState.battle?.isPaused) {
+                this.context.update();
+            }
             this.context.draw();
+        },
+        pauseAll() {
+            if (this.context) {
+                this.context.setPaused(true);
+            }
+        },
+        resumeAll() {
+            if (this.context) {
+                this.context.setPaused(false);
+            }
         }
     },
     /*
@@ -644,6 +660,12 @@ export const Systems = {
         },
         animate() {
             requestAnimationFrame(() => this.animate());
+            if (GameState.battle?.isPaused) {
+                // If paused, just render the scene and skip updates
+                this.renderer.render(this.scene, this.camera);
+                Systems.Effekseer.update(this.camera);
+                return;
+            }
             const cs = this.cameraState;
             if (GameState.ui.mode === 'BATTLE_WIN') {
                 cs.angle += 0.005;
@@ -769,11 +791,33 @@ export const Systems = {
                 effect: (step) => {
                     const boundSprites = step.bind === 'target' ? targets.map(t => this.sprites[t.uid]).filter(Boolean) : [sprite];
                     const plays = boundSprites.map(sp => {
-                        const pos = { x: sp.position.x, y: sp.position.y, z: sp.position.z + (step.height || 1) };
+                        const anchorRatio = step.anchor ?? 0.5;
+                        const spriteHeight = sp.userData.baseScale?.y || this.spriteScaleFactor;
+                        const baseZ = sp.position.z - (spriteHeight / 2);
+                        const zPos = baseZ + (spriteHeight * anchorRatio) + (step.height || 0);
+                        const pos = { x: sp.position.x, y: sp.position.y, z: zPos };
                         return Systems.Effekseer.play(step.effect, pos);
                     });
-                    const hold = step.hold ?? 300;
-                    return Promise.all(plays).then(() => wait(hold));
+
+                    return new Promise(resolve => {
+                        Promise.all(plays).then(effects => {
+                            const activeEffects = effects.filter(e => e && e.handle != null);
+                            if (activeEffects.length === 0) {
+                                resolve();
+                                return;
+                            }
+
+                            const checkStatus = () => {
+                                const allFinished = activeEffects.every(e => !e.isPlaying());
+                                if (allFinished) {
+                                    resolve();
+                                } else {
+                                    setTimeout(checkStatus, 50); // Poll every 50ms
+                                }
+                            };
+                            checkStatus();
+                        });
+                    });
                 },
                 apply: (step) => {
                     context.onApply?.();
@@ -855,6 +899,24 @@ export const Systems = {
     Battle: {
         elementStrengths: { G: 'B', B: 'R', R: 'G', W: 'K', K: 'W' },
         elementWeaknesses: { G: 'R', B: 'G', R: 'B', W: 'W', K: 'K' },
+        originalBackgroundColor: null,
+        togglePause(isPaused) {
+            if (GameState.ui.mode !== 'BATTLE' || !GameState.battle) return;
+            GameState.battle.isPaused = isPaused;
+            if (isPaused) {
+                this.originalBackgroundColor = Systems.Battle3D.scene.background.clone();
+                Systems.Effekseer.pauseAll();
+                Systems.Battle3D.scene.background = new THREE.Color(0x05051a); // Dark blue tint
+            } else {
+                Systems.Effekseer.resumeAll();
+                if (this.originalBackgroundColor) {
+                    Systems.Battle3D.scene.background = this.originalBackgroundColor;
+                } else {
+                    Systems.Battle3D.scene.background = new THREE.Color(0x0a0a0a); // Fallback
+                }
+            }
+        },
+
         // Computes how a single element instance interacts with an action's element.
         elementRelation(actionElement, creatureElement, role) {
             if (!actionElement || !creatureElement) return 1;
@@ -1048,10 +1110,12 @@ export const Systems = {
                     turnIndex: 0,
                     roundCount: 0,
                     playerTurnRequested: false,
-                    phase: 'INIT'
+                    phase: 'INIT',
+                    isPaused: false,
                 };
                 // Setup 3D scene for battle
                 Systems.Battle3D.setupScene(GameState.battle.allies, GameState.battle.enemies);
+                UI.renderEnemyParty();
                 Log.battle(`Enemies: ${enemies.map(e => e.name).join(', ')}`);
                 UI.showBanner('ENCOUNTER');
                 // Swipe up and begin after delay
@@ -1134,6 +1198,7 @@ export const Systems = {
         },
         processNextTurn() {
             UI.renderParty();
+            UI.renderEnemyParty();
             if (GameState.battle.turnIndex >= GameState.battle.queue.length) {
                 setTimeout(() => this.nextRound(), 1000);
                 return;
@@ -1295,6 +1360,7 @@ export const Systems = {
         end(win) {
             // Clear all UI overlays
             document.getElementById('battle-ui-overlay').innerHTML = '';
+            UI.renderEnemyParty();
             if (win) {
                 UI.showBanner('VICTORY');
                 GameState.ui.mode = 'BATTLE_WIN';
