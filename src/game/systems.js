@@ -12,13 +12,28 @@ export const Systems = {
     sceneHooks: { onBattleStart: null, onBattleEnd: null },
     Effekseer: {
         context: null,
+        runtimeReady: null,
         cache: {},
         init(renderer) {
             if (!window.effekseer || !renderer) return;
-            this.context = effekseer.createContext();
-            const gl = renderer.getContext();
-            this.context.init(gl, { instanceMaxCount: 256, squareMaxCount: 2048 });
-            this.context.setRestorationOfStatesFlag(true);
+            if (!this.runtimeReady && typeof effekseer.initRuntime === 'function') {
+                const wasmPath = resolveAssetPath('libs/effekseer.wasm');
+                this.runtimeReady = new Promise((resolve) => {
+                    effekseer.initRuntime(wasmPath, () => resolve(true), () => resolve(false));
+                });
+            }
+            const finishInit = () => {
+                this.context = effekseer.createContext();
+                const gl = renderer.getContext();
+                if (!this.context || !gl) return;
+                this.context.init(gl, { instanceMaxCount: 256, squareMaxCount: 2048 });
+                this.context.setRestorationOfStatesFlag(true);
+            };
+            if (this.runtimeReady) {
+                this.runtimeReady.then((ok) => ok && finishInit());
+            } else {
+                finishInit();
+            }
         },
         loadEffect(name, path) {
             if (!this.context || !path) return Promise.resolve(null);
