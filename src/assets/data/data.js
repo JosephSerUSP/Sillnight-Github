@@ -399,4 +399,3 @@ export const Data = {
     items: Items,
     skills: Skills
 };
-
