@@ -385,8 +385,9 @@ class ShellUI {
         if (unit.hp > maxhp) unit.hp = maxhp;
     }
 
-    switchScene(toBattle, onExploreRefresh) {
+    switchScene(toBattle, onExploreRefresh, onComplete) {
         const swipe = document.getElementById('swipe-overlay');
+        // Begin the wipe immediately so the current scene is hidden before we swap layers.
         swipe.className = 'swipe-down';
         setTimeout(() => {
             const elExp = document.getElementById('explore-layer');
@@ -403,9 +404,13 @@ class ShellUI {
                 ctrls.classList.add('hidden'); eCtrls.classList.remove('hidden');
                 if (onExploreRefresh) onExploreRefresh();
             }
+            // Reveal the new scene once the wipe has covered the old one.
             swipe.className = 'swipe-clear';
-            setTimeout(() => { swipe.className = 'swipe-reset'; }, 600);
-        }, 600);
+            setTimeout(() => {
+                swipe.className = 'swipe-reset';
+                if (onComplete) onComplete();
+            }, 600);
+        }, 300);
     }
 
     showBanner(text) {
