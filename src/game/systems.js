@@ -111,54 +111,62 @@ export const Systems = {
      */
     Map: {
         generateFloor() {
-            const cfg = Data.config;
+            const floor = GameState.run.floor;
+            const dungeon = Data.dungeons.default; // Assuming 'default' dungeon for now
+            const mapCfg = dungeon.map;
+
             // Initialize map filled with walls (code 1)
-            const map = Array(cfg.mapHeight).fill().map(() => Array(cfg.mapWidth).fill(1));
-            let x = Math.floor(cfg.mapWidth / 2);
-            let y = Math.floor(cfg.mapHeight / 2);
+            const map = Array(mapCfg.height).fill().map(() => Array(mapCfg.width).fill(1));
+            let x = Math.floor(mapCfg.width / 2);
+            let y = Math.floor(mapCfg.height / 2);
             GameState.exploration.playerPos = { x, y };
-            // Carve a random path to create open floor tiles (code 0)
-            const steps = 400;
-            for (let i = 0; i < steps; i++) {
+            // Carve a random path
+            for (let i = 0; i < mapCfg.carveSteps; i++) {
                 map[y][x] = 0;
                 const dir = Math.floor(Math.random() * 4);
                 if (dir === 0 && y > 1) y--;
-                else if (dir === 1 && y < cfg.mapHeight - 2) y++;
+                else if (dir === 1 && y < mapCfg.height - 2) y++;
                 else if (dir === 2 && x > 1) x--;
-                else if (dir === 3 && x < cfg.mapWidth - 2) x++;
+                else if (dir === 3 && x < mapCfg.width - 2) x++;
             }
             // Collect empty floor tiles to place features on them
             const emptyTiles = [];
-            for (let ry = 0; ry < cfg.mapHeight; ry++) {
-                for (let rx = 0; rx < cfg.mapWidth; rx++) {
+            for (let ry = 0; ry < mapCfg.height; ry++) {
+                for (let rx = 0; rx < mapCfg.width; rx++) {
                     if (map[ry][rx] === 0 && (rx !== GameState.exploration.playerPos.x || ry !== GameState.exploration.playerPos.y)) {
                         emptyTiles.push({ x: rx, y: ry });
                     }
                 }
             }
-            // Helper to place a number of tiles with a given code
-            function place(code, count) {
+            // Helper to place tiles
+            const place = (code, count) => {
                 for (let i = 0; i < count; i++) {
                     if (emptyTiles.length === 0) break;
                     const idx = Math.floor(Math.random() * emptyTiles.length);
                     const tile = emptyTiles.splice(idx, 1)[0];
                     map[tile.y][tile.x] = code;
                 }
-            }
-            // Place enemies (code 2), stairs (3), treasure (4)
-            place(2, 5 + GameState.run.floor);
-            place(3, 1);
-            place(4, 2);
-            // Place shops (5), recruit (6), shrine (7), trap (8). Increase counts with floor.
-            const eventCount = Math.max(1, Math.floor(GameState.run.floor / 2));
-            place(5, eventCount); // shops
-            place(6, eventCount); // recruits
-            place(7, 1); // one shrine per floor
-            place(8, eventCount); // traps
+            };
+            // Calculate and place tile counts from dungeon data
+            const getCount = (def) => {
+                if (typeof def === 'number') return def;
+                const { base = 0, perFloor = 0, min = 0, max = Infinity, round = 'round' } = def;
+                const count = base + perFloor * floor;
+                const rounded = Math[round](count);
+                return Math.max(min, Math.min(max, rounded));
+            };
+            place(2, getCount(mapCfg.tileCounts.enemies));
+            place(3, getCount(mapCfg.tileCounts.stairs));
+            place(4, getCount(mapCfg.tileCounts.treasure));
+            place(5, getCount(mapCfg.tileCounts.shops));
+            place(6, getCount(mapCfg.tileCounts.recruits));
+            place(7, getCount(mapCfg.tileCounts.shrines));
+            place(8, getCount(mapCfg.tileCounts.traps));
+
             // Save to GameState
             GameState.exploration.map = map;
-            GameState.exploration.visited = Array(cfg.mapHeight).fill().map(() => Array(cfg.mapWidth).fill(false));
-            Log.add(`Floor ${GameState.run.floor} generated.`);
+            GameState.exploration.visited = Array(mapCfg.height).fill().map(() => Array(mapCfg.width).fill(false));
+            Log.add(`Floor ${floor} generated.`);
         },
         // Returns the tile code at the given coordinates, or 1 if out of bounds
         tileAt(x, y) {
@@ -177,7 +185,10 @@ export const Systems = {
                 Log.add('Descended...');
                 Systems.Map.generateFloor();
             } else if (code === 4) { // treasure
-                const amt = Math.floor(Math.random() * 50) + 20 * GameState.run.floor;
+                const treasure = Data.events.treasure;
+                const amt = treasure.gold.base
+                    + Math.floor(Math.random() * treasure.gold.random)
+                    + treasure.gold.perFloor * GameState.run.floor;
                 GameState.run.gold += amt;
                 GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
                 Log.loot(`Found ${amt} Gold!`);
@@ -230,42 +241,42 @@ export const Systems = {
         render() {
             const canvas = document.getElementById('explore-canvas');
             const ctx = canvas.getContext('2d');
-            const cfg = Data.config;
+            const mapCfg = Data.dungeons.default.map;
             const w = canvas.width;
             const h = canvas.height;
             ctx.fillStyle = '#050505';
             ctx.fillRect(0, 0, w, h);
             // Center offset to keep player in the middle of screen
-            const offsetX = (w / 2) - (GameState.exploration.playerPos.x * cfg.tileSize);
-            const offsetY = (h / 2) - (GameState.exploration.playerPos.y * cfg.tileSize);
+            const offsetX = (w / 2) - (GameState.exploration.playerPos.x * mapCfg.tileSize);
+            const offsetY = (h / 2) - (GameState.exploration.playerPos.y * mapCfg.tileSize);
             ctx.save();
             ctx.translate(offsetX, offsetY);
             // Draw map tiles with fog-of-war
-            for (let y = 0; y < cfg.mapHeight; y++) {
-                for (let x = 0; x < cfg.mapWidth; x++) {
+            for (let y = 0; y < mapCfg.height; y++) {
+                for (let x = 0; x < mapCfg.width; x++) {
                     const dist = Math.hypot(x - GameState.exploration.playerPos.x, y - GameState.exploration.playerPos.y);
-                    if (dist < cfg.viewDistance) GameState.exploration.visited[y][x] = true;
+                    if (dist < mapCfg.viewDistance) GameState.exploration.visited[y][x] = true;
                     if (!GameState.exploration.visited[y][x]) continue;
                     const tile = GameState.exploration.map[y][x];
-                    const px = x * cfg.tileSize;
-                    const py = y * cfg.tileSize;
+                    const px = x * mapCfg.tileSize;
+                    const py = y * mapCfg.tileSize;
                     // Walls vs floor
                     if (tile === 1) {
                         ctx.fillStyle = '#333';
-                        ctx.fillRect(px, py, cfg.tileSize, cfg.tileSize);
+                        ctx.fillRect(px, py, mapCfg.tileSize, mapCfg.tileSize);
                         ctx.strokeStyle = '#111';
-                        ctx.strokeRect(px, py, cfg.tileSize, cfg.tileSize);
+                        ctx.strokeRect(px, py, mapCfg.tileSize, mapCfg.tileSize);
                     } else {
                         ctx.fillStyle = '#1a1a1a';
-                        ctx.fillRect(px, py, cfg.tileSize, cfg.tileSize);
+                        ctx.fillRect(px, py, mapCfg.tileSize, mapCfg.tileSize);
                         ctx.strokeStyle = '#222';
-                        ctx.strokeRect(px, py, cfg.tileSize, cfg.tileSize);
+                        ctx.strokeRect(px, py, mapCfg.tileSize, mapCfg.tileSize);
                         // Draw icons for special tiles
                         ctx.font = '32px serif';
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        const cx = px + cfg.tileSize / 2;
-                        const cy = py + cfg.tileSize / 2;
+                        const cx = px + mapCfg.tileSize / 2;
+                        const cy = py + mapCfg.tileSize / 2;
                         if (tile === 2) ctx.fillText('👹', cx, cy);
                         else if (tile === 3) ctx.fillText('🪜', cx, cy);
                         else if (tile === 4) ctx.fillText('💰', cx, cy);
@@ -275,21 +286,21 @@ export const Systems = {
                         else if (tile === 8) ctx.fillText('☠️', cx, cy);
                     }
                     // Draw fog beyond view distance
-                    if (dist >= cfg.viewDistance) {
+                    if (dist >= mapCfg.viewDistance) {
                         ctx.fillStyle = 'rgba(0,0,0,0.7)';
-                        ctx.fillRect(px, py, cfg.tileSize, cfg.tileSize);
+                        ctx.fillRect(px, py, mapCfg.tileSize, mapCfg.tileSize);
                     }
                 }
             }
             // Draw the player
-            const playerX = GameState.exploration.playerPos.x * cfg.tileSize;
-            const playerY = GameState.exploration.playerPos.y * cfg.tileSize;
+            const playerX = GameState.exploration.playerPos.x * mapCfg.tileSize;
+            const playerY = GameState.exploration.playerPos.y * mapCfg.tileSize;
             ctx.font = '36px serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.shadowColor = '#d4af37';
             ctx.shadowBlur = 15;
-            ctx.fillText('🧙‍♂️', playerX + cfg.tileSize / 2, playerY + cfg.tileSize / 2);
+            ctx.fillText('🧙‍♂️', playerX + mapCfg.tileSize / 2, playerY + mapCfg.tileSize / 2);
             ctx.restore();
         }
     },
@@ -316,17 +327,20 @@ export const Systems = {
             Log.add('You discover a mysterious merchant.');
             const container = document.createElement('div');
             container.className = 'space-y-2';
-            // Build list of stock: random subset of items and equipment
+            // Build list of stock from event data
+            const shopData = Data.events.shop;
             const stock = [];
-            const itemKeys = Object.keys(Data.items);
-            const equipKeys = Object.keys(Data.equipment);
-            // pick 2 items and 1 equipment
-            for (let i = 0; i < 2; i++) {
-                const key = itemKeys[Math.floor(Math.random() * itemKeys.length)];
-                stock.push({ type: 'item', id: key });
+            for (let i = 0; i < shopData.stock.count.items; i++) {
+                const pool = shopData.stock.pools.items;
+                const key = pool[Math.floor(Math.random() * pool.length)];
+                if (Data.items[key]) stock.push({ type: 'item', id: key });
             }
-            const eqKey = equipKeys[Math.floor(Math.random() * equipKeys.length)];
-            stock.push({ type: 'equip', id: eqKey });
+            for (let i = 0; i < shopData.stock.count.equipment; i++) {
+                const pool = shopData.stock.pools.equipment;
+                const key = pool[Math.floor(Math.random() * pool.length)];
+                if (Data.equipment[key]) stock.push({ type: 'equip', id: key });
+            }
+
             stock.forEach(s => {
                 const row = document.createElement('div');
                 row.className = 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700';
@@ -899,15 +913,19 @@ export const Systems = {
                 Systems.Battle3D.resize();
                 // Build allies from active party
                 const allies = GameState.party.activeSlots.filter(u => u !== null).map(u => u);
-                // Generate random enemies based on floor level
-                const enemyCount = Math.floor(Math.random() * 3) + 1;
-                const enemyTypes = ['goblin', 'skeleton', 'pixie', 'golem', 'lich', 'inori', 'nurse', 'waiter', 'ifrit', 'shiva', 'joulart', 'masque', 'titania', 'no7', 'nurse', 'shadowServant', 'slumber'];
+                // Generate random enemies based on dungeon data for the current floor
+                const floor = GameState.run.floor;
+                const dungeon = Data.dungeons.default;
+                const enc = dungeon.encounters;
+                const pool = enc.pools.find(p => floor >= p.floors[0] && floor <= p.floors[1]);
+                const enemyTypes = pool ? pool.enemies : [];
+                const enemyCount = Math.floor(Math.random() * (enc.count.max - enc.count.min + 1)) + enc.count.min;
                 const enemies = [];
                 for (let i = 0; i < enemyCount; i++) {
-                    const type = enemyTypes[Math.floor(Math.random() * Math.min(enemyTypes.length, GameState.run.floor + 1))];
+                    const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
                     const def = Data.creatures[type];
                     // Level scaling: base HP times a factor per floor
-                    const mult = 1 + (GameState.run.floor * 0.1);
+                    const mult = 1 + (floor * 0.1);
                     enemies.push({
                         uid: `e${i}_${Date.now()}`,
                         speciesId: type,
