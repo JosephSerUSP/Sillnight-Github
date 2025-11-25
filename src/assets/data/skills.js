@@ -1,77 +1,76 @@
-    // Skills are defined declaratively here. Each skill has a
-    // category (damage/heal/guard), a target selection rule, a base power,
-    // scaling factors, an optional element, and a chosen animation.
+    // Skills are defined declaratively here. Each skill has an ID, a name,
+    // and a list of effects that are applied when the skill is used.
+    // Properties not specified will fall back to the values in `defaultSkill`.
     
+    // Default values for skills
+    export const defaultSkill = {
+        name: 'Unnamed Skill',
+        category: 'damage',
+        target: 'enemy-single',
+        speed: 0,
+        element: null,
+        script: 'flash',
+        repeat: 1,
+        effects: []
+    };
+
     export const Skills = {
-        wait:   { id: 'wait',   name: 'Wait',        category: 'effect', target: 'self',         speed: 2,  effect: 'wait',  script: 'flash' },
-        attack: { id: 'attack', name: 'Attack',      category: 'damage', target: 'enemy-single', speed: 0,  power: 4, scaling: 2,   script: 'flash' },
-        guard:  { id: 'guard',  name: 'Guard',       category: 'effect', target: 'self',         speed: 2,  effect: 'guard', script: 'flash' },
+        wait:   { id: 'wait',   name: 'Wait',        category: 'effect', target: 'self',         speed: 2,  effects: [] },
+        attack: { id: 'attack', name: 'Attack',      script: 'attack', effects: [{ type: 'hp_damage', formula: '4 + 2 * a.level' }] },
+        guard:  { id: 'guard',  name: 'Guard',       category: 'effect', target: 'self',         speed: 2,  effects: [{ type: 'add_status', status: 'guarding', chance: 1 }] },
 
-        attackRow: { id: 'attackRow', name: 'Attack Row', category: 'damage', target: 'enemy-row',   speed: 0,  power: 3, scaling: 1.5, script: 'flash' },
-        cure:      { id: 'cure',      name: 'Cure',       category: 'heal',   target: 'ally-single', speed: 1,  power: 4, scaling: 2,   element: 'W', script: 'cure' },
+        attackRow: { id: 'attackRow', name: 'Attack Row', target: 'enemy-row', script: 'attackRow', effects: [{ type: 'hp_damage', formula: '3 + 1.5 * a.level' }] },
+        cure:      { id: 'cure',      name: 'Cure',       category: 'heal',   target: 'ally-single', speed: 1,  element: 'W', script: 'cure', effects: [{ type: 'hp_heal', formula: '4 + 2 * a.level' }] },
 
-        tornado:   { id: 'tornado',   name: 'Tornado',    category: 'damage', target: 'enemy-all',   speed: -1, power: 4, scaling: 1,   element: 'G', script: 'tornado' },
-        thunder:   { id: 'thunder',   name: 'Thunder',   category: 'damage', target: 'enemy-single',speed: 1,  power: 6, scaling: 2,   element: 'G', script: 'thunder' },
-        ray:       { id: 'ray',       name: 'Ray',        category: 'damage', target: 'enemy-single',speed: 0,  power: 2, scaling: 1,   repeat: 3,   element: 'W', script: 'flash' },
-        curse:     { id: 'curse',     name: 'Curse',      category: 'damage', target: 'enemy-single',speed: 0,  power: 16,scaling: 2,   element: 'K', script: 'flash' },
+        tornado:   { id: 'tornado',   name: 'Tornado',    target: 'enemy-all',   speed: -1, element: 'G', script: 'tornado', effects: [{ type: 'hp_damage', formula: '4 + a.level' }] },
+        thunder:   { id: 'thunder',   name: 'Thunder',   speed: 1,  element: 'G', script: 'thunder', effects: [{ type: 'hp_damage', formula: '6 + 2 * a.level' }] },
+        ray:       { id: 'ray',       name: 'Ray',        repeat: 3,   element: 'W', script: 'ray', effects: [{ type: 'hp_damage', formula: '2 + a.level' }] },
+        curse:     { id: 'curse',     name: 'Curse',      element: 'K', script: 'curse', effects: [{ type: 'hp_damage', formula: '16 + 2 * a.level' }] },
 
         apocalypse: {
             id: 'apocalypse',
             name: 'Apocalypse',
-            category: 'damage',
             target: 'enemy-all',
             speed: -2,               // Very slow, very strong
-            power: 8,
-            scaling: 2.5,
             element: 'K',
-            script: 'apocalypse'
+            script: 'apocalypse',
+            effects: [{ type: 'hp_damage', formula: '8 + 2.5 * a.level' }]
         },
         anvil: {
             id: 'anvil',
             name: 'Anvil Drop',
-            category: 'damage',
-            target: 'enemy-single',
             speed: -1,               // Heavy, slightly slower
-            power: 9,
-            scaling: 2.2,
             element: 'R',
-            script: 'anvil'
+            script: 'anvil',
+            effects: [{ type: 'hp_damage', formula: '9 + 2.2 * a.level' }]
         },
 
         cosmicRay: {
             id: 'cosmicRay',
             name: 'Cosmic Ray',
-            category: 'damage',
-            target: 'enemy-single',
             speed: 1,                // Snappy snipe
-            power: 5,
-            scaling: 2,
             element: 'W',
-            script: 'cosmicRay'
+            script: 'cosmicRay',
+            effects: [{ type: 'hp_damage', formula: '5 + 2 * a.level' }]
         },
         gravityWell: {
             id: 'gravityWell',
             name: 'Gravity Well',
-            category: 'damage',
             target: 'enemy-all',
             speed: -1,
-            power: 3,
-            scaling: 1.8,
             element: 'B',
-            script: 'gravityWell'
+            script: 'gravityWell',
+            effects: [{ type: 'hp_damage', formula: '3 + 1.8 * a.level' }]
         },
 
         // --- Waiter: hybrid row attacker & single-target healer ---
         silverTray: {
             id: 'silverTray',
             name: 'Silver Tray',
-            category: 'damage',
             target: 'enemy-row',
-            speed: 0,
-            power: 4,
-            scaling: 1.6,
             element: 'K',
-            script: 'silverTray'
+            script: 'silverTray',
+            effects: [{ type: 'hp_damage', formula: '4 + 1.6 * a.level' }]
         },
         serveDrink: {
             id: 'serveDrink',
@@ -79,10 +78,9 @@
             category: 'heal',
             target: 'ally-single',
             speed: 1,
-            power: 3,
-            scaling: 1.5,
             element: 'W',
-            script: 'serveDrink'
+            script: 'serveDrink',
+            effects: [{ type: 'hp_heal', formula: '3 + 1.5 * a.level' }]
         },
 
         // --- Inori: single-target premium healer + holy nuke ---
@@ -91,87 +89,69 @@
             name: 'Latex Prayer',
             category: 'heal',
             target: 'ally-single',
-            speed: 0,
-            power: 6,
-            scaling: 2.5,
             element: 'W',
-            script: 'latexPrayer'
+            script: 'latexPrayer',
+            effects: [{ type: 'hp_heal', formula: '6 + 2.5 * a.level' }]
         },
         divineBolt: {
             id: 'divineBolt',
             name: 'Divine Bolt',
-            category: 'damage',
-            target: 'enemy-single',
             speed: 1,
-            power: 6,
-            scaling: 2.2,
             element: 'W',
-            script: 'divineBolt'
+            script: 'divineBolt',
+            effects: [{ type: 'hp_damage', formula: '6 + 2.2 * a.level' }]
         },
 
         // --- Slumber: dreamy AoE caster ---
         sleepMist: {
             id: 'sleepMist',
             name: 'Sleep Mist',
-            category: 'damage',
             target: 'enemy-all',
-            speed: 0,
-            power: 3,
-            scaling: 1.6,
             element: 'B',
-            script: 'sleepMist'
+            script: 'sleepMist',
+            effects: [
+                { type: 'hp_damage', formula: '3 + 1.6 * a.level' },
+                { type: 'add_status', status: 'sleep', chance: 0.3 }
+            ]
         },
 
         // --- Shiva: ice row control (plus Apocalypse) ---
         diamondDust: {
             id: 'diamondDust',
             name: 'Diamond Dust',
-            category: 'damage',
             target: 'enemy-row',
-            speed: 0,
-            power: 5,
-            scaling: 2.0,
             element: 'B',
-            script: 'diamondDust'
+            script: 'diamondDust',
+            effects: [{ type: 'hp_damage', formula: '5 + 2.0 * a.level' }]
         },
 
         // --- Shadow Servant: surgical dark ST burst ---
         shadowSpike: {
             id: 'shadowSpike',
             name: 'Shadow Spike',
-            category: 'damage',
-            target: 'enemy-single',
-            speed: 0,
-            power: 7,
-            scaling: 2.0,
             element: 'K',
-            script: 'shadowSpike'
+            script: 'shadowSpike',
+            effects: [{ type: 'hp_damage', formula: '7 + 2.0 * a.level' }]
         },
 
         // --- Ifrit: big fire AoE ---
         hellfire: {
             id: 'hellfire',
             name: 'Hellfire',
-            category: 'damage',
             target: 'enemy-all',
             speed: -1,
-            power: 5,
-            scaling: 2.0,
             element: 'R',
-            script: 'hellfire'
+            script: 'hellfire',
+            effects: [{ type: 'hp_damage', formula: '5 + 2.0 * a.level' }]
         },
 
         // --- Nurse: risky ST poke + fast triage heal ---
         injection: {
             id: 'injection',
             name: 'Injection',
-            category: 'damage',
-            target: 'enemy-single',
-            speed: 0,
-            power: 5,
-            scaling: 1.8,
             element: 'K',
-            script: 'injection'
+            script: 'injection',
+            effects: [{ type: 'hp_damage', formula: '5 + 1.8 * a.level' }]
         },
         triage: {
             id: 'triage',
@@ -179,37 +159,30 @@
             category: 'heal',
             target: 'ally-single',
             speed: 2,
-            power: 4,
-            scaling: 2.0,
             element: 'W',
-            script: 'triage'
+            script: 'triage',
+            effects: [{ type: 'hp_heal', formula: '4 + 2.0 * a.level' }]
         },
 
         // --- No. 7: ultra-fast multi-hit row pressure ---
         windBlades: {
             id: 'windBlades',
             name: 'Wind Blades',
-            category: 'damage',
             target: 'enemy-row',
             speed: 2,
-            power: 4,
-            scaling: 1.5,
             repeat: 2,
             element: 'G',
-            script: 'windBlades'
+            script: 'windBlades',
+            effects: [{ type: 'hp_damage', formula: '4 + 1.5 * a.level' }]
         },
 
         // --- Masque: single-target dark pressure ---
         maskTear: {
             id: 'maskTear',
             name: 'Mask Tear',
-            category: 'damage',
-            target: 'enemy-single',
-            speed: 0,
-            power: 6,
-            scaling: 2.0,
             element: 'K',
-            script: 'maskTear'
+            script: 'maskTear',
+            effects: [{ type: 'hp_damage', formula: '6 + 2.0 * a.level' }]
         },
 
         // --- Joulart: greedy self-sustain ---
@@ -218,10 +191,8 @@
             name: 'Feast',
             category: 'heal',
             target: 'self',
-            speed: 0,
-            power: 5,
-            scaling: 1.5,
             element: 'R',
-            script: 'feast'
+            script: 'feast',
+            effects: [{ type: 'hp_heal', formula: '5 + 1.5 * a.level' }]
         }
     };

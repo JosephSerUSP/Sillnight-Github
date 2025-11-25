@@ -9,7 +9,11 @@ import { Scene_Explore, Scene_Battle } from './scenes.js';
 
 // Core game bootstrapper; keeps entrypoint slim while delegating to managers/scenes.
 export const Game = {
+    ready: false,
+    GameState,
     Systems,
+    data: Data,
+    log: Log,
     UI,
     Scenes: {},
     SceneManager: new SceneManager(),
@@ -44,6 +48,8 @@ export const Game = {
 
         const input = new InputManager(this.SceneManager);
         input.boot();
+
+        this.ready = true;
     }
 };
 
