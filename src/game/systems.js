@@ -12,32 +12,68 @@ export const Systems = {
     sceneHooks: { onBattleStart: null, onBattleEnd: null },
     Effekseer: {
         context: null,
+        initPromise: null,
         cache: {},
         init(renderer) {
-            if (!window.effekseer || !renderer) return;
-            this.context = effekseer.createContext();
-            const gl = renderer.getContext();
-            this.context.init(gl, { instanceMaxCount: 256, squareMaxCount: 2048 });
-            this.context.setRestorationOfStatesFlag(true);
+            if (!window.effekseer || !renderer) return Promise.resolve(null);
+            if (this.context) return Promise.resolve(this.context);
+            if (this.initPromise) return this.initPromise;
+
+            const wasmPath = resolveAssetPath('src/libs/effekseer.wasm');
+
+            this.initPromise = new Promise((resolve) => {
+                if (!wasmPath || typeof effekseer.initRuntime !== 'function') {
+                    console.warn('Effekseer runtime is unavailable.');
+                    resolve(null);
+                    return;
+                }
+
+                const onload = () => {
+                    this.context = effekseer.createContext();
+                    const gl = renderer.getContext();
+                    if (!this.context || !gl) {
+                        console.warn('Failed to create Effekseer context.');
+                        resolve(null);
+                        return;
+                    }
+                    this.context.init(gl, { instanceMaxCount: 256, squareMaxCount: 2048 });
+                    this.context.setRestorationOfStatesFlag(true);
+                    resolve(this.context);
+                };
+
+                const onerror = (err) => {
+                    console.error('Effekseer runtime initialization failed.', err);
+                    resolve(null);
+                };
+
+                effekseer.initRuntime(wasmPath, onload, onerror);
+            });
+
+            return this.initPromise;
         },
         loadEffect(name, path) {
-            if (!this.context || !path) return Promise.resolve(null);
-            if (this.cache[name]) return this.cache[name];
-            const resolved = resolveAssetPath(path);
-            if (!resolved) return Promise.resolve(null);
-            const p = new Promise((resolve) => {
-                const effect = this.context.loadEffect(resolved, 1.0, (efk) => resolve(efk || effect || null));
-                if (effect && typeof effect.then !== 'function') {
-                    resolve(effect);
-                }
+            if (!path) return Promise.resolve(null);
+            const ready = this.initPromise || Promise.resolve(this.context);
+            return ready.then(() => {
+                if (!this.context) return null;
+                if (this.cache[name]) return this.cache[name];
+                const resolved = resolveAssetPath(path);
+                if (!resolved) return null;
+                const p = new Promise((resolve) => {
+                    const effect = this.context.loadEffect(resolved, 1.0, (efk) => resolve(efk || effect || null));
+                    if (effect && typeof effect.then !== 'function') {
+                        resolve(effect);
+                    }
+                });
+                this.cache[name] = p;
+                return p;
             });
-            this.cache[name] = p;
-            return p;
         },
         play(name, position) {
             const path = Data.effects?.[name];
             if (!path) return Promise.resolve(null);
-            return this.loadEffect(name, path).then(effect => {
+            const ready = this.initPromise || Promise.resolve(this.context);
+            return ready.then(() => this.loadEffect(name, path)).then(effect => {
                 if (!effect || !this.context) return null;
                 return this.context.play(effect, position.x, position.y, position.z);
             });
