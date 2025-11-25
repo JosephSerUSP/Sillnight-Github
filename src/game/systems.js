@@ -548,8 +548,11 @@ export const Systems = {
                 const aspect = (texture?.image?.width && texture?.image?.height)
                     ? texture.image.width / texture.image.height
                     : 1;
-                const height = this.spriteScaleFactor;
-                return { x: height * aspect, y: height };
+                const referencePixelHeight = 64;
+                const targetHeight = (texture?.image?.height)
+                    ? Math.max(1, Math.round((texture.image.height / referencePixelHeight) * this.spriteScaleFactor))
+                    : this.spriteScaleFactor;
+                return { x: targetHeight * aspect, y: targetHeight };
             };
             const createSprite = (unit, isEnemy) => {
                 if (!unit) return;
