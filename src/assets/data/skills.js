@@ -1,3 +1,7 @@
+    // Skills are defined declaratively here. Each skill has a
+    // category (damage/heal/guard), a target selection rule, a base power,
+    // scaling factors, an optional element, and a chosen animation.
+    
     export const Skills = {
         wait:   { id: 'wait',   name: 'Wait',        category: 'effect', target: 'self',         speed: 2,  effect: 'wait',  script: 'flash' },
         attack: { id: 'attack', name: 'Attack',      category: 'damage', target: 'enemy-single', speed: 0,  power: 4, scaling: 2,   script: 'flash' },
