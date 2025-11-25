@@ -238,334 +238,163 @@ export const Data = {
         }
     },
 
-    // Animation registry: describes how each battle animation behaves. Systems.Battle3D
-    // uses these definitions to dispatch reusable animation steps instead of hard-coded
-    // branches.
-    animations: {
-        // --- Existing animations ---
-        jump: {
+    // Motion clips define reusable sprite motions in frames.
+    motionClips: {
+        jumpSmall: {
             steps: [
-                { type: 'verticalSine', axis: 'z', amplitude: 0.75, speed: 0.6, duration: Math.PI, interval: 30 }
+                { type: 'verticalSine', axis: 'z', amplitude: 0.75, speed: 0.6, durationFrames: 30, intervalFrames: 2 }
+            ]
+        },
+        liftAndBounceBig: {
+            defaults: {
+                height: 2.0,
+                durationFrames: 120,
+                wobbleAmplitude: 0.2,
+                wobbleFrequency: 4,
+                bounceAmplitude: 0.5,
+                bounceDurationFrames: 30
+            },
+            steps: [
+                {
+                    type: 'lift',
+                    height: '$height',
+                    durationFrames: '$durationFrames',
+                    wobble: {
+                        axis: 'x',
+                        amplitude: '$wobbleAmplitude',
+                        frequency: '$wobbleFrequency'
+                    },
+                    bounce: {
+                        amplitude: '$bounceAmplitude',
+                        durationFrames: '$bounceDurationFrames'
+                    },
+                    intervalFrames: 2
+                }
+            ]
+        },
+        hitShake: {
+            steps: [
+                { type: 'shake', axis: 'x', magnitude: 0.4, iterations: 8, intervalFrames: 2 }
+            ]
+        },
+        dieScaleFade: {
+            steps: [
+                { type: 'scaleFade', durationFrames: 60, intervalFrames: 2, scaleIncrease: 2.0 }
+            ]
+        },
+        castSpellLarge: {
+            steps: [
+                { type: 'colorPulse', blend: 'additive', colors: { neutral: 0xffffff }, cycles: 6, intervalFrames: 4 }
             ]
         },
         flash: {
             steps: [
-                { type: 'colorPulse', blend: 'additive', colors: { negative: 0x00ff00, positive: 0xff0000, neutral: 0x8888ff }, cycles: 6, interval: 50 }
-            ]
-        },
-        thunder: {
-            steps: [
-                {
-                    type: 'iconAbove',
-                    icon: '⛈️',
-                    scale: 0.8,
-                    behavior: 'riseFade',
-                    startHeight: 0.8,
-                    stayDuration: 0.2,
-                    riseSpeed: 0.05,
-                    fadeRate: 0.6,
-                    flashStart: 0.4,
-                    flashEnd: 1.4,
-                    flashColors: [0xffff00, 0xffffff],
-                    timeStep: 0.1,
-                    interval: 30,
-                    ttl: 2
-                }
-            ]
-        },
-        cure: {
-            steps: [
-                { type: 'sparkleSpiral', count: 3, angularVelocity: 0.3, descent: 0.1, duration: 3, interval: 30, scale: 0.5 }
-            ]
-        },
-        tornado: {
-            steps: [
-                {
-                    type: 'parallel',
-                    steps: [
-                        { type: 'lift', height: 3, duration: 2.5, wobble: { axis: 'x', amplitude: 0.25, frequency: 4 }, bounce: { amplitude: 0.5, duration: 1 }, interval: 30 },
-                        { type: 'orbitBillboards', icon: '🍃', count: 4, scale: 0.4, radius: 1, angularVelocity: 0.4, verticalOffset: 0.5, duration: 2.5, interval: 30 }
-                    ]
-                }
+                { type: 'colorPulse', blend: 'additive', colors: { negative: 0x00ff00, positive: 0xff0000, neutral: 0x8888ff }, cycles: 6, intervalFrames: 3 }
             ]
         },
         hit: {
             steps: [
-                { type: 'shake', axis: 'x', magnitude: 0.4, iterations: 8, interval: 40 },
+                { type: 'shake', axis: 'x', magnitude: 0.4, iterations: 8, intervalFrames: 2 },
                 { type: 'damageNumber' }
             ]
         },
         die: {
             steps: [
-                { type: 'scaleFade', duration: 1, interval: 32, scaleIncrease: 2 }
-            ]
-        },
-        apocalypse: {
-            steps: [
-                { type: 'colorPulse', blend: 'additive', colors: { neutral: 0xff4400 }, cycles: 8, interval: 60 },
-                {
-                    type: 'parallel',
-                    steps: [
-                        { type: 'lift', height: 2.5, duration: 2.5, wobble: { axis: 'x', amplitude: 0.3, frequency: 5 }, bounce: { amplitude: 0.8, duration: 1 }, interval: 32 },
-                        { type: 'orbitBillboards', icon: '☄️', count: 6, scale: 0.6, radius: 1.6, angularVelocity: 0.5, verticalOffset: 0.6, jitter: 0.2, duration: 2.5, interval: 32, fadeOut: true }
-                    ]
-                },
-                { type: 'shake', axis: 'y', magnitude: 0.5, iterations: 6, interval: 50 }
-            ]
-        },
-        anvil: {
-            steps: [
-                {
-                    type: 'iconAbove',
-                    icon: '🪨',
-                    scale: 0.9,
-                    behavior: 'easeDrop',
-                    startHeight: 3,
-                    landHeight: 0.8,
-                    ease: 0.08,
-                    impactBounce: { amplitude: 0.6, duration: 0.7 },
-                    fadeAfterImpact: true,
-                    interval: 24
-                },
-                { type: 'shake', axis: 'x', magnitude: 0.35, iterations: 6, interval: 35 }
-            ]
-        },
-
-        // --- New animations ---
-
-        // Stargazer: glowy sniper beam
-        cosmicRay: {
-            steps: [
-                { type: 'colorPulse', blend: 'additive', colors: { neutral: 0xaa66ff }, cycles: 5, interval: 45 },
-                {
-                    type: 'iconAbove',
-                    icon: '✨',
-                    scale: 0.7,
-                    behavior: 'riseFade',
-                    startHeight: 0.6,
-                    stayDuration: 0.3,
-                    riseSpeed: 0.04,
-                    fadeRate: 0.7,
-                    interval: 30
-                }
-            ]
-        },
-        // Stargazer: swirling cosmic well
-        gravityWell: {
-            steps: [
-                {
-                    type: 'parallel',
-                    steps: [
-                        { type: 'lift', height: 1.5, duration: 1.8, wobble: { axis: 'y', amplitude: 0.15, frequency: 5 }, interval: 32 },
-                        { type: 'orbitBillboards', icon: '🌌', count: 5, scale: 0.45, radius: 1.2, angularVelocity: 0.35, verticalOffset: 0.3, duration: 1.8, interval: 32 }
-                    ]
-                }
-            ]
-        },
-
-        // Waiter: tray slam & healing service
-        silverTray: {
-            steps: [
-                {
-                    type: 'iconAbove',
-                    icon: '🍽️',
-                    scale: 0.9,
-                    behavior: 'easeDrop',
-                    startHeight: 2.5,
-                    landHeight: 0.9,
-                    ease: 0.1,
-                    impactBounce: { amplitude: 0.4, duration: 0.5 },
-                    fadeAfterImpact: true,
-                    interval: 26
-                },
-                { type: 'shake', axis: 'x', magnitude: 0.3, iterations: 5, interval: 32 }
-            ]
-        },
-        serveDrink: {
-            steps: [
-                { type: 'sparkleSpiral', count: 2, angularVelocity: 0.25, descent: 0.05, duration: 2.2, interval: 30, scale: 0.5 },
-                {
-                    type: 'iconAbove',
-                    icon: '🍷',
-                    scale: 0.7,
-                    behavior: 'riseFade',
-                    startHeight: 0.5,
-                    stayDuration: 0.4,
-                    riseSpeed: 0.03,
-                    fadeRate: 0.6,
-                    interval: 30
-                }
-            ]
-        },
-
-        // Inori: shining prayer and holy bolt
-        latexPrayer: {
-            steps: [
-                { type: 'colorPulse', blend: 'additive', colors: { neutral: 0xffffff }, cycles: 4, interval: 60 },
-                { type: 'sparkleSpiral', count: 4, angularVelocity: 0.35, descent: 0.12, duration: 2.5, interval: 28, scale: 0.6 }
-            ]
-        },
-        divineBolt: {
-            steps: [
-                {
-                    type: 'iconAbove',
-                    icon: '✨',
-                    scale: 0.8,
-                    behavior: 'riseFade',
-                    startHeight: 1.4,
-                    stayDuration: 0.2,
-                    riseSpeed: -0.06, // falls onto target
-                    fadeRate: 0.7,
-                    interval: 26
-                },
-                { type: 'shake', axis: 'y', magnitude: 0.28, iterations: 5, interval: 32 }
-            ]
-        },
-
-        // Slumber: drifting Zs
-        sleepMist: {
-            steps: [
-                {
-                    type: 'orbitBillboards',
-                    icon: '💤',
-                    count: 4,
-                    scale: 0.55,
-                    radius: 1.1,
-                    angularVelocity: 0.3,
-                    verticalOffset: 0.7,
-                    duration: 2.5,
-                    interval: 34
-                }
-            ]
-        },
-
-        // Shiva: ice shards
-        diamondDust: {
-            steps: [
-                {
-                    type: 'parallel',
-                    steps: [
-                        { type: 'lift', height: 2, duration: 2, wobble: { axis: 'x', amplitude: 0.2, frequency: 6 }, interval: 30 },
-                        { type: 'orbitBillboards', icon: '❄️', count: 6, scale: 0.5, radius: 1.4, angularVelocity: 0.45, verticalOffset: 0.4, duration: 2, interval: 30 }
-                    ]
-                }
-            ]
-        },
-
-        // Shadow Servant: stabbing shadow
-        shadowSpike: {
-            steps: [
-                { type: 'colorPulse', blend: 'additive', colors: { neutral: 0x551188 }, cycles: 4, interval: 50 },
-                {
-                    type: 'iconAbove',
-                    icon: '🗡️',
-                    scale: 0.8,
-                    behavior: 'easeDrop',
-                    startHeight: 2.2,
-                    landHeight: 0.8,
-                    ease: 0.12,
-                    fadeAfterImpact: true,
-                    interval: 24
-                }
-            ]
-        },
-
-        // Ifrit: blazing hellfire
-        hellfire: {
-            steps: [
-                { type: 'colorPulse', blend: 'additive', colors: { neutral: 0xff3300 }, cycles: 6, interval: 45 },
-                {
-                    type: 'orbitBillboards',
-                    icon: '🔥',
-                    count: 6,
-                    scale: 0.6,
-                    radius: 1.7,
-                    angularVelocity: 0.5,
-                    verticalOffset: 0.5,
-                    duration: 2.5,
-                    interval: 30
-                }
-            ]
-        },
-
-        // Nurse: syringe + soft healing glow
-        injection: {
-            steps: [
-                {
-                    type: 'iconAbove',
-                    icon: '💉',
-                    scale: 0.8,
-                    behavior: 'easeDrop',
-                    startHeight: 2.3,
-                    landHeight: 0.8,
-                    ease: 0.12,
-                    fadeAfterImpact: true,
-                    interval: 26
-                },
-                { type: 'shake', axis: 'x', magnitude: 0.3, iterations: 4, interval: 35 }
-            ]
-        },
-        triage: {
-            steps: [
-                { type: 'sparkleSpiral', count: 3, angularVelocity: 0.3, descent: 0.08, duration: 2.2, interval: 30, scale: 0.55 }
-            ]
-        },
-
-        // No. 7: spinning wind blades
-        windBlades: {
-            steps: [
-                {
-                    type: 'orbitBillboards',
-                    icon: '💨',
-                    count: 4,
-                    scale: 0.5,
-                    radius: 1.3,
-                    angularVelocity: 0.6,
-                    verticalOffset: 0.5,
-                    duration: 2,
-                    interval: 26
-                }
-            ]
-        },
-
-        // Masque: unsettling flash
-        maskTear: {
-            steps: [
-                { type: 'colorPulse', blend: 'additive', colors: { neutral: 0xff00ff }, cycles: 5, interval: 50 },
-                {
-                    type: 'iconAbove',
-                    icon: '🎭',
-                    scale: 0.8,
-                    behavior: 'riseFade',
-                    startHeight: 0.7,
-                    stayDuration: 0.3,
-                    riseSpeed: 0.04,
-                    fadeRate: 0.7,
-                    interval: 30
-                }
-            ]
-        },
-
-        // Joulart: indulgent self-heal
-        feast: {
-            steps: [
-                {
-                    type: 'iconAbove',
-                    icon: '🍰',
-                    scale: 0.9,
-                    behavior: 'riseFade',
-                    startHeight: 0.6,
-                    stayDuration: 0.6,
-                    riseSpeed: 0.03,
-                    fadeRate: 0.5,
-                    interval: 30
-                }
+                { type: 'scaleFade', durationFrames: 60, intervalFrames: 2, scaleIncrease: 2 }
             ]
         }
     },
 
-    // Creatures database defines base stats and move sets for each species.
-    // Extended with hpGrowth (per level) and xpCurve (xp cost per level).
+    // Effekseer-backed VFX clips
+    vfxClips: {
+        tornadoField: {
+            effekseerKey: 'src/assets/effects/Tornado.efkefc',
+            durationFrames: 150,
+            anchor: 'target'
+        },
+        impactHeavy: {
+            effekseerKey: 'src/assets/effects/Impact.efkefc',
+            attach: 'feet',
+            waitForEffekseer: false
+        },
+        fireballProjectile: {
+            effekseerKey: 'src/assets/effects/Curse.efkefc',
+            anchor: 'caster'
+        },
+        fireballExplosion: {
+            effekseerKey: 'src/assets/effects/BasicHit.efkefc',
+            origin: 'group',
+            anchor: 'world'
+        },
+        diamondDustGust: {
+            effekseerKey: 'src/assets/effects/Cure.efkefc',
+            origin: 'betweenCasterAndGroup',
+            anchor: 'world',
+            waitForEffekseer: false
+        },
+        diamondDustOnTarget: {
+            effekseerKey: 'src/assets/effects/BasicHit.efkefc'
+        }
+    },
+
+    // Action sequences orchestrate motion and VFX for skills
+    actionSequences: {
+        flash: {
+            sequence: [
+                { kind: 'forEachTarget', mode: 'parallel', steps: [ { kind: 'effect' } ] }
+            ]
+        },
+        tornado: {
+            sequence: [
+                { kind: 'motion', who: 'caster', clip: 'jumpSmall' },
+                {
+                    kind: 'forEachTarget',
+                    mode: 'sequential',
+                    steps: [
+                        {
+                            kind: 'parallel',
+                            steps: [
+                                {
+                                    kind: 'motion',
+                                    who: 'target',
+                                    clip: 'liftAndBounceBig',
+                                    overrides: { height: 3.0, durationFrames: 150 }
+                                },
+                                { kind: 'vfx', clip: 'tornadoField', who: 'target' }
+                            ]
+                        },
+                        { kind: 'effect' },
+                        { kind: 'vfx', clip: 'impactHeavy', who: 'target' },
+                        { kind: 'motion', who: 'target', clip: 'hitShake' }
+                    ]
+                }
+            ]
+        },
+        fireball: {
+            sequence: [
+                { kind: 'motion', who: 'caster', clip: 'jumpSmall' },
+                { kind: 'vfx', clip: 'fireballProjectile', who: 'caster' },
+                { kind: 'vfx', clip: 'fireballExplosion', who: 'group' },
+                { kind: 'forEachTarget', mode: 'sequential', steps: [ { kind: 'effect' } ] }
+            ]
+        },
+        diamondDust: {
+            sequence: [
+                { kind: 'motion', who: 'caster', clip: 'castSpellLarge' },
+                { kind: 'vfx', clip: 'diamondDustGust', who: 'world', waitForEffekseerOverride: false },
+                { kind: 'wait', waitFrames: 24 },
+                {
+                    kind: 'forEachTarget',
+                    mode: 'sequential',
+                    perTargetDelayFrames: 4,
+                    steps: [
+                        { kind: 'vfx', clip: 'diamondDustOnTarget', who: 'target' },
+                        { kind: 'effect' }
+                    ]
+                }
+            ]
+        }
+    },
     creatures: {
         pixie: {
             id: 'pixie',
