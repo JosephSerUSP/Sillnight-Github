@@ -579,10 +579,11 @@ export const Systems = {
                         alphaTest: 0.01
                     });
                     const sprite = new THREE.Sprite(mat);
-                    sprite.position.set(pos.x, pos.y, 1.5);
                     const baseScale = computeSpriteScale(texture);
                     sprite.scale.set(baseScale.x, baseScale.y, 1);
+                    sprite.position.set(pos.x, pos.y, baseScale.y / 2);
                     sprite.userData.baseScale = baseScale;
+                    sprite.userData.baseZ = baseScale.y / 2;
                     // Add drop shadow
                     const shadow = new THREE.Mesh(
                         new THREE.CircleGeometry(0.8, 16),
@@ -667,6 +668,8 @@ export const Systems = {
                 sprite.material.opacity = 1.0;
                 const baseScale = sprite.userData?.baseScale || { x: this.spriteScaleFactor, y: this.spriteScaleFactor };
                 sprite.scale.set(baseScale.x, baseScale.y, 1);
+                const baseZ = sprite.userData?.baseZ ?? baseScale.y / 2;
+                sprite.position.z = baseZ;
             }
         },
         // Executes a high-level action sequence, triggering Effekseer effects and timing
