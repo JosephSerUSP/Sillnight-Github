@@ -14,6 +14,15 @@ export const Systems = {
         context: null,
         initPromise: null,
         cache: {},
+        // Rotation matrix to convert the game's Z-up coordinates to Effekseer's Y-up system.
+        zToYUpMatrix: new THREE.Matrix4().makeRotationX(-Math.PI / 2),
+        // Inverse rotation for converting Effekseer-space camera matrices back to world space.
+        yToZUpMatrix: new THREE.Matrix4().makeRotationX(Math.PI / 2),
+        convertToEffekseerPosition(position = { x: 0, y: 0, z: 0 }) {
+            const vec = new THREE.Vector3(position.x, position.y, position.z);
+            vec.applyMatrix4(this.zToYUpMatrix);
+            return { x: vec.x, y: vec.y, z: vec.z };
+        },
         init(renderer) {
             if (!window.effekseer || !renderer) return Promise.resolve(null);
             if (this.context) return Promise.resolve(this.context);
@@ -75,13 +84,24 @@ export const Systems = {
             const ready = this.initPromise || Promise.resolve(this.context);
             return ready.then(() => this.loadEffect(name, path)).then(effect => {
                 if (!effect || !this.context) return null;
-                return this.context.play(effect, position.x, position.y, position.z);
+                const effekseerPos = this.convertToEffekseerPosition(position);
+                return this.context.play(effect, effekseerPos.x, effekseerPos.y, effekseerPos.z);
             });
         },
         update(camera) {
             if (!this.context || !camera) return;
+            // Convert the camera's world-space view matrix into Effekseer's Y-up space so
+            // that effects and sprites line up. Because effect positions are rotated into
+            // Effekseer space (Z-up -> Y-up), we need to apply the inverse rotation when
+            // supplying the view matrix: view = M_view_world * R^-1.
+            // Use the inverse rotation on the camera side (V = Vz * R^-1) so the view
+            // cancels the position conversion instead of rotating twice.
+            const viewMatrix = new THREE.Matrix4().multiplyMatrices(
+                camera.matrixWorldInverse,
+                this.yToZUpMatrix
+            );
             this.context.setProjectionMatrix(camera.projectionMatrix.elements);
-            this.context.setCameraMatrix(camera.matrixWorldInverse.elements);
+            this.context.setCameraMatrix(viewMatrix.elements);
             this.context.update();
             this.context.draw();
         }
@@ -549,7 +569,12 @@ export const Systems = {
                         texture = new THREE.CanvasTexture(canvas);
                         texture.magFilter = THREE.NearestFilter;
                     }
-                    const mat = new THREE.SpriteMaterial({ map: texture });
+                    const mat = new THREE.SpriteMaterial({
+                        map: texture,
+                        transparent: true,
+                        depthWrite: false,
+                        alphaTest: 0.01
+                    });
                     const sprite = new THREE.Sprite(mat);
                     sprite.position.set(pos.x, pos.y, 1.5);
                     const baseScale = computeSpriteScale(texture);
