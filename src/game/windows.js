@@ -2,7 +2,7 @@
 // All DOM-related code for the persistent PC-98 shell lives here. Add new window
 // types by subclassing Window_Base and wiring them into the ShellUI container.
 
-import { Data } from './data.js';
+import { Data } from '.assets/data/data.js';
 import { GameState } from './state.js';
 import { Log } from './log.js';
 import { getMaxHp } from './objects.js';
