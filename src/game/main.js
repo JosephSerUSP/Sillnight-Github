@@ -26,15 +26,7 @@ export const Game = {
         Systems.Battle3D.init();
 
         // Starting party
-        const startSetup = [
-            { species: 'inori', lvl: 5 },
-            { species: 'shiva', lvl: 3 },
-            null,
-            { species: 'nurse', lvl: 2 },
-            null,
-            null
-        ];
-        populateActiveSlots(startSetup);
+        populateActiveSlots(Data.party.initial);
 
         // Wire hooks for scene transitions originating from systems
         Systems.sceneHooks.onBattleStart = () => this.SceneManager.changeScene(this.Scenes.battle);

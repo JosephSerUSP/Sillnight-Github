@@ -1,15 +1,14 @@
 import { Creatures } from './creatures.js';
+import { Dungeons } from './dungeon.js';
+import { Events } from './events.js';
 import { Equipment, Items } from './items.js';
+import { Party } from './party.js';
 import { Skills } from './skills.js';
 
 // ------------------- DATA DEFINITIONS -------------------
 export const Data = {
     // Configuration constants controlling core parameters.
     config: {
-        tileSize: 48,
-        viewDistance: 5,
-        mapWidth: 30,
-        mapHeight: 20,
         baseGoldPerEnemy: 20,
         baseXpPerEnemy: 5
     },
@@ -168,7 +167,10 @@ export const Data = {
     },
 
     creatures: Creatures,
+    dungeons: Dungeons,
+    events: Events,
     equipment: Equipment,
     items: Items,
+    party: Party,
     skills: Skills
 };
