@@ -2,7 +2,7 @@
 // Keep logic that manipulates GameState/Data here; avoid DOM work. To add a new helper,
 // export a function or lightweight class that can be shared across scenes/systems.
 
-import { Data } from './assets/data/data.js';
+import { Data } from '../assets/data/data.js';
 import { GameState } from './state.js';
 
 export function getMaxHp(unit) {
