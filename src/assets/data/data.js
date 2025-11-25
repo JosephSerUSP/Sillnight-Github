@@ -1,4 +1,71 @@
 // ------------------- DATA DEFINITIONS -------------------
+
+const SKILL_DEFAULTS = {
+    id: '',
+    name: '',
+    category: 'damage',
+    target: 'enemy-single',
+    speed: 0,
+    power: 0,
+    scaling: 1,
+    element: null,
+    sequence: 'strike',
+    effectKey: 'impact',
+    repeat: 1
+};
+
+const defaultSequenceByCategory = {
+    heal: 'heal',
+    effect: 'support'
+};
+
+const EFFECT_DEFAULTS = {
+    file: '',
+    scale: 1,
+    offset: { x: 0, y: 0, z: 1.2 },
+    duration: 900
+};
+
+const ACTION_SEQUENCE_DEFAULTS = {
+    waitAfter: 250,
+    steps: []
+};
+
+function normalizeSkill(def) {
+    const normalized = { ...SKILL_DEFAULTS, ...def };
+    normalized.effectKey = def.effectKey || def.animation || SKILL_DEFAULTS.effectKey;
+    if (def.sequence) {
+        normalized.sequence = def.sequence;
+    } else if (normalized.category === 'damage' && normalized.element) {
+        normalized.sequence = 'spell';
+    } else {
+        normalized.sequence = defaultSequenceByCategory[normalized.category] || SKILL_DEFAULTS.sequence;
+    }
+    normalized.repeat = def.repeat ?? SKILL_DEFAULTS.repeat;
+    delete normalized.animation;
+    return normalized;
+}
+
+function normalizeEffect(def) {
+    return {
+        ...EFFECT_DEFAULTS,
+        ...def,
+        offset: { ...EFFECT_DEFAULTS.offset, ...(def.offset || {}) },
+        duration: def.duration ?? EFFECT_DEFAULTS.duration,
+        scale: def.scale ?? EFFECT_DEFAULTS.scale
+    };
+}
+
+function normalizeSequence(def) {
+    const steps = (def.steps || []).map(step => ({ wait: 300, ...step }));
+    return {
+        ...ACTION_SEQUENCE_DEFAULTS,
+        ...def,
+        steps,
+        waitAfter: def.waitAfter ?? ACTION_SEQUENCE_DEFAULTS.waitAfter
+    };
+}
+
 export const Data = {
     // Configuration constants controlling core parameters.
     config: {
@@ -14,18 +81,19 @@ export const Data = {
     // Skills are defined declaratively here. Each skill has a
     // category (damage/heal/guard), a target selection rule, a base power,
     // scaling factors, an optional element, and a chosen animation.
-    skills: {
-        wait:   { id: 'wait',   name: 'Wait',        category: 'effect', target: 'self',         speed: 2,  effect: 'wait',  animation: 'flash' },
-        attack: { id: 'attack', name: 'Attack',      category: 'damage', target: 'enemy-single', speed: 0,  power: 4, scaling: 2,   animation: 'flash' },
-        guard:  { id: 'guard',  name: 'Guard',       category: 'effect', target: 'self',         speed: 2,  effect: 'guard', animation: 'flash' },
+    skills: (() => {
+        const defs = {
+        wait:   { id: 'wait',   name: 'Wait',        category: 'effect', target: 'self',         speed: 2,  effect: 'wait',  animation: 'flash', sequence: 'support' },
+        attack: { id: 'attack', name: 'Attack',      category: 'damage', target: 'enemy-single', speed: 0,  power: 4, scaling: 2,   animation: 'flash', sequence: 'strike' },
+        guard:  { id: 'guard',  name: 'Guard',       category: 'effect', target: 'self',         speed: 2,  effect: 'guard', animation: 'flash', sequence: 'support' },
 
-        attackRow: { id: 'attackRow', name: 'Attack Row', category: 'damage', target: 'enemy-row',   speed: 0,  power: 3, scaling: 1.5, animation: 'flash' },
-        cure:      { id: 'cure',      name: 'Cure',       category: 'heal',   target: 'ally-single', speed: 1,  power: 4, scaling: 2,   element: 'W', animation: 'cure' },
+        attackRow: { id: 'attackRow', name: 'Attack Row', category: 'damage', target: 'enemy-row',   speed: 0,  power: 3, scaling: 1.5, animation: 'flash', sequence: 'strike' },
+        cure:      { id: 'cure',      name: 'Cure',       category: 'heal',   target: 'ally-single', speed: 1,  power: 4, scaling: 2,   element: 'W', animation: 'cure', sequence: 'heal' },
 
-        tornado:   { id: 'tornado',   name: 'Tornado',    category: 'damage', target: 'enemy-all',   speed: -1, power: 4, scaling: 1,   element: 'G', animation: 'tornado' },
-        thunder:   { id: 'thunder',   name: '🟢Thunder',   category: 'damage', target: 'enemy-single',speed: 1,  power: 6, scaling: 2,   element: 'G', animation: 'thunder' },
-        ray:       { id: 'ray',       name: 'Ray',        category: 'damage', target: 'enemy-single',speed: 0,  power: 2, scaling: 1,   repeat: 3,   element: 'W', animation: 'flash' },
-        curse:     { id: 'curse',     name: 'Curse',      category: 'damage', target: 'enemy-single',speed: 0,  power: 16,scaling: 2,   element: 'K', animation: 'flash' },
+        tornado:   { id: 'tornado',   name: 'Tornado',    category: 'damage', target: 'enemy-all',   speed: -1, power: 4, scaling: 1,   element: 'G', animation: 'tornado', sequence: 'spell' },
+        thunder:   { id: 'thunder',   name: '🟢Thunder',   category: 'damage', target: 'enemy-single',speed: 1,  power: 6, scaling: 2,   element: 'G', animation: 'thunder', sequence: 'spell' },
+        ray:       { id: 'ray',       name: 'Ray',        category: 'damage', target: 'enemy-single',speed: 0,  power: 2, scaling: 1,   repeat: 3,   element: 'W', animation: 'flash', sequence: 'spell' },
+        curse:     { id: 'curse',     name: 'Curse',      category: 'damage', target: 'enemy-single',speed: 0,  power: 16,scaling: 2,   element: 'K', animation: 'curse', sequence: 'spell' },
 
         apocalypse: {
             id: 'apocalypse',
@@ -36,7 +104,8 @@ export const Data = {
             power: 8,
             scaling: 2.5,
             element: 'K',
-            animation: 'apocalypse'
+            animation: 'apocalypse',
+            sequence: 'spell'
         },
         anvil: {
             id: 'anvil',
@@ -47,7 +116,8 @@ export const Data = {
             power: 9,
             scaling: 2.2,
             element: 'R',
-            animation: 'anvil'
+            animation: 'impact',
+            sequence: 'strike'
         },
 
         cosmicRay: {
@@ -59,7 +129,8 @@ export const Data = {
             power: 5,
             scaling: 2,
             element: 'W',
-            animation: 'cosmicRay'
+            animation: 'cosmicRay',
+            sequence: 'spell'
         },
         gravityWell: {
             id: 'gravityWell',
@@ -70,7 +141,8 @@ export const Data = {
             power: 3,
             scaling: 1.8,
             element: 'B',
-            animation: 'gravityWell'
+            animation: 'gravityWell',
+            sequence: 'spell'
         },
 
         // --- Waiter: hybrid row attacker & single-target healer ---
@@ -83,7 +155,8 @@ export const Data = {
             power: 4,
             scaling: 1.6,
             element: 'K',
-            animation: 'silverTray'
+            animation: 'impact',
+            sequence: 'strike'
         },
         serveDrink: {
             id: 'serveDrink',
@@ -94,7 +167,8 @@ export const Data = {
             power: 3,
             scaling: 1.5,
             element: 'W',
-            animation: 'serveDrink'
+            animation: 'cure',
+            sequence: 'heal'
         },
 
         // --- Inori: single-target premium healer + holy nuke ---
@@ -107,7 +181,8 @@ export const Data = {
             power: 6,
             scaling: 2.5,
             element: 'W',
-            animation: 'latexPrayer'
+            animation: 'cure',
+            sequence: 'heal'
         },
         divineBolt: {
             id: 'divineBolt',
@@ -118,7 +193,8 @@ export const Data = {
             power: 6,
             scaling: 2.2,
             element: 'W',
-            animation: 'divineBolt'
+            animation: 'cosmicRay',
+            sequence: 'spell'
         },
 
         // --- Slumber: dreamy AoE caster ---
@@ -131,7 +207,8 @@ export const Data = {
             power: 3,
             scaling: 1.6,
             element: 'B',
-            animation: 'sleepMist'
+            animation: 'iceWind',
+            sequence: 'spell'
         },
 
         // --- Shiva: ice row control (plus Apocalypse) ---
@@ -144,7 +221,8 @@ export const Data = {
             power: 5,
             scaling: 2.0,
             element: 'B',
-            animation: 'diamondDust'
+            animation: 'iceSpike',
+            sequence: 'spell'
         },
 
         // --- Shadow Servant: surgical dark ST burst ---
@@ -157,7 +235,8 @@ export const Data = {
             power: 7,
             scaling: 2.0,
             element: 'K',
-            animation: 'shadowSpike'
+            animation: 'impact',
+            sequence: 'strike'
         },
 
         // --- Ifrit: big fire AoE ---
@@ -170,7 +249,8 @@ export const Data = {
             power: 5,
             scaling: 2.0,
             element: 'R',
-            animation: 'hellfire'
+            animation: 'impact',
+            sequence: 'spell'
         },
 
         // --- Nurse: risky ST poke + fast triage heal ---
@@ -183,7 +263,8 @@ export const Data = {
             power: 5,
             scaling: 1.8,
             element: 'K',
-            animation: 'injection'
+            animation: 'impact',
+            sequence: 'strike'
         },
         triage: {
             id: 'triage',
@@ -194,7 +275,8 @@ export const Data = {
             power: 4,
             scaling: 2.0,
             element: 'W',
-            animation: 'triage'
+            animation: 'cure',
+            sequence: 'heal'
         },
 
         // --- No. 7: ultra-fast multi-hit row pressure ---
@@ -236,336 +318,66 @@ export const Data = {
             element: 'R',
             animation: 'feast'
         }
-    },
+        };
+        return Object.fromEntries(Object.entries(defs).map(([k, v]) => [k, normalizeSkill(v)]));
+    })(),
 
-    // Animation registry: describes how each battle animation behaves. Systems.Battle3D
-    // uses these definitions to dispatch reusable animation steps instead of hard-coded
-    // branches.
-    animations: {
-        // --- Existing animations ---
-        jump: {
-            steps: [
-                { type: 'verticalSine', axis: 'z', amplitude: 0.75, speed: 0.6, duration: Math.PI, interval: 30 }
-            ]
-        },
-        flash: {
-            steps: [
-                { type: 'colorPulse', blend: 'additive', colors: { negative: 0x00ff00, positive: 0xff0000, neutral: 0x8888ff }, cycles: 6, interval: 50 }
-            ]
-        },
-        thunder: {
-            steps: [
-                {
-                    type: 'iconAbove',
-                    icon: '⛈️',
-                    scale: 0.8,
-                    behavior: 'riseFade',
-                    startHeight: 0.8,
-                    stayDuration: 0.2,
-                    riseSpeed: 0.05,
-                    fadeRate: 0.6,
-                    flashStart: 0.4,
-                    flashEnd: 1.4,
-                    flashColors: [0xffff00, 0xffffff],
-                    timeStep: 0.1,
-                    interval: 30,
-                    ttl: 2
-                }
-            ]
-        },
-        cure: {
-            steps: [
-                { type: 'sparkleSpiral', count: 3, angularVelocity: 0.3, descent: 0.1, duration: 3, interval: 30, scale: 0.5 }
-            ]
-        },
-        tornado: {
-            steps: [
-                {
-                    type: 'parallel',
-                    steps: [
-                        { type: 'lift', height: 3, duration: 2.5, wobble: { axis: 'x', amplitude: 0.25, frequency: 4 }, bounce: { amplitude: 0.5, duration: 1 }, interval: 30 },
-                        { type: 'orbitBillboards', icon: '🍃', count: 4, scale: 0.4, radius: 1, angularVelocity: 0.4, verticalOffset: 0.5, duration: 2.5, interval: 30 }
-                    ]
-                }
-            ]
-        },
-        hit: {
-            steps: [
-                { type: 'shake', axis: 'x', magnitude: 0.4, iterations: 8, interval: 40 },
-                { type: 'damageNumber' }
-            ]
-        },
-        die: {
-            steps: [
-                { type: 'scaleFade', duration: 1, interval: 32, scaleIncrease: 2 }
-            ]
-        },
-        apocalypse: {
-            steps: [
-                { type: 'colorPulse', blend: 'additive', colors: { neutral: 0xff4400 }, cycles: 8, interval: 60 },
-                {
-                    type: 'parallel',
-                    steps: [
-                        { type: 'lift', height: 2.5, duration: 2.5, wobble: { axis: 'x', amplitude: 0.3, frequency: 5 }, bounce: { amplitude: 0.8, duration: 1 }, interval: 32 },
-                        { type: 'orbitBillboards', icon: '☄️', count: 6, scale: 0.6, radius: 1.6, angularVelocity: 0.5, verticalOffset: 0.6, jitter: 0.2, duration: 2.5, interval: 32, fadeOut: true }
-                    ]
-                },
-                { type: 'shake', axis: 'y', magnitude: 0.5, iterations: 6, interval: 50 }
-            ]
-        },
-        anvil: {
-            steps: [
-                {
-                    type: 'iconAbove',
-                    icon: '🪨',
-                    scale: 0.9,
-                    behavior: 'easeDrop',
-                    startHeight: 3,
-                    landHeight: 0.8,
-                    ease: 0.08,
-                    impactBounce: { amplitude: 0.6, duration: 0.7 },
-                    fadeAfterImpact: true,
-                    interval: 24
-                },
-                { type: 'shake', axis: 'x', magnitude: 0.35, iterations: 6, interval: 35 }
-            ]
-        },
+    effects: (() => {
+        const defs = {
+            impact: { file: 'assets/effects/Impact.efkefc', offset: { z: 1.05 }, duration: 800 },
+            basicHit: { file: 'assets/effects/BasicHit.efkefc', offset: { z: 1 }, duration: 720 },
+            thunder: { file: 'assets/effects/Thunder.efkefc', offset: { z: 1.2 }, duration: 1250, scale: 1.1 },
+            tornado: { file: 'assets/effects/Tornado.efkefc', offset: { z: 1.1 }, duration: 1350, scale: 1.05 },
+            cure: { file: 'assets/effects/Cure.efkefc', offset: { z: 1.25 }, duration: 1000 },
+            apocalypse: { file: 'assets/effects/Apocalypse.efkefc', offset: { z: 1.4 }, duration: 1550, scale: 1.2 },
+            curse: { file: 'assets/effects/Curse.efkefc', offset: { z: 1.15 }, duration: 1150 },
+            iceSpike: { file: 'assets/effects/IceSpike.efkefc', offset: { z: 1.3 }, duration: 1150 },
+            iceWind: { file: 'assets/effects/IceWind.efkefc', offset: { z: 1.1 }, duration: 1050 },
+            cosmicRay: { file: 'assets/effects/BasicHit.efkefc', offset: { z: 1.2 }, duration: 950 },
+            gravityWell: { file: 'assets/effects/IceWind.efkefc', offset: { z: 1.1 }, duration: 1100 }
+        };
+        return Object.fromEntries(Object.entries(defs).map(([k, v]) => [k, normalizeEffect(v)]));
+    })(),
 
-        // --- New animations ---
+    actionSequences: (() => {
+        const defs = {
+            strike: {
+                steps: [
+                    { type: 'pose', tint: 0xffddaa, duration: 180 },
+                    { type: 'effect', effectFromAction: true, placement: 'target', height: 1, wait: 700 },
+                    { type: 'apply' }
+                ],
+                waitAfter: 320
+            },
+            spell: {
+                steps: [
+                    { type: 'pose', tint: 0x88b4ff, duration: 220 },
+                    { type: 'wait', duration: 140 },
+                    { type: 'effect', effectFromAction: true, placement: 'target', height: 1.2, wait: 950 },
+                    { type: 'apply' }
+                ],
+                waitAfter: 360
+            },
+            heal: {
+                steps: [
+                    { type: 'pose', tint: 0x9cf2d0, duration: 220 },
+                    { type: 'effect', effectFromAction: true, placement: 'ally', height: 1.35, wait: 900 },
+                    { type: 'apply' }
+                ],
+                waitAfter: 280
+            },
+            support: {
+                steps: [
+                    { type: 'pose', tint: 0xffffff, duration: 180 },
+                    { type: 'wait', duration: 220 },
+                    { type: 'apply' }
+                ],
+                waitAfter: 200
+            }
+        };
+        return Object.fromEntries(Object.entries(defs).map(([k, v]) => [k, normalizeSequence(v)]));
+    })(),
 
-        // Stargazer: glowy sniper beam
-        cosmicRay: {
-            steps: [
-                { type: 'colorPulse', blend: 'additive', colors: { neutral: 0xaa66ff }, cycles: 5, interval: 45 },
-                {
-                    type: 'iconAbove',
-                    icon: '✨',
-                    scale: 0.7,
-                    behavior: 'riseFade',
-                    startHeight: 0.6,
-                    stayDuration: 0.3,
-                    riseSpeed: 0.04,
-                    fadeRate: 0.7,
-                    interval: 30
-                }
-            ]
-        },
-        // Stargazer: swirling cosmic well
-        gravityWell: {
-            steps: [
-                {
-                    type: 'parallel',
-                    steps: [
-                        { type: 'lift', height: 1.5, duration: 1.8, wobble: { axis: 'y', amplitude: 0.15, frequency: 5 }, interval: 32 },
-                        { type: 'orbitBillboards', icon: '🌌', count: 5, scale: 0.45, radius: 1.2, angularVelocity: 0.35, verticalOffset: 0.3, duration: 1.8, interval: 32 }
-                    ]
-                }
-            ]
-        },
-
-        // Waiter: tray slam & healing service
-        silverTray: {
-            steps: [
-                {
-                    type: 'iconAbove',
-                    icon: '🍽️',
-                    scale: 0.9,
-                    behavior: 'easeDrop',
-                    startHeight: 2.5,
-                    landHeight: 0.9,
-                    ease: 0.1,
-                    impactBounce: { amplitude: 0.4, duration: 0.5 },
-                    fadeAfterImpact: true,
-                    interval: 26
-                },
-                { type: 'shake', axis: 'x', magnitude: 0.3, iterations: 5, interval: 32 }
-            ]
-        },
-        serveDrink: {
-            steps: [
-                { type: 'sparkleSpiral', count: 2, angularVelocity: 0.25, descent: 0.05, duration: 2.2, interval: 30, scale: 0.5 },
-                {
-                    type: 'iconAbove',
-                    icon: '🍷',
-                    scale: 0.7,
-                    behavior: 'riseFade',
-                    startHeight: 0.5,
-                    stayDuration: 0.4,
-                    riseSpeed: 0.03,
-                    fadeRate: 0.6,
-                    interval: 30
-                }
-            ]
-        },
-
-        // Inori: shining prayer and holy bolt
-        latexPrayer: {
-            steps: [
-                { type: 'colorPulse', blend: 'additive', colors: { neutral: 0xffffff }, cycles: 4, interval: 60 },
-                { type: 'sparkleSpiral', count: 4, angularVelocity: 0.35, descent: 0.12, duration: 2.5, interval: 28, scale: 0.6 }
-            ]
-        },
-        divineBolt: {
-            steps: [
-                {
-                    type: 'iconAbove',
-                    icon: '✨',
-                    scale: 0.8,
-                    behavior: 'riseFade',
-                    startHeight: 1.4,
-                    stayDuration: 0.2,
-                    riseSpeed: -0.06, // falls onto target
-                    fadeRate: 0.7,
-                    interval: 26
-                },
-                { type: 'shake', axis: 'y', magnitude: 0.28, iterations: 5, interval: 32 }
-            ]
-        },
-
-        // Slumber: drifting Zs
-        sleepMist: {
-            steps: [
-                {
-                    type: 'orbitBillboards',
-                    icon: '💤',
-                    count: 4,
-                    scale: 0.55,
-                    radius: 1.1,
-                    angularVelocity: 0.3,
-                    verticalOffset: 0.7,
-                    duration: 2.5,
-                    interval: 34
-                }
-            ]
-        },
-
-        // Shiva: ice shards
-        diamondDust: {
-            steps: [
-                {
-                    type: 'parallel',
-                    steps: [
-                        { type: 'lift', height: 2, duration: 2, wobble: { axis: 'x', amplitude: 0.2, frequency: 6 }, interval: 30 },
-                        { type: 'orbitBillboards', icon: '❄️', count: 6, scale: 0.5, radius: 1.4, angularVelocity: 0.45, verticalOffset: 0.4, duration: 2, interval: 30 }
-                    ]
-                }
-            ]
-        },
-
-        // Shadow Servant: stabbing shadow
-        shadowSpike: {
-            steps: [
-                { type: 'colorPulse', blend: 'additive', colors: { neutral: 0x551188 }, cycles: 4, interval: 50 },
-                {
-                    type: 'iconAbove',
-                    icon: '🗡️',
-                    scale: 0.8,
-                    behavior: 'easeDrop',
-                    startHeight: 2.2,
-                    landHeight: 0.8,
-                    ease: 0.12,
-                    fadeAfterImpact: true,
-                    interval: 24
-                }
-            ]
-        },
-
-        // Ifrit: blazing hellfire
-        hellfire: {
-            steps: [
-                { type: 'colorPulse', blend: 'additive', colors: { neutral: 0xff3300 }, cycles: 6, interval: 45 },
-                {
-                    type: 'orbitBillboards',
-                    icon: '🔥',
-                    count: 6,
-                    scale: 0.6,
-                    radius: 1.7,
-                    angularVelocity: 0.5,
-                    verticalOffset: 0.5,
-                    duration: 2.5,
-                    interval: 30
-                }
-            ]
-        },
-
-        // Nurse: syringe + soft healing glow
-        injection: {
-            steps: [
-                {
-                    type: 'iconAbove',
-                    icon: '💉',
-                    scale: 0.8,
-                    behavior: 'easeDrop',
-                    startHeight: 2.3,
-                    landHeight: 0.8,
-                    ease: 0.12,
-                    fadeAfterImpact: true,
-                    interval: 26
-                },
-                { type: 'shake', axis: 'x', magnitude: 0.3, iterations: 4, interval: 35 }
-            ]
-        },
-        triage: {
-            steps: [
-                { type: 'sparkleSpiral', count: 3, angularVelocity: 0.3, descent: 0.08, duration: 2.2, interval: 30, scale: 0.55 }
-            ]
-        },
-
-        // No. 7: spinning wind blades
-        windBlades: {
-            steps: [
-                {
-                    type: 'orbitBillboards',
-                    icon: '💨',
-                    count: 4,
-                    scale: 0.5,
-                    radius: 1.3,
-                    angularVelocity: 0.6,
-                    verticalOffset: 0.5,
-                    duration: 2,
-                    interval: 26
-                }
-            ]
-        },
-
-        // Masque: unsettling flash
-        maskTear: {
-            steps: [
-                { type: 'colorPulse', blend: 'additive', colors: { neutral: 0xff00ff }, cycles: 5, interval: 50 },
-                {
-                    type: 'iconAbove',
-                    icon: '🎭',
-                    scale: 0.8,
-                    behavior: 'riseFade',
-                    startHeight: 0.7,
-                    stayDuration: 0.3,
-                    riseSpeed: 0.04,
-                    fadeRate: 0.7,
-                    interval: 30
-                }
-            ]
-        },
-
-        // Joulart: indulgent self-heal
-        feast: {
-            steps: [
-                {
-                    type: 'iconAbove',
-                    icon: '🍰',
-                    scale: 0.9,
-                    behavior: 'riseFade',
-                    startHeight: 0.6,
-                    stayDuration: 0.6,
-                    riseSpeed: 0.03,
-                    fadeRate: 0.5,
-                    interval: 30
-                }
-            ]
-        }
-    },
-
-    // Creatures database defines base stats and move sets for each species.
-    // Extended with hpGrowth (per level) and xpCurve (xp cost per level).
     creatures: {
         pixie: {
             id: 'pixie',
