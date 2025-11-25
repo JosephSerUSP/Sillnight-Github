@@ -77,10 +77,11 @@ class ShellUI {
             </div>
             <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">${this.spriteMarkup(unit, 'h-16 w-16 object-contain', '', 'text-3xl')}</div>
             <div class="mt-auto w-full space-y-0.5">
+            <div class="text-[10px] text-right text-gray-500">${unit.hp}/${maxhp}</div>
                 <div class="w-full h-1 bg-gray-800"><div class="${hpColor} h-full transition-all duration-300" style="width:${hpPct}%"></div></div>
                 <div class="w-full h-1 bg-gray-800"><div class="bg-blue-500 h-full" style="width:${xpPct}%"></div></div>
             </div>
-            <div class="text-[10px] text-right text-gray-500">${unit.hp}/${maxhp}</div>
+
         `;
     }
 
