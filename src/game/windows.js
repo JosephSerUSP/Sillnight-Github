@@ -40,6 +40,7 @@ class ShellUI {
     constructor() {
         this.activeModalUnit = null;
         this.equipmentPickerPreset = null;
+        this.hasSwitchedOnce = false;
         this.bindings = {
             onRequestTurn: null,
             onResumeTurn: null
@@ -385,14 +386,15 @@ class ShellUI {
         if (unit.hp > maxhp) unit.hp = maxhp;
     }
 
-    switchScene(toBattle, onExploreRefresh) {
+    switchScene(toBattle, onMidTransition, options = {}) {
         const swipe = document.getElementById('swipe-overlay');
-        swipe.className = 'swipe-down';
-        setTimeout(() => {
-            const elExp = document.getElementById('explore-layer');
-            const elBat = document.getElementById('battle-layer');
-            const ctrls = document.getElementById('battle-controls');
-            const eCtrls = document.getElementById('explore-controls');
+        const elExp = document.getElementById('explore-layer');
+        const elBat = document.getElementById('battle-layer');
+        const ctrls = document.getElementById('battle-controls');
+        const eCtrls = document.getElementById('explore-controls');
+        const { instant = false } = options;
+
+        const setScene = (skipSwipe = false) => {
             if (toBattle) {
                 elExp.classList.remove('active-scene'); elExp.classList.add('hidden-scene');
                 elBat.classList.remove('hidden-scene'); elBat.classList.add('active-scene');
@@ -401,11 +403,24 @@ class ShellUI {
                 elBat.classList.add('hidden-scene'); elBat.classList.remove('active-scene');
                 elExp.classList.remove('hidden-scene'); elExp.classList.add('active-scene');
                 ctrls.classList.add('hidden'); eCtrls.classList.remove('hidden');
-                if (onExploreRefresh) onExploreRefresh();
             }
-            swipe.className = 'swipe-clear';
-            setTimeout(() => { swipe.className = 'swipe-reset'; }, 600);
-        }, 600);
+            if (onMidTransition) onMidTransition();
+            if (!skipSwipe) {
+                swipe.className = 'swipe-clear';
+                setTimeout(() => { swipe.className = 'swipe-reset'; }, 600);
+            }
+            this.hasSwitchedOnce = true;
+        };
+
+        if (instant) {
+            // First-time scene setups shouldn't flash a transition over already visible content.
+            setScene(true);
+            swipe.className = 'swipe-reset';
+            return;
+        }
+
+        swipe.className = 'swipe-down';
+        setTimeout(setScene, 600);
     }
 
     showBanner(text) {

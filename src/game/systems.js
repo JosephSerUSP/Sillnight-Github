@@ -878,66 +878,56 @@ export const Systems = {
             return baseMax;
         },
         startEncounter() {
-            // Trigger a screen wipe and transition to battle
-            const swipe = document.getElementById('swipe-overlay');
-            swipe.className = 'swipe-down';
-            setTimeout(() => {
-                // Initialize battle state
-                Systems.sceneHooks?.onBattleStart?.();
-                GameState.ui.mode = 'BATTLE';
-                UI.switchScene(true);
-                // Reset camera state
-                Systems.Battle3D.cameraState.angle = -Math.PI / 4;
-                Systems.Battle3D.cameraState.targetAngle = -Math.PI / 4;
-                Systems.Battle3D.setFocus('neutral');
-                Systems.Battle3D.resize();
-                // Build allies from active party
-                const allies = GameState.party.activeSlots.filter(u => u !== null).map(u => u);
-                // Generate random enemies based on floor level
-                const enemyCount = Math.floor(Math.random() * 3) + 1;
-                const enemyTypes = ['goblin', 'skeleton', 'pixie', 'golem', 'lich','inori','nurse','waiter','ifrit','shiva'];
-                const enemies = [];
-                for (let i = 0; i < enemyCount; i++) {
-                    const type = enemyTypes[Math.floor(Math.random() * Math.min(enemyTypes.length, GameState.run.floor + 1))];
-                    const def = Data.creatures[type];
-                    // Level scaling: base HP times a factor per floor
-                    const mult = 1 + (GameState.run.floor * 0.1);
-                    enemies.push({
-                        uid: `e${i}_${Date.now()}`,
-                        speciesId: type,
-                        name: def.name,
-                        sprite: def.sprite,
-                        spriteAsset: def.spriteAsset,
-                        level: GameState.run.floor,
-                        hp: Math.floor(def.baseHp * mult),
-                        maxhp: Math.floor(def.baseHp * mult),
-                        temperament: def.temperament,
-                        elements: def.elements ? [...def.elements] : [],
-                        acts: def.acts,
-                        slotIndex: i
-                    });
-                }
-                // Initialize battle state structure
-                GameState.battle = {
-                    allies: allies,
-                    enemies: enemies,
-                    queue: [],
-                    turnIndex: 0,
-                    roundCount: 0,
-                    playerTurnRequested: false,
-                    phase: 'INIT'
-                };
-                // Setup 3D scene for battle
-                Systems.Battle3D.setupScene(GameState.battle.allies, GameState.battle.enemies);
-                Log.battle(`Enemies: ${enemies.map(e => e.name).join(', ')}`);
-                UI.showBanner('ENCOUNTER');
-                // Swipe up and begin after delay
-                swipe.className = 'swipe-clear';
-                setTimeout(() => {
-                    swipe.className = 'swipe-reset';
-                    setTimeout(() => Systems.Battle.nextRound(), 1500);
-                }, 600);
-            }, 600);
+            // Initialize battle state and let the scene transition handle the wipe
+            GameState.ui.mode = 'BATTLE';
+            // Reset camera state
+            Systems.Battle3D.cameraState.angle = -Math.PI / 4;
+            Systems.Battle3D.cameraState.targetAngle = -Math.PI / 4;
+            Systems.Battle3D.setFocus('neutral');
+            Systems.Battle3D.resize();
+            // Build allies from active party
+            const allies = GameState.party.activeSlots.filter(u => u !== null).map(u => u);
+            // Generate random enemies based on floor level
+            const enemyCount = Math.floor(Math.random() * 3) + 1;
+            const enemyTypes = ['goblin', 'skeleton', 'pixie', 'golem', 'lich','inori','nurse','waiter','ifrit','shiva'];
+            const enemies = [];
+            for (let i = 0; i < enemyCount; i++) {
+                const type = enemyTypes[Math.floor(Math.random() * Math.min(enemyTypes.length, GameState.run.floor + 1))];
+                const def = Data.creatures[type];
+                // Level scaling: base HP times a factor per floor
+                const mult = 1 + (GameState.run.floor * 0.1);
+                enemies.push({
+                    uid: `e${i}_${Date.now()}`,
+                    speciesId: type,
+                    name: def.name,
+                    sprite: def.sprite,
+                    spriteAsset: def.spriteAsset,
+                    level: GameState.run.floor,
+                    hp: Math.floor(def.baseHp * mult),
+                    maxhp: Math.floor(def.baseHp * mult),
+                    temperament: def.temperament,
+                    elements: def.elements ? [...def.elements] : [],
+                    acts: def.acts,
+                    slotIndex: i
+                });
+            }
+            // Initialize battle state structure
+            GameState.battle = {
+                allies: allies,
+                enemies: enemies,
+                queue: [],
+                turnIndex: 0,
+                roundCount: 0,
+                playerTurnRequested: false,
+                phase: 'INIT'
+            };
+            // Setup 3D scene for battle
+            Systems.Battle3D.setupScene(GameState.battle.allies, GameState.battle.enemies);
+            Log.battle(`Enemies: ${enemies.map(e => e.name).join(', ')}`);
+            UI.showBanner('ENCOUNTER');
+            Systems.sceneHooks?.onBattleStart?.();
+            // Begin after the transition finishes
+            setTimeout(() => Systems.Battle.nextRound(), 1800);
         },
         nextRound() {
             if (!GameState.battle) return;
@@ -1088,7 +1078,6 @@ export const Systems = {
             if (win) {
                 UI.showBanner('VICTORY');
                 GameState.ui.mode = 'BATTLE_WIN';
-                Systems.sceneHooks?.onBattleEnd?.();
                 Systems.Battle3D.setFocus('victory');
                 // Calculate rewards
                 const gold = GameState.battle.enemies.length * Data.config.baseGoldPerEnemy * GameState.run.floor;
@@ -1127,7 +1116,7 @@ export const Systems = {
                     <div class="text-yellow-500 text-2xl mb-4">VICTORY</div>
                     <div class="text-white">Found ${gold} Gold</div>
                     <div class="text-white">Party +${xp} XP</div>
-                    <button class="mt-4 border border-white px-4 py-2 hover:bg-gray-800" onclick="Game.Views.UI.closeModal(); Game.Views.UI.switchScene(false);">CONTINUE</button>
+                    <button class="mt-4 border border-white px-4 py-2 hover:bg-gray-800" onclick="Game.Systems.Battle.finishVictory()">CONTINUE</button>
                 `);
             } else {
                 GameState.ui.mode = 'EXPLORE';
@@ -1137,6 +1126,11 @@ export const Systems = {
                     <button class="mt-4 border border-red-800 text-red-500 px-4 py-2 hover:bg-red-900/20" onclick="location.reload()">RESTART</button>
                 `);
             }
+        },
+        finishVictory() {
+            UI.closeModal();
+            GameState.battle = null;
+            Systems.sceneHooks?.onBattleEnd?.();
         }
     },
 };

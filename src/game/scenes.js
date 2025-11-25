@@ -17,7 +17,8 @@ export class Scene_Base {
 export class Scene_Explore extends Scene_Base {
     onEnter() {
         GameState.ui.mode = 'EXPLORE';
-        this.ui.switchScene(false, () => this.systems.Explore.render());
+        const instant = !this.ui.hasSwitchedOnce;
+        this.ui.switchScene(false, () => this.systems.Explore.render(), { instant });
     }
 
     handleInput(e) {
