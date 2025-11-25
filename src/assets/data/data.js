@@ -1,12 +1,24 @@
 import { Creatures } from './creatures.js';
 import { Dungeons } from './dungeon.js';
 import { Events } from './events.js';
-import { Equipment, Items } from './items.js';
+import { Equipment, Items, defaultEquipment, defaultItem } from './items.js';
 import { Party } from './party.js';
-import { Skills } from './skills.js';
+import { Skills, defaultSkill } from './skills.js';
+
+// Helper function to merge default values.
+function applyDefaults(definitions, defaults) {
+    const result = {};
+    for (const key in definitions) {
+        result[key] = { ...defaults, ...definitions[key] };
+    }
+    return result;
+}
 
 // ------------------- DATA DEFINITIONS -------------------
 export const Data = {
+    defaultSkill,
+    defaultItem,
+    defaultEquipment,
     // Configuration constants controlling core parameters.
     config: {
         baseGoldPerEnemy: 20,
@@ -169,8 +181,8 @@ export const Data = {
     creatures: Creatures,
     dungeons: Dungeons,
     events: Events,
-    equipment: Equipment,
-    items: Items,
+    equipment: applyDefaults(Equipment, defaultEquipment),
+    items: applyDefaults(Items, defaultItem),
     party: Party,
-    skills: Skills
+    skills: applyDefaults(Skills, defaultSkill)
 };

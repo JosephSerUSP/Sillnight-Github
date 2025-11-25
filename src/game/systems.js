@@ -875,25 +875,92 @@ export const Systems = {
             const elems = unit.elements || [];
             return elems.reduce((mult, e) => mult * this.elementRelation(actionElement, e, role), 1);
         },
-        calculateActionValue(action, unit, target) {
-            if (action.category === 'effect') return 0;
-            const pow = action.power || 0;
-            const sc = action.scaling || 0;
-            const base = Math.floor(pow + sc * unit.level);
+        calculateEffectValue(effect, action, a, b) {
+            if (!effect.formula) return 0;
+            let value = 0;
+            try {
+                value = Math.floor(eval(effect.formula));
+            } catch (e) {
+                console.error('Error evaluating formula:', effect.formula, e);
+                return 0;
+            }
+
             const element = action.element;
-            const attackMult = this.elementMultiplier(element, unit, 'attacker');
-            const defenseMult = this.elementMultiplier(element, target, 'defender');
-            let value = Math.floor(base * attackMult * defenseMult);
-            if (action.category === 'heal') value = -value;
-            return value;
+            const attackerWithBonuses = this.getUnitWithEquipmentEffects(a);
+            const attackMult = this.elementMultiplier(element, attackerWithBonuses, 'attacker');
+            const defenseMult = this.elementMultiplier(element, b, 'defender');
+            let finalValue = Math.floor(value * attackMult * defenseMult);
+
+            if (a.equipmentId) {
+                const eq = Data.equipment[a.equipmentId];
+                if (eq) {
+                    eq.effects.forEach(eff => {
+                        if (eff.type === 'power_bonus') {
+                            finalValue += parseInt(eff.formula);
+                        }
+                    });
+                }
+            }
+
+            if (effect.type === 'hp_damage' && b.status?.includes('guarding')) {
+                finalValue = Math.floor(finalValue / 2);
+                Log.battle('> Guarding!');
+            }
+            return finalValue;
+        },
+        applyEffects(action, user, targets) {
+            const results = [];
+            (action.effects || []).forEach(effect => {
+                targets.forEach(target => {
+                    let value = 0;
+                    if (effect.type !== 'add_status') {
+                        value = this.calculateEffectValue(effect, action, user, target);
+                    }
+                    results.push({ target, value, effect });
+                });
+            });
+            return results;
+        },
+        getUnitWithEquipmentEffects(unit) {
+            if (!unit.equipmentId) return { ...unit };
+
+            const equipment = Data.equipment[unit.equipmentId];
+            if (!equipment) return { ...unit };
+
+            const unitWithBonuses = { ...unit };
+
+            equipment.effects.forEach(effect => {
+                switch (effect.type) {
+                    case 'hp_bonus_percent':
+                        unitWithBonuses.maxhp = Math.round(unitWithBonuses.maxhp * (1 + parseFloat(effect.formula)));
+                        break;
+                    case 'power_bonus':
+                        // This will need to be applied in calculateEffectValue
+                        break;
+                    case 'speed_bonus':
+                        // This will need to be applied when building the turn queue
+                        break;
+                    case 'element_change':
+                        unitWithBonuses.elements = [effect.element];
+                        break;
+                }
+            });
+
+            return unitWithBonuses;
         },
         getMaxHp(unit) {
             const def = Data.creatures[unit.speciesId];
             let baseMax = Math.round(def.baseHp * (1 + def.hpGrowth * (unit.level - 1)));
-            // apply equipment bonus
+
             if (unit.equipmentId) {
                 const eq = Data.equipment[unit.equipmentId];
-                if (eq && eq.hpBonus) baseMax = Math.round(baseMax * (1 + eq.hpBonus));
+                if (eq) {
+                    eq.effects.forEach(effect => {
+                        if (effect.type === 'hp_bonus_percent') {
+                            baseMax = Math.round(baseMax * (1 + parseFloat(effect.formula)));
+                        }
+                    });
+                }
             }
             return baseMax;
         },
@@ -938,7 +1005,8 @@ export const Systems = {
                         temperament: def.temperament,
                         elements: def.elements ? [...def.elements] : [],
                         acts: def.acts,
-                        slotIndex: i
+                        slotIndex: i,
+                        status: []
                     });
                 }
                 // Initialize battle state structure
@@ -970,6 +1038,14 @@ export const Systems = {
             Systems.Battle3D.setFocus('neutral');
             if (GameState.battle.allies.every(u => u.hp <= 0)) return this.end(false);
             if (GameState.battle.enemies.every(u => u.hp <= 0)) return this.end(true);
+
+            // Clear turn-based statuses like 'guarding'
+            [...GameState.battle.allies, ...GameState.battle.enemies].forEach(u => {
+                if (u.status) {
+                    u.status = u.status.filter(s => s !== 'guarding');
+                }
+            });
+
             Log.battle(`--- Round ${GameState.battle.roundCount} ---`);
             if (GameState.battle.playerTurnRequested) {
                 GameState.battle.phase = 'PLAYER_INPUT';
@@ -978,9 +1054,26 @@ export const Systems = {
                 Log.battle('Waiting for orders...');
                 return;
             }
-            // Build action queue randomly from all living units
-            const allUnits = [...GameState.battle.allies, ...GameState.battle.enemies].filter(u => u.hp > 0);
-            GameState.battle.queue = allUnits.sort(() => Math.random() - 0.5);
+            // Build action queue from all living units, factoring in speed
+            const allUnits = [...GameState.battle.allies, ...GameState.battle.enemies]
+                .filter(u => u.hp > 0)
+                .map(u => {
+                    let speed = 0; // default speed
+                    if (u.equipmentId) {
+                        const eq = Data.equipment[u.equipmentId];
+                        if (eq) {
+                            eq.effects.forEach(eff => {
+                                if (eff.type === 'speed_bonus') {
+                                    speed += parseInt(eff.formula);
+                                }
+                            });
+                        }
+                    }
+                    return { ...u, speed };
+                });
+
+            allUnits.sort((a, b) => b.speed - a.speed || Math.random() - 0.5);
+            GameState.battle.queue = allUnits;
             GameState.battle.turnIndex = 0;
             this.processNextTurn();
         },
@@ -1048,7 +1141,7 @@ export const Systems = {
             if (!chosen) {
                 chosen = possibleActs[Math.floor(Math.random() * possibleActs.length)];
             }
-            const action = Data.skills[chosen.toLowerCase()] || Data.skills['attack'];
+            const action = Data.skills[chosen] || Data.items[chosen] || Data.skills['attack'];
             let targets = [];
             const validEnemies = enemies.filter(u => u.hp > 0);
             const validFriends = friends.filter(u => u.hp > 0);
@@ -1070,28 +1163,60 @@ export const Systems = {
             }
             // Show banner for the action
             UI.showBanner(`${unit.name} used ${action.name}!`);
-            const results = targets.map(t => ({ target: t, value: this.calculateActionValue(action, unit, t) }));
+            const results = this.applyEffects(action, unit, targets);
             const script = Data.actionScripts[action.script] || Data.actionScripts.attack || [];
             const applyResults = () => {
-                if (action.category === 'effect' && action.id !== 'wait') {
-                    Log.battle(`> ${unit.name} stands ready.`);
-                }
-                results.forEach(({ target, value }) => {
+                results.forEach(({ target, value, effect }) => {
                     if (!target) return;
-                    if (value < 0) {
-                        const maxhp = Systems.Battle.getMaxHp(target);
-                        target.hp = Math.min(maxhp, target.hp - value);
-                        Log.battle(`> ${target.name} healed for ${Math.abs(value)}.`);
-                    } else if (value > 0) {
-                        target.hp = Math.max(0, target.hp - value);
-                        Log.battle(`> ${unit.name} hits ${target.name} for ${value}.`);
-                        if (target.hp <= 0) {
-                            Log.battle(`> ${target.name} was defeated!`);
-                            const ts = Systems.Battle3D.sprites[target.uid];
-                            if (ts) ts.visible = false;
-                        }
+
+                    switch (effect.type) {
+                        case 'hp_damage':
+                            target.hp = Math.max(0, target.hp - value);
+                            Log.battle(`> ${unit.name} hits ${target.name} for ${value}.`);
+                            if (target.hp <= 0) {
+                                Log.battle(`> ${target.name} was defeated!`);
+                                const ts = Systems.Battle3D.sprites[target.uid];
+                                if (ts) ts.visible = false;
+                            }
+                            Systems.Battle3D.showDamageNumber(target.uid, value);
+                            break;
+                        case 'hp_heal':
+                            const maxhp = Systems.Battle.getMaxHp(target);
+                            target.hp = Math.min(maxhp, target.hp + value);
+                            Log.battle(`> ${target.name} healed for ${value}.`);
+                            Systems.Battle3D.showDamageNumber(target.uid, -value);
+                            break;
+                        case 'hp_heal_ratio':
+                            const maxHpRatio = Systems.Battle.getMaxHp(target);
+                            const healAmount = Math.floor(maxHpRatio * parseFloat(effect.formula));
+                            target.hp = Math.min(maxHpRatio, target.hp + healAmount);
+                            Log.battle(`> ${target.name} healed for ${healAmount}.`);
+                            Systems.Battle3D.showDamageNumber(target.uid, -healAmount);
+                            break;
+                        case 'revive':
+                            if (target.hp <= 0) {
+                                const revivedHp = Math.floor(Systems.Battle.getMaxHp(target) * parseFloat(effect.formula));
+                                target.hp = revivedHp;
+                                Log.battle(`> ${target.name} was revived with ${revivedHp} HP.`);
+                                const ts = Systems.Battle3D.sprites[target.uid];
+                                if (ts) ts.visible = true;
+                            }
+                            break;
+                        case 'increase_max_hp':
+                            target.maxhp += parseInt(effect.formula);
+                            target.hp += parseInt(effect.formula);
+                            Log.battle(`> ${target.name}'s Max HP increased by ${effect.formula}.`);
+                            break;
+                        case 'add_status':
+                            if (Math.random() < (effect.chance || 1)) {
+                                if (!target.status) target.status = [];
+                                if (!target.status.includes(effect.status)) {
+                                    target.status.push(effect.status);
+                                }
+                                Log.battle(`> ${target.name} is now ${effect.status}.`);
+                            }
+                            break;
                     }
-                    Systems.Battle3D.showDamageNumber(target.uid, value);
                 });
                 // Re-render party HP bars and check for end-of-battle
                 UI.renderParty();
