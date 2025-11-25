@@ -238,6 +238,138 @@ export const Data = {
         }
     },
 
+    motionClips: {
+        jumpSmall: {
+            steps: [
+                { type: 'verticalSine', axis: 'z', amplitude: 0.75, speed: 0.6, durationFrames: 30, intervalFrames: 2 }
+            ]
+        },
+        liftAndBounceBig: {
+            defaults: {
+                height: 2.0,
+                durationFrames: 120,
+                wobbleAmplitude: 0.2,
+                wobbleFrequency: 4,
+                bounceAmplitude: 0.5,
+                bounceDurationFrames: 30
+            },
+            steps: [
+                {
+                    type: 'lift',
+                    height: '$height',
+                    durationFrames: '$durationFrames',
+                    intervalFrames: 2,
+                    bounce: { amplitude: '$bounceAmplitude', durationFrames: '$bounceDurationFrames' }
+                }
+            ]
+        },
+        hitShake: {
+            steps: [
+                { type: 'shake', axis: 'x', magnitude: 0.4, iterations: 8, intervalFrames: 2 }
+            ]
+        },
+        dieScaleFade: {
+            steps: [
+                { type: 'scaleFade', durationFrames: 60, intervalFrames: 2, scaleIncrease: 2.0 }
+            ]
+        }
+    },
+
+    vfxClips: {
+        tornadoField: {
+            effekseerKey: 'fx_tornado_main',
+            origin: 'target',
+            anchor: 'target',
+            attach: 'center',
+            durationFrames: 150,
+            blocking: true
+        },
+        impactHeavy: {
+            effekseerKey: 'fx_impact_heavy',
+            origin: 'target',
+            attach: 'feet',
+            durationFrames: 45
+        },
+        fireballProjectile: {
+            effekseerKey: 'fx_fireball_projectile',
+            origin: 'caster',
+            anchor: 'caster',
+            attach: 'center',
+            durationFrames: 30,
+            blocking: true
+        },
+        fireballExplosion: {
+            effekseerKey: 'fx_fireball_explosion',
+            origin: 'group',
+            anchor: 'world',
+            attach: 'center',
+            durationFrames: 45,
+            blocking: true
+        },
+        diamondDustGust: {
+            effekseerKey: 'fx_diamond_dust_gust',
+            origin: 'betweenCasterAndGroup',
+            anchor: 'world',
+            durationFrames: 90,
+            blocking: false
+        },
+        diamondDustOnTarget: {
+            effekseerKey: 'fx_diamond_dust_ice',
+            origin: 'target',
+            attach: 'center',
+            durationFrames: 60,
+            blocking: true
+        }
+    },
+
+    actionSequences: {
+        tornado: {
+            sequence: [
+                { kind: 'motion', who: 'caster', clip: 'jumpSmall' },
+                {
+                    kind: 'forEachTarget',
+                    mode: 'sequential',
+                    steps: [
+                        {
+                            kind: 'parallel',
+                            steps: [
+                                { kind: 'motion', who: 'target', clip: 'liftAndBounceBig', overrides: { height: 3.0, durationFrames: 150 } },
+                                { kind: 'vfx', clip: 'tornadoField', who: 'target' }
+                            ]
+                        },
+                        { kind: 'effect' },
+                        { kind: 'vfx', clip: 'impactHeavy', who: 'target' },
+                        { kind: 'motion', who: 'target', clip: 'hitShake' }
+                    ]
+                }
+            ]
+        },
+        fireball: {
+            sequence: [
+                { kind: 'motion', who: 'caster', clip: 'jumpSmall' },
+                { kind: 'vfx', clip: 'fireballProjectile', who: 'caster' },
+                { kind: 'vfx', clip: 'fireballExplosion', who: 'group' },
+                { kind: 'forEachTarget', mode: 'sequential', steps: [ { kind: 'effect' } ] }
+            ]
+        },
+        diamondDust: {
+            sequence: [
+                { kind: 'motion', who: 'caster', clip: 'jumpSmall' },
+                { kind: 'vfx', clip: 'diamondDustGust', who: 'world', blockingOverride: false },
+                { kind: 'wait', waitFrames: 24 },
+                {
+                    kind: 'forEachTarget',
+                    mode: 'sequential',
+                    perTargetDelayFrames: 4,
+                    steps: [
+                        { kind: 'vfx', clip: 'diamondDustOnTarget', who: 'target' },
+                        { kind: 'effect' }
+                    ]
+                }
+            ]
+        }
+    },
+
     // Animation registry: describes how each battle animation behaves. Systems.Battle3D
     // uses these definitions to dispatch reusable animation steps instead of hard-coded
     // branches.
