@@ -16,12 +16,12 @@ export const Systems = {
         cache: {},
         // Rotation matrix to convert the game's Z-up coordinates to Effekseer's Y-up system.
         zToYUpMatrix: new THREE.Matrix4().makeRotationX(-Math.PI / 2),
+        // Inverse rotation for converting Effekseer-space camera matrices back to world space.
+        yToZUpMatrix: new THREE.Matrix4().makeRotationX(Math.PI / 2),
         convertToEffekseerPosition(position = { x: 0, y: 0, z: 0 }) {
-            // Effekseer expects Y to be "up". Our world uses Z-up, so map:
-            //   x -> x
-            //   y -> z
-            //   z -> -y
-            return { x: position.x, y: position.z, z: -position.y };
+            const vec = new THREE.Vector3(position.x, position.y, position.z);
+            vec.applyMatrix4(this.zToYUpMatrix);
+            return { x: vec.x, y: vec.y, z: vec.z };
         },
         init(renderer) {
             if (!window.effekseer || !renderer) return Promise.resolve(null);
@@ -90,7 +90,11 @@ export const Systems = {
         },
         update(camera) {
             if (!this.context || !camera) return;
-            const viewMatrix = camera.matrixWorldInverse.clone().multiply(this.zToYUpMatrix);
+            // Convert the camera's world-space view matrix into Effekseer's Y-up space so
+            // that effects and sprites line up. Because effect positions are rotated into
+            // Effekseer space (Z-up -> Y-up), we need to apply the inverse rotation when
+            // supplying the view matrix: view = M_view_world * R^-1.
+            const viewMatrix = camera.matrixWorldInverse.clone().multiply(this.yToZUpMatrix);
             this.context.setProjectionMatrix(camera.projectionMatrix.elements);
             this.context.setCameraMatrix(viewMatrix.elements);
             this.context.update();
