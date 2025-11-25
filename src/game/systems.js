@@ -895,7 +895,7 @@ export const Systems = {
                 const allies = GameState.party.activeSlots.filter(u => u !== null).map(u => u);
                 // Generate random enemies based on floor level
                 const enemyCount = Math.floor(Math.random() * 3) + 1;
-                const enemyTypes = ['goblin', 'skeleton', 'pixie', 'golem', 'lich','inori','nurse','waiter','ifrit','shiva'];
+                const enemyTypes = ['goblin', 'skeleton', 'pixie', 'golem', 'lich', 'inori', 'nurse', 'waiter', 'ifrit', 'shiva', 'joulart', 'masque', 'titania', 'no7', 'nurse', 'shadowServant', 'slumber'];
                 const enemies = [];
                 for (let i = 0; i < enemyCount; i++) {
                     const type = enemyTypes[Math.floor(Math.random() * Math.min(enemyTypes.length, GameState.run.floor + 1))];
