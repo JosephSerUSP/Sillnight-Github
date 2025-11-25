@@ -14,6 +14,15 @@ export const Systems = {
         context: null,
         initPromise: null,
         cache: {},
+        // Rotation matrix to convert the game's Z-up coordinates to Effekseer's Y-up system.
+        zToYUpMatrix: new THREE.Matrix4().makeRotationX(-Math.PI / 2),
+        convertToEffekseerPosition(position = { x: 0, y: 0, z: 0 }) {
+            // Effekseer expects Y to be "up". Our world uses Z-up, so map:
+            //   x -> x
+            //   y -> z
+            //   z -> -y
+            return { x: position.x, y: position.z, z: -position.y };
+        },
         init(renderer) {
             if (!window.effekseer || !renderer) return Promise.resolve(null);
             if (this.context) return Promise.resolve(this.context);
@@ -75,13 +84,15 @@ export const Systems = {
             const ready = this.initPromise || Promise.resolve(this.context);
             return ready.then(() => this.loadEffect(name, path)).then(effect => {
                 if (!effect || !this.context) return null;
-                return this.context.play(effect, position.x, position.y, position.z);
+                const effekseerPos = this.convertToEffekseerPosition(position);
+                return this.context.play(effect, effekseerPos.x, effekseerPos.y, effekseerPos.z);
             });
         },
         update(camera) {
             if (!this.context || !camera) return;
+            const viewMatrix = camera.matrixWorldInverse.clone().multiply(this.zToYUpMatrix);
             this.context.setProjectionMatrix(camera.projectionMatrix.elements);
-            this.context.setCameraMatrix(camera.matrixWorldInverse.elements);
+            this.context.setCameraMatrix(viewMatrix.elements);
             this.context.update();
             this.context.draw();
         }
@@ -549,7 +560,12 @@ export const Systems = {
                         texture = new THREE.CanvasTexture(canvas);
                         texture.magFilter = THREE.NearestFilter;
                     }
-                    const mat = new THREE.SpriteMaterial({ map: texture });
+                    const mat = new THREE.SpriteMaterial({
+                        map: texture,
+                        transparent: true,
+                        depthWrite: false,
+                        alphaTest: 0.01
+                    });
                     const sprite = new THREE.Sprite(mat);
                     sprite.position.set(pos.x, pos.y, 1.5);
                     const baseScale = computeSpriteScale(texture);
