@@ -146,53 +146,140 @@ class ShellUI {
         const modal = document.getElementById('party-modal');
         const isOpen = !modal.classList.contains('hidden');
         modal.classList.toggle('hidden');
+
         if (!isOpen) {
-            const reserveEl = document.getElementById('reserve-list');
-            const activeEl = document.getElementById('active-list');
-            reserveEl.innerHTML = '';
-            activeEl.innerHTML = '';
-            const activeSet = new Set(GameState.party.activeSlots.filter(Boolean).map(u => u.uid));
-            const reserve = GameState.roster.filter(u => !activeSet.has(u.uid));
-            reserve.forEach(u => {
-                const row = document.createElement('div');
-                row.className = 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1';
-                row.innerHTML = `<div class="flex items-center gap-2">${this.spriteMarkup(u, 'h-10 w-10 object-contain')}<div><div class="text-yellow-100">${u.name}</div><div class="text-xs text-gray-500">Lv${u.level}</div></div></div>`;
-                const btn = document.createElement('button');
-                btn.className = 'text-xs border border-gray-600 px-2 py-1 hover:bg-white hover:text-black';
-                btn.innerText = 'SET';
-                btn.onclick = () => {
-                    const empty = GameState.party.activeSlots.findIndex(s => s === null);
-                    if (empty !== -1) {
-                        GameState.party.activeSlots[empty] = u;
-                        u.slotIndex = empty;
-                        this.renderParty();
-                        this.toggleParty();
-                    } else {
-                        alert('No empty slot! Try swapping.');
-                    }
-                };
-                row.appendChild(btn);
-                reserveEl.appendChild(row);
-            });
-            GameState.party.activeSlots.forEach((u, idx) => {
-                const row = document.createElement('div');
-                row.className = 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1';
-                if (u) {
-                    row.innerHTML = `<div class="flex items-center gap-2">${this.spriteMarkup(u, 'h-10 w-10 object-contain')}<div><div class="text-yellow-100">${u.name}</div><div class="text-xs text-gray-500">Lv${u.level}</div></div></div>`;
-                    const btn = document.createElement('button');
-                    btn.className = 'text-xs border border-gray-600 px-2 py-1 hover:bg-white hover:text-black';
-                    btn.innerText = 'REMOVE';
-                    btn.onclick = () => {
-                        GameState.party.activeSlots[idx] = null;
-                        this.renderParty();
-                        this.toggleParty();
-                    };
-                    row.appendChild(btn);
-                } else {
-                    row.innerHTML = '<div class="text-gray-600">(EMPTY)</div>';
+            this.renderPartyMenu();
+        } else {
+            // Clear selection when closing
+            const selected = document.querySelector('.party-menu-slot.selected');
+            if (selected) {
+                selected.classList.remove('selected');
+            }
+        }
+    }
+
+    renderPartyMenu() {
+        const container = document.getElementById('party-menu-container');
+        container.innerHTML = '';
+        const columns = 7;
+        const rows = 5;
+        const totalSlots = columns * rows;
+
+        const activeSet = new Set(GameState.party.activeSlots.filter(Boolean).map(u => u.uid));
+        const reserveUnits = GameState.roster.filter(u => !activeSet.has(u.uid));
+        let reserveUnitIndex = 0;
+
+        for (let i = 0; i < totalSlots; i++) {
+            const row = Math.floor(i / columns);
+            const col = i % columns;
+
+            let unit = null;
+            let index = -1;
+            let isReserved = true;
+            let isEmptyActiveSlot = false;
+
+            // Determine if the slot is for an active party member
+            if (row < 2 && col < 3) {
+                const activeSlotIndex = row * 3 + col;
+                unit = GameState.party.activeSlots[activeSlotIndex];
+                index = activeSlotIndex;
+                isReserved = false;
+                if (!unit) {
+                    isEmptyActiveSlot = true;
                 }
-                activeEl.appendChild(row);
-            });
+            } else {
+                // This slot is for a reserve unit, if available
+                if (reserveUnitIndex < reserveUnits.length) {
+                    unit = reserveUnits[reserveUnitIndex];
+                    reserveUnitIndex++;
+                }
+            }
+
+            const div = document.createElement('div');
+            let baseClasses = 'party-menu-slot relative flex flex-col p-1';
+            if (!isReserved) {
+                baseClasses += ' bg-gray-800/50';
+            }
+            div.className = baseClasses;
+
+            div.dataset.uid = unit ? unit.uid : `empty_${index}`;
+            div.dataset.index = index;
+            div.dataset.isReserved = isReserved;
+
+            if (unit) {
+                const maxhp = getMaxHp(unit);
+                const hpPct = (unit.hp / maxhp) * 100;
+                const color = hpPct < 30 ? 'bg-red-600' : 'bg-green-600';
+                div.innerHTML = `
+                    <div class="flex justify-between text-xs text-gray-300">
+                        <span>${unit.name}</span> <span class="text-[10px]">Lv${unit.level}</span>
+                    </div>
+                    <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">${this.spriteMarkup(unit, 'h-16 w-16 object-contain', '', 'text-3xl')}</div>
+                    <div class="mt-auto w-full h-1 bg-gray-800"><div class="${color} h-full transition-all duration-300" style="width:${hpPct}%"></div></div>
+                    <div class="text-[10px] text-right text-gray-500">${unit.hp}/${maxhp}</div>
+                `;
+                 div.onclick = () => this.onPartySlotClick(div);
+            } else {
+                 if (isEmptyActiveSlot) {
+                    div.innerHTML = '<span class="m-auto text-gray-600 text-xs">EMPTY</span>';
+                    div.onclick = () => this.onPartySlotClick(div);
+                 } else {
+                    // Empty reserve slot, make it invisible and non-interactive
+                    div.style.visibility = 'hidden';
+                 }
+            }
+
+            container.appendChild(div);
+        }
+    }
+
+    onPartySlotClick(element) {
+        const selected = document.querySelector('.party-menu-slot.selected');
+
+        if (selected) {
+            const fromUid = selected.dataset.uid;
+            const fromIndex = parseInt(selected.dataset.index);
+            const fromIsReserved = selected.dataset.isReserved === 'true';
+
+            const toUid = element.dataset.uid;
+            const toIndex = parseInt(element.dataset.index);
+            const toIsReserved = element.dataset.isReserved === 'true';
+
+            selected.classList.remove('selected');
+
+            if (fromUid === toUid) return;
+
+            const fromUnit = fromIsReserved ? GameState.roster.find(u => u.uid === fromUid) : GameState.party.activeSlots[fromIndex];
+            const toUnit = toIsReserved ? GameState.roster.find(u => u.uid === toUid) : GameState.party.activeSlots[toIndex];
+
+            // Enforce party limit
+            const activePartySize = GameState.party.activeSlots.filter(u => u !== null).length;
+            if (fromIsReserved && !toIsReserved && !toUnit && activePartySize >= 4) {
+                alert("Your active party is full. Swap a member out before adding a new one.");
+                return;
+            }
+
+            // Swap logic
+            if (fromIsReserved && !toIsReserved) { // Reserve -> Active
+                GameState.party.activeSlots[toIndex] = fromUnit;
+                if(toUnit) toUnit.slotIndex = -1;
+                fromUnit.slotIndex = toIndex;
+
+            } else if (!fromIsReserved && toIsReserved) { // Active -> Reserve
+                GameState.party.activeSlots[fromIndex] = toUnit;
+                toUnit.slotIndex = fromIndex;
+                fromUnit.slotIndex = -1;
+
+            } else if (!fromIsReserved && !toIsReserved) { // Active <-> Active
+                [GameState.party.activeSlots[fromIndex], GameState.party.activeSlots[toIndex]] = [toUnit, fromUnit];
+                if (fromUnit) fromUnit.slotIndex = toIndex;
+                if (toUnit) toUnit.slotIndex = fromIndex;
+            }
+
+            this.renderPartyMenu();
+            this.renderParty();
+        } else {
+            element.classList.add('selected');
         }
     }
 
