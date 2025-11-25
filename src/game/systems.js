@@ -875,27 +875,125 @@ export const Systems = {
             const elems = unit.elements || [];
             return elems.reduce((mult, e) => mult * this.elementRelation(actionElement, e, role), 1);
         },
-        calculateActionValue(action, unit, target) {
-            if (action.category === 'effect') return 0;
-            const pow = action.power || 0;
-            const sc = action.scaling || 0;
-            const base = Math.floor(pow + sc * unit.level);
+        calculateEffectValue(effect, action, a, b) {
+            if (!effect.formula) return 0;
+            let value = 0;
+            try {
+                value = Math.floor(eval(effect.formula));
+            } catch (e) {
+                console.error('Error evaluating formula:', effect.formula, e);
+                return 0;
+            }
+
             const element = action.element;
-            const attackMult = this.elementMultiplier(element, unit, 'attacker');
-            const defenseMult = this.elementMultiplier(element, target, 'defender');
-            let value = Math.floor(base * attackMult * defenseMult);
-            if (action.category === 'heal') value = -value;
-            return value;
+            // Get attacker stats from the new centralized function
+            const attackerWithStats = this.getUnitWithEquipmentStats(a);
+
+            const attackMult = this.elementMultiplier(element, attackerWithStats, 'attacker');
+            // Get defender stats from the new centralized function to fix the bug
+            const defenderWithStats = this.getUnitWithEquipmentStats(b);
+            const defenseMult = this.elementMultiplier(element, defenderWithStats, 'defender');
+
+            // Add power bonus to the base value *before* multipliers are applied.
+            const baseDamage = value + attackerWithStats.power_bonus;
+            let finalValue = Math.floor(baseDamage * attackMult * defenseMult);
+
+            // Add critical hit logic
+            const critChance = (Data.config.baseCritChance || 0.05) + (attackerWithStats.crit_bonus_percent || 0);
+            if (Math.random() < critChance) {
+                finalValue = Math.floor(finalValue * (Data.config.baseCritMultiplier || 1.5));
+                Log.battle('> Critical Hit!');
+            }
+
+            if (effect.type === 'hp_damage' && b.status?.includes('guarding')) {
+                finalValue = Math.floor(finalValue / 2);
+                Log.battle('> Guarding!');
+            }
+            return finalValue;
+        },
+        applyEffects(action, user, targets) {
+            const results = [];
+            (action.effects || []).forEach(effect => {
+                targets.forEach(target => {
+                    let value = 0;
+                    if (effect.type !== 'add_status') {
+                        value = this.calculateEffectValue(effect, action, user, target);
+                    }
+                    results.push({ target, value, effect });
+                });
+            });
+            return results;
+        },
+        getUnitWithEquipmentStats(unit) {
+            // Start with a shallow copy
+            const unitWithStats = { ...unit };
+            // Deep copy arrays to prevent mutation of the original object
+            if (unit.elements) unitWithStats.elements = [...unit.elements];
+            if (unit.status) unitWithStats.status = [...unit.status];
+
+            // Initialize bonuses that are aggregated
+            unitWithStats.power_bonus = 0;
+            unitWithStats.speed_bonus = 0;
+            unitWithStats.crit_bonus_percent = 0;
+            unitWithStats.survive_ko_chance = 0;
+            unitWithStats.revive_on_ko_chance = 0;
+            unitWithStats.revive_on_ko_percent = 0;
+            unitWithStats.xp_bonus_percent = 0;
+
+            if (!unit.equipmentId) return unitWithStats;
+
+            const equipment = Data.equipment[unit.equipmentId];
+            if (!equipment) return unitWithStats;
+
+            equipment.effects.forEach(effect => {
+                switch (effect.type) {
+                    case 'hp_bonus_percent':
+                        // This bonus is applied dynamically by getMaxHp to ensure it's always
+                        // calculated against the correct base HP for the unit's level.
+                        break;
+                    case 'power_bonus':
+                        unitWithStats.power_bonus += parseInt(effect.formula) || 0;
+                        break;
+                    case 'speed_bonus':
+                        unitWithStats.speed_bonus += parseInt(effect.formula) || 0;
+                        break;
+                    case 'element_change':
+                        // Overwrites the unit's base elements.
+                        unitWithStats.elements = [effect.element];
+                        break;
+                    case 'crit_bonus_percent':
+                        unitWithStats.crit_bonus_percent += parseFloat(effect.formula) || 0;
+                        break;
+                    case 'survive_ko':
+                        unitWithStats.survive_ko_chance += parseFloat(effect.formula) || 0;
+                        break;
+                    case 'revive_on_ko':
+                        unitWithStats.revive_on_ko_chance += parseFloat(effect.chance) || 0;
+                        unitWithStats.revive_on_ko_percent += parseFloat(effect.formula) || 0;
+                        break;
+                    case 'xp_bonus_percent':
+                        unitWithStats.xp_bonus_percent += parseFloat(effect.formula) || 0;
+                        break;
+                }
+            });
+
+            return unitWithStats;
         },
         getMaxHp(unit) {
             const def = Data.creatures[unit.speciesId];
             let baseMax = Math.round(def.baseHp * (1 + def.hpGrowth * (unit.level - 1)));
-            // apply equipment bonus
+
             if (unit.equipmentId) {
                 const eq = Data.equipment[unit.equipmentId];
-                if (eq && eq.hpBonus) baseMax = Math.round(baseMax * (1 + eq.hpBonus));
+                if (eq) {
+                    eq.effects.forEach(effect => {
+                        if (effect.type === 'hp_bonus_percent') {
+                            baseMax = Math.round(baseMax * (1 + parseFloat(effect.formula)));
+                        }
+                    });
+                }
             }
-            return baseMax;
+            return baseMax + (unit.maxHpBonus || 0);
         },
         startEncounter() {
             // Trigger a screen wipe and transition to battle
@@ -938,7 +1036,8 @@ export const Systems = {
                         temperament: def.temperament,
                         elements: def.elements ? [...def.elements] : [],
                         acts: def.acts,
-                        slotIndex: i
+                        slotIndex: i,
+                        status: []
                     });
                 }
                 // Initialize battle state structure
@@ -970,6 +1069,14 @@ export const Systems = {
             Systems.Battle3D.setFocus('neutral');
             if (GameState.battle.allies.every(u => u.hp <= 0)) return this.end(false);
             if (GameState.battle.enemies.every(u => u.hp <= 0)) return this.end(true);
+
+            // Clear turn-based statuses like 'guarding'
+            [...GameState.battle.allies, ...GameState.battle.enemies].forEach(u => {
+                if (u.status) {
+                    u.status = u.status.filter(s => s !== 'guarding');
+                }
+            });
+
             Log.battle(`--- Round ${GameState.battle.roundCount} ---`);
             if (GameState.battle.playerTurnRequested) {
                 GameState.battle.phase = 'PLAYER_INPUT';
@@ -978,9 +1085,17 @@ export const Systems = {
                 Log.battle('Waiting for orders...');
                 return;
             }
-            // Build action queue randomly from all living units
-            const allUnits = [...GameState.battle.allies, ...GameState.battle.enemies].filter(u => u.hp > 0);
-            GameState.battle.queue = allUnits.sort(() => Math.random() - 0.5);
+            // Build action queue from all living units, factoring in speed
+            const allUnits = [...GameState.battle.allies, ...GameState.battle.enemies]
+                .filter(u => u.hp > 0)
+                .map(u => {
+                    const unitWithStats = this.getUnitWithEquipmentStats(u);
+                    // Combine the original unit with its calculated speed bonus for sorting.
+                    return { ...u, speed: unitWithStats.speed_bonus };
+                });
+
+            allUnits.sort((a, b) => b.speed - a.speed || Math.random() - 0.5);
+            GameState.battle.queue = allUnits;
             GameState.battle.turnIndex = 0;
             this.processNextTurn();
         },
@@ -1028,7 +1143,7 @@ export const Systems = {
                 this.processNextTurn();
                 return;
             }
-            const isAlly = GameState.battle.allies.includes(unit);
+            const isAlly = GameState.battle.allies.some(a => a.uid === unit.uid);
             Systems.Battle3D.setFocus(isAlly ? 'ally' : 'enemy');
             const enemies = isAlly ? GameState.battle.enemies : GameState.battle.allies;
             const friends = isAlly ? GameState.battle.allies : GameState.battle.enemies;
@@ -1048,7 +1163,21 @@ export const Systems = {
             if (!chosen) {
                 chosen = possibleActs[Math.floor(Math.random() * possibleActs.length)];
             }
-            const action = Data.skills[chosen.toLowerCase()] || Data.skills['attack'];
+
+            // Case-insensitive lookup for action
+            let action = null;
+            const chosenLower = chosen.toLowerCase();
+            const skillKey = Object.keys(Data.skills).find(k => k.toLowerCase() === chosenLower);
+            const itemKey = Object.keys(Data.items).find(k => k.toLowerCase() === chosenLower);
+
+            if (skillKey) {
+                action = Data.skills[skillKey];
+            } else if (itemKey) {
+                action = Data.items[itemKey];
+            } else {
+                action = Data.skills['attack'];
+            }
+
             let targets = [];
             const validEnemies = enemies.filter(u => u.hp > 0);
             const validFriends = friends.filter(u => u.hp > 0);
@@ -1070,28 +1199,85 @@ export const Systems = {
             }
             // Show banner for the action
             UI.showBanner(`${unit.name} used ${action.name}!`);
-            const results = targets.map(t => ({ target: t, value: this.calculateActionValue(action, unit, t) }));
+            const results = this.applyEffects(action, unit, targets);
             const script = Data.actionScripts[action.script] || Data.actionScripts.attack || [];
             const applyResults = () => {
-                if (action.category === 'effect' && action.id !== 'wait') {
-                    Log.battle(`> ${unit.name} stands ready.`);
-                }
-                results.forEach(({ target, value }) => {
+                results.forEach(({ target, value, effect }) => {
                     if (!target) return;
-                    if (value < 0) {
-                        const maxhp = Systems.Battle.getMaxHp(target);
-                        target.hp = Math.min(maxhp, target.hp - value);
-                        Log.battle(`> ${target.name} healed for ${Math.abs(value)}.`);
-                    } else if (value > 0) {
-                        target.hp = Math.max(0, target.hp - value);
-                        Log.battle(`> ${unit.name} hits ${target.name} for ${value}.`);
-                        if (target.hp <= 0) {
-                            Log.battle(`> ${target.name} was defeated!`);
-                            const ts = Systems.Battle3D.sprites[target.uid];
-                            if (ts) ts.visible = false;
-                        }
+
+                    switch (effect.type) {
+                        case 'hp_damage':
+                            let dealtDamage = value;
+                            let newHp = target.hp - dealtDamage;
+                            const defenderWithStats = Systems.Battle.getUnitWithEquipmentStats(target);
+
+                            if (newHp <= 0) {
+                                if (Math.random() < (defenderWithStats.survive_ko_chance || 0)) {
+                                    newHp = 1;
+                                    dealtDamage = target.hp > 0 ? target.hp - 1 : 0;
+                                    Log.battle(`> ${target.name} survives with 1 HP!`);
+                                }
+                            }
+
+                            target.hp = Math.max(0, newHp);
+                            if (dealtDamage > 0) {
+                                Log.battle(`> ${unit.name} hits ${target.name} for ${dealtDamage}.`);
+                                Systems.Battle3D.showDamageNumber(target.uid, dealtDamage);
+                            }
+
+                            if (target.hp <= 0) {
+                                Log.battle(`> ${target.name} was defeated!`);
+                                const ts = Systems.Battle3D.sprites[target.uid];
+                                if (ts) ts.visible = false;
+
+                                if (Math.random() < (defenderWithStats.revive_on_ko_chance || 0)) {
+                                    const revivePercent = defenderWithStats.revive_on_ko_percent || 0.5;
+                                    const revivedHp = Math.floor(Systems.Battle.getMaxHp(target) * revivePercent);
+                                    target.hp = revivedHp;
+                                    Log.battle(`> ${target.name} was revived with ${revivedHp} HP!`);
+                                    const revivedTs = Systems.Battle3D.sprites[target.uid];
+                                    if (revivedTs) revivedTs.visible = true;
+                                }
+                            }
+                            break;
+                        case 'hp_heal':
+                            const maxhp = Systems.Battle.getMaxHp(target);
+                            target.hp = Math.min(maxhp, target.hp + value);
+                            Log.battle(`> ${target.name} healed for ${value}.`);
+                            Systems.Battle3D.showDamageNumber(target.uid, -value);
+                            break;
+                        case 'hp_heal_ratio':
+                            const maxHpRatio = Systems.Battle.getMaxHp(target);
+                            const healAmount = Math.floor(maxHpRatio * parseFloat(effect.formula));
+                            target.hp = Math.min(maxHpRatio, target.hp + healAmount);
+                            Log.battle(`> ${target.name} healed for ${healAmount}.`);
+                            Systems.Battle3D.showDamageNumber(target.uid, -healAmount);
+                            break;
+                        case 'revive':
+                            if (target.hp <= 0) {
+                                const revivedHp = Math.floor(Systems.Battle.getMaxHp(target) * parseFloat(effect.formula));
+                                target.hp = revivedHp;
+                                Log.battle(`> ${target.name} was revived with ${revivedHp} HP.`);
+                                const ts = Systems.Battle3D.sprites[target.uid];
+                                if (ts) ts.visible = true;
+                            }
+                            break;
+                        case 'increase_max_hp':
+                            const bonus = parseInt(effect.formula);
+                            target.maxHpBonus = (target.maxHpBonus || 0) + bonus;
+                            target.hp += bonus;
+                            Log.battle(`> ${target.name}'s Max HP increased by ${bonus}.`);
+                            break;
+                        case 'add_status':
+                            if (Math.random() < (effect.chance || 1)) {
+                                if (!target.status) target.status = [];
+                                if (!target.status.includes(effect.status)) {
+                                    target.status.push(effect.status);
+                                }
+                                Log.battle(`> ${target.name} is now ${effect.status}.`);
+                            }
+                            break;
                     }
-                    Systems.Battle3D.showDamageNumber(target.uid, value);
                 });
                 // Re-render party HP bars and check for end-of-battle
                 UI.renderParty();
@@ -1116,12 +1302,16 @@ export const Systems = {
                 Systems.Battle3D.setFocus('victory');
                 // Calculate rewards
                 const gold = GameState.battle.enemies.length * Data.config.baseGoldPerEnemy * GameState.run.floor;
-                const xp = GameState.battle.enemies.length * Data.config.baseXpPerEnemy * GameState.run.floor;
+                const baseXp = GameState.battle.enemies.length * Data.config.baseXpPerEnemy * GameState.run.floor;
                 GameState.run.gold += gold;
+                let finalXp = baseXp;
                 GameState.party.activeSlots.forEach(p => {
                     if (p) {
+                        const unitWithStats = this.getUnitWithEquipmentStats(p);
+                        finalXp = Math.round(baseXp * (1 + (unitWithStats.xp_bonus_percent || 0)));
+
                         // Add XP and level up if necessary
-                        p.exp = (p.exp || 0) + xp;
+                        p.exp = (p.exp || 0) + finalXp;
                         const def = Data.creatures[p.speciesId];
                         let levelCost = def.xpCurve * p.level;
                         let levelUpOccurred = false;
@@ -1150,7 +1340,7 @@ export const Systems = {
                 UI.showModal(`
                     <div class="text-yellow-500 text-2xl mb-4">VICTORY</div>
                     <div class="text-white">Found ${gold} Gold</div>
-                    <div class="text-white">Party +${xp} XP</div>
+                    <div class="text-white">Party +${finalXp} XP</div>
                     <button class="mt-4 border border-white px-4 py-2 hover:bg-gray-800" onclick="Game.Views.UI.closeModal(); Game.Views.UI.switchScene(false);">CONTINUE</button>
                 `);
             } else {
