@@ -82,21 +82,20 @@ export const Systems = {
             const path = Data.effects?.[name];
             if (!path) return Promise.resolve(null);
 
-            const playPromise = new Promise((resolve) => {
-                const ready = this.initPromise || Promise.resolve(this.context);
-                ready.then(() => this.loadEffect(name, path)).then(effect => {
+            const ready = this.initPromise || Promise.resolve(this.context);
+            const playPromise = ready
+                .then(() => this.loadEffect(name, path))
+                .then(effect => {
                     if (!effect || !this.context) {
-                        resolve(null);
-                        return;
+                        return null;
                     }
                     const effekseerPos = this.convertToEffekseerPosition(position);
-                    const handle = this.context.play(effect, effekseerPos.x, effekseerPos.y, effekseerPos.z);
-                    resolve(handle);
-                }).catch(err => {
+                    return this.context.play(effect, effekseerPos.x, effekseerPos.y, effekseerPos.z);
+                })
+                .catch(err => {
                     console.error(`Error playing effect ${name}:`, err);
-                    resolve(null);
+                    return null;
                 });
-            });
 
             const timeoutPromise = new Promise(resolve => {
                 setTimeout(() => {
@@ -106,10 +105,6 @@ export const Systems = {
             });
 
             return Promise.race([playPromise, timeoutPromise]);
-        },
-        exists(handle) {
-            if (!this.context || handle === null || handle === undefined) return false;
-            return this.context.exists(handle);
         },
         update(camera) {
             if (!this.context || !camera) return;
@@ -812,7 +807,7 @@ export const Systems = {
                             const check = setInterval(() => {
                                 elapsedTime += checkInterval;
                                 // Check if all handles are done
-                                const allDone = validHandles.every(h => !Systems.Effekseer.exists(h));
+                                const allDone = validHandles.every(h => !h.exists);
 
                                 if (allDone) {
                                     clearInterval(check);
