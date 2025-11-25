@@ -4,6 +4,11 @@ import { Log } from './log.js';
 import { resolveAssetPath } from './core.js';
 import { UI } from './windows.js';
 
+const AnimConfig = {
+    FRAME_MS: 1000 / 60,
+    defaultSequentialPerTargetDelayFrames: 3
+};
+
 // ------------------- SYSTEMS DEFINITIONS -------------------
 // All gameplay logic is organized under a single Systems object. Each system operates
 // exclusively on GameState and Data, without direct DOM manipulation.
@@ -907,6 +912,192 @@ export const Systems = {
             }
         }
     },
+    Animation: {
+        async runAction({ skill, actor, targets }) {
+            const sequenceDef = Data.actionSequences[skill.animation] || Data.actionSequences.flash;
+            const sequence = sequenceDef?.sequence || [];
+            const ctx = { skill, actor, targets };
+            await this.runSequence(sequence, ctx);
+        },
+        async runSequence(steps, ctx, scopeTarget) {
+            for (const step of steps) {
+                switch (step.kind) {
+                    case 'motion': {
+                        await this.Motion.play({ step, ctx, scopeTarget });
+                        break;
+                    }
+                    case 'vfx': {
+                        await this.Vfx.play({ step, ctx, scopeTarget });
+                        break;
+                    }
+                    case 'wait': {
+                        await new Promise(r => setTimeout(r, (step.waitFrames || 0) * AnimConfig.FRAME_MS));
+                        break;
+                    }
+                    case 'effect': {
+                        await Systems.Battle.applyEffect({ skill: ctx.skill, actor: ctx.actor, target: scopeTarget || ctx.targets?.[0] });
+                        break;
+                    }
+                    case 'parallel': {
+                        await Promise.all(step.steps.map(s => this.runSequence([s], ctx, scopeTarget)));
+                        break;
+                    }
+                    case 'forEachTarget': {
+                        const delayFrames = step.perTargetDelayFrames === undefined ? AnimConfig.defaultSequentialPerTargetDelayFrames : step.perTargetDelayFrames;
+                        if (step.mode === 'parallel') {
+                            await Promise.all((ctx.targets || []).map(t => this.runSequence(step.steps, ctx, t)));
+                        } else {
+                            for (let i = 0; i < (ctx.targets || []).length; i++) {
+                                const t = ctx.targets[i];
+                                await this.runSequence(step.steps, ctx, t);
+                                if (i < ctx.targets.length - 1 && delayFrames) {
+                                    await new Promise(r => setTimeout(r, delayFrames * AnimConfig.FRAME_MS));
+                                }
+                            }
+                        }
+                        break;
+                    }
+                    default:
+                        break;
+                }
+            }
+        },
+        resolveWho(who, ctx, scopeTarget) {
+            if (who === 'caster') return ctx.actor;
+            if (who === 'target') return scopeTarget || ctx.targets?.[0];
+            if (who === 'group') return ctx.targets;
+            return null;
+        },
+        Motion: {
+            async play({ step, ctx, scopeTarget }) {
+                const motionDef = Data.motionClips[step.clip];
+                if (!motionDef) return;
+                const target = Systems.Animation.resolveWho(step.who, ctx, scopeTarget);
+                if (!target) return;
+                const sprite = Systems.Battle3D.sprites[target.uid];
+                if (!sprite) return;
+                const mergedDefaults = motionDef.defaults || {};
+                for (const s of motionDef.steps) {
+                    const expanded = JSON.parse(JSON.stringify(s));
+                    Object.entries(mergedDefaults).forEach(([k, v]) => {
+                        if (typeof v === 'string' && v.startsWith('$')) return;
+                    });
+                    this.applyOverrides(expanded, mergedDefaults, step.overrides || {});
+                    await this.runStep(expanded, sprite);
+                }
+            },
+            applyOverrides(target, defaults, overrides) {
+                for (const key of Object.keys(target)) {
+                    const val = target[key];
+                    if (typeof val === 'string' && val.startsWith('$')) {
+                        const clean = val.slice(1);
+                        target[key] = overrides[clean] ?? defaults[clean];
+                    } else if (val && typeof val === 'object') {
+                        this.applyOverrides(val, defaults, overrides);
+                    }
+                }
+            },
+            runStep(step, sprite) {
+                const handlers = {
+                    verticalSine: () => new Promise(resolve => {
+                        let t = 0;
+                        const axis = step.axis || 'z';
+                        const startPos = sprite.position[axis];
+                        const interval = (step.intervalFrames || 1) * AnimConfig.FRAME_MS;
+                        const amp = step.amplitude || 1;
+                        const speed = step.speed || 0.5;
+                        const duration = step.durationFrames || 30;
+                        const jump = setInterval(() => {
+                            t += speed;
+                            sprite.position[axis] = startPos + Math.sin(t) * amp;
+                            if (t >= duration) {
+                                clearInterval(jump);
+                                sprite.position[axis] = startPos;
+                                resolve();
+                            }
+                        }, interval);
+                    }),
+                    lift: () => new Promise(resolve => {
+                        const axis = step.axis || 'z';
+                        const startPos = sprite.position[axis];
+                        const height = step.height || 2;
+                        const duration = step.durationFrames || 60;
+                        const wobble = step.wobble || {};
+                        const bounce = step.bounce || {};
+                        const interval = (step.intervalFrames || 1) * AnimConfig.FRAME_MS;
+                        let elapsed = 0;
+                        const liftTimer = setInterval(() => {
+                            elapsed += interval;
+                            const progress = Math.min(1, elapsed / (duration * AnimConfig.FRAME_MS));
+                            sprite.position[axis] = startPos + height * progress;
+                            if (wobble.axis) {
+                                sprite.position[wobble.axis] = sprite.position[wobble.axis] + Math.sin(progress * (wobble.frequency || 1)) * (wobble.amplitude || 0);
+                            }
+                            if (progress >= 1) {
+                                clearInterval(liftTimer);
+                                let bounceElapsed = 0;
+                                const bounceDur = bounce.durationFrames || 0;
+                                if (!bounceDur) { resolve(); return; }
+                                const bounceTimer = setInterval(() => {
+                                    bounceElapsed += interval;
+                                    const bProg = Math.min(1, bounceElapsed / (bounceDur * AnimConfig.FRAME_MS));
+                                    sprite.position[axis] = startPos + height * (1 - bProg) + Math.sin(bProg * Math.PI) * (bounce.amplitude || 0);
+                                    if (bProg >= 1) { clearInterval(bounceTimer); sprite.position[axis] = startPos; resolve(); }
+                                }, interval);
+                            }
+                        }, interval);
+                    }),
+                    shake: () => new Promise(resolve => {
+                        const axis = step.axis || 'x';
+                        const magnitude = step.magnitude || 0.2;
+                        const iterations = step.iterations || 6;
+                        const interval = (step.intervalFrames || 1) * AnimConfig.FRAME_MS;
+                        let count = 0;
+                        const start = sprite.position[axis];
+                        const s = setInterval(() => {
+                            sprite.position[axis] = start + ((count % 2 === 0 ? 1 : -1) * magnitude);
+                            count++;
+                            if (count >= iterations) {
+                                clearInterval(s);
+                                sprite.position[axis] = start;
+                                resolve();
+                            }
+                        }, interval);
+                    }),
+                    scaleFade: () => new Promise(resolve => {
+                        const duration = step.durationFrames || 30;
+                        const interval = (step.intervalFrames || 1) * AnimConfig.FRAME_MS;
+                        const scaleInc = step.scaleIncrease || 1.5;
+                        let elapsed = 0;
+                        const startScale = { x: sprite.scale.x, y: sprite.scale.y };
+                        const timer = setInterval(() => {
+                            elapsed += interval;
+                            const prog = Math.min(1, elapsed / (duration * AnimConfig.FRAME_MS));
+                            const s = 1 + scaleInc * prog;
+                            sprite.scale.set(startScale.x * s, startScale.y * s, 1);
+                            sprite.material.opacity = 1 - prog;
+                            if (prog >= 1) {
+                                clearInterval(timer);
+                                resolve();
+                            }
+                        }, interval);
+                    })
+                };
+                const handler = handlers[step.type];
+                return handler ? handler() : Promise.resolve();
+            }
+        },
+        Vfx: {
+            async play({ step, ctx, scopeTarget }) {
+                const clip = Data.vfxClips[step.clip];
+                if (!clip) return;
+                const blocking = step.blockingOverride !== undefined ? step.blockingOverride : clip.blocking !== false;
+                if (blocking) {
+                    await new Promise(r => setTimeout(r, (clip.durationFrames || 0) * AnimConfig.FRAME_MS));
+                }
+            }
+        }
+    },
     /*
      * Battle system: orchestrates the turn-based combat loop. It uses Data and
      * GameState to determine combatants, their actions, and outcomes. It
@@ -916,6 +1107,37 @@ export const Systems = {
     Battle: {
         elementStrengths: { G: 'B', B: 'R', R: 'G', W: 'K', K: 'W' },
         elementWeaknesses: { G: 'R', B: 'G', R: 'B', W: 'W', K: 'K' },
+        async applyEffect({ skill, actor, target }) {
+            if (!target || target.hp <= 0) return;
+            if (skill.category === 'damage' || skill.category === 'heal') {
+                const pow = skill.power || 0;
+                const sc = skill.scaling || 0;
+                const base = Math.floor(pow + sc * actor.level);
+                const element = skill.element;
+                const attackMult = this.elementMultiplier(element, actor, 'attacker');
+                const defenseMult = this.elementMultiplier(element, target, 'defender');
+                let value = Math.floor(base * attackMult * defenseMult);
+                if (skill.category === 'heal') value = -value;
+                if (value < 0) {
+                    const maxhp = Systems.Battle.getMaxHp(target);
+                    target.hp = Math.min(maxhp, target.hp - value);
+                    Log.battle(`> ${target.name} healed for ${Math.abs(value)}.`);
+                } else {
+                    target.hp = Math.max(0, target.hp - value);
+                    Log.battle(`> ${actor.name} hits ${target.name} for ${value}.`);
+                }
+                UI.renderParty();
+                if (value > 0) {
+                    await Systems.Animation.Motion.play({ step: { who: 'target', clip: 'hitShake' }, ctx: { actor, targets: [target] }, scopeTarget: target });
+                }
+                if (target.hp <= 0) {
+                    await Systems.Animation.Motion.play({ step: { who: 'target', clip: 'dieScaleFade' }, ctx: { actor, targets: [target] }, scopeTarget: target });
+                    Log.battle(`> ${target.name} was defeated!`);
+                }
+            } else if (skill.category === 'effect') {
+                Log.battle(`> ${actor.name} stands ready.`);
+            }
+        },
         // Computes how a single element instance interacts with an action's element.
         elementRelation(actionElement, creatureElement, role) {
             if (!actionElement || !creatureElement) return 1;
@@ -1062,7 +1284,7 @@ export const Systems = {
             }
             Log.add('Formation changed.');
         },
-        processNextTurn() {
+        async processNextTurn() {
             UI.renderParty();
             if (GameState.battle.turnIndex >= GameState.battle.queue.length) {
                 setTimeout(() => this.nextRound(), 1000);
@@ -1077,9 +1299,7 @@ export const Systems = {
             Systems.Battle3D.setFocus(isAlly ? 'ally' : 'enemy');
             const enemies = isAlly ? GameState.battle.enemies : GameState.battle.allies;
             const friends = isAlly ? GameState.battle.allies : GameState.battle.enemies;
-            // Flatten acts grid for available skills
             const possibleActs = [...unit.acts[0], ...(unit.acts[1] || [])];
-            // Simple AI: choose heal if temperament is kind and a friend is hurt
             let chosen = null;
             if (unit.temperament === 'kind') {
                 const hurt = friends.filter(f => f.hp < f.maxhp).sort((a, b) => a.hp - b.hp)[0];
@@ -1097,12 +1317,10 @@ export const Systems = {
             let targets = [];
             const validEnemies = enemies.filter(u => u.hp > 0);
             const validFriends = friends.filter(u => u.hp > 0);
-            // Target selection based on action.target
             if (action.target === 'self') targets = [unit];
             else if (action.target === 'ally-single') targets = [validFriends.sort((a, b) => a.hp - b.hp)[0]];
             else if (action.target === 'enemy-all') targets = validEnemies;
             else if (action.target === 'enemy-row') {
-                // All enemies in the front or back row (slotIndex < 3 = front; >=3 = back)
                 const frontRow = validEnemies.filter(e => e.slotIndex < 3);
                 const backRow = validEnemies.filter(e => e.slotIndex >= 3);
                 targets = frontRow.length > 0 ? frontRow : backRow;
@@ -1113,59 +1331,14 @@ export const Systems = {
                 this.processNextTurn();
                 return;
             }
-            // Show banner for the action
             UI.showBanner(`${unit.name} used ${action.name}!`);
-            // Jump animation before executing
-            Systems.Battle3D.playAnim(unit.uid, 'jump', 0);
-            setTimeout(() => {
-                const resolveAnimation = (key) => (key && Data.animations[key]) ? key : 'flash';
-                targets.forEach(t => {
-                    let value = 0;
-                    if (action.category === 'damage' || action.category === 'heal') {
-                        const pow = action.power || 0;
-                        const sc = action.scaling || 0;
-                        const base = Math.floor(pow + sc * unit.level);
-                        const element = action.element;
-                        const attackMult = this.elementMultiplier(element, unit, 'attacker');
-                        const defenseMult = this.elementMultiplier(element, t, 'defender');
-                        value = Math.floor(base * attackMult * defenseMult);
-                        if (action.category === 'heal') value = -value; // negative for heals
-                        const animType = resolveAnimation(action.animation);
-                        const apply = () => {
-                            if (value < 0) {
-                                const maxhp = Systems.Battle.getMaxHp(t);
-                                t.hp = Math.min(maxhp, t.hp - value);
-                                Log.battle(`> ${t.name} healed for ${Math.abs(value)}.`);
-                                Systems.Battle3D.playAnim(t.uid, resolveAnimation('flash'), -1);
-                            } else {
-                                t.hp = Math.max(0, t.hp - value);
-                                Systems.Battle3D.playAnim(t.uid, resolveAnimation('hit'), value);
-                                Log.battle(`> ${unit.name} hits ${t.name} for ${value}.`);
-                                if (t.hp <= 0) {
-                                    Systems.Battle3D.playAnim(t.uid, resolveAnimation('die'), 0);
-                                    Log.battle(`> ${t.name} was defeated!`);
-                                }
-                            }
-                        };
-                        if (animType === 'flash') {
-                            apply();
-                            Systems.Battle3D.playAnim(t.uid, animType, value > 0 ? 1 : -1);
-                        } else {
-                            Systems.Battle3D.playAnim(t.uid, animType, 0, apply);
-                        }
-                    } else if (action.category === 'effect') {
-                        Log.battle(`> ${unit.name} stands ready.`);
-                        Systems.Battle3D.playAnim(t.uid, resolveAnimation('flash'), 0);
-                    }
-                });
-                // Re-render party HP bars and check for end-of-battle
-                UI.renderParty();
-                if (GameState.battle.allies.every(u => u.hp <= 0) || GameState.battle.enemies.every(u => u.hp <= 0)) {
-                    GameState.battle.turnIndex = 999;
-                }
-                const delay = (chosen.toLowerCase() === 'tornado' || chosen.toLowerCase() === 'thunder') ? 1500 : 1000;
-                setTimeout(() => this.processNextTurn(), delay);
-            }, 600);
+            await Systems.Animation.runAction({ skill: action, actor: unit, targets });
+            UI.renderParty();
+            if (GameState.battle.allies.every(u => u.hp <= 0) || GameState.battle.enemies.every(u => u.hp <= 0)) {
+                GameState.battle.turnIndex = 999;
+                return;
+            }
+            setTimeout(() => this.processNextTurn(), AnimConfig.FRAME_MS * 18);
         },
         end(win) {
             // Clear all UI overlays
