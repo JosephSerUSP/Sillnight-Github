@@ -1082,6 +1082,19 @@ export const Systems = {
                 onComplete: () => setTimeout(() => this.processNextTurn(), 600)
             });
         },
+        finishVictory() {
+            // Keep the current camera framing until the scene finishes transitioning
+            // back to exploration. Reset it afterward so the next encounter starts
+            // from a neutral state without snapping during the confirmation click.
+            const finalizeExplore = () => {
+                GameState.ui.mode = 'EXPLORE';
+                Systems.Explore.render();
+                Systems.Battle3D.setFocus('neutral');
+            };
+
+            UI.closeModal();
+            UI.switchScene(false, finalizeExplore);
+        },
         end(win) {
             // Clear all UI overlays
             document.getElementById('battle-ui-overlay').innerHTML = '';
@@ -1127,7 +1140,7 @@ export const Systems = {
                     <div class="text-yellow-500 text-2xl mb-4">VICTORY</div>
                     <div class="text-white">Found ${gold} Gold</div>
                     <div class="text-white">Party +${xp} XP</div>
-                    <button class="mt-4 border border-white px-4 py-2 hover:bg-gray-800" onclick="Game.Views.UI.closeModal(); Game.Views.UI.switchScene(false);">CONTINUE</button>
+                    <button class="mt-4 border border-white px-4 py-2 hover:bg-gray-800" onclick="Game.Systems.Battle.finishVictory();">CONTINUE</button>
                 `);
             } else {
                 GameState.ui.mode = 'EXPLORE';
