@@ -94,7 +94,12 @@ export const Systems = {
             // that effects and sprites line up. Because effect positions are rotated into
             // Effekseer space (Z-up -> Y-up), we need to apply the inverse rotation when
             // supplying the view matrix: view = M_view_world * R^-1.
-            const viewMatrix = camera.matrixWorldInverse.clone().multiply(this.yToZUpMatrix);
+            // Use the inverse rotation on the camera side (V = Vz * R^-1) so the view
+            // cancels the position conversion instead of rotating twice.
+            const viewMatrix = new THREE.Matrix4().multiplyMatrices(
+                camera.matrixWorldInverse,
+                this.yToZUpMatrix
+            );
             this.context.setProjectionMatrix(camera.projectionMatrix.elements);
             this.context.setCameraMatrix(viewMatrix.elements);
             this.context.update();
