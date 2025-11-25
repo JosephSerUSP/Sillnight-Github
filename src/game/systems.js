@@ -60,6 +60,12 @@ export const Systems = {
 
             return this.initPromise;
         },
+        preload() {
+            const effectPromises = Object.entries(Data.effects).map(([name, path]) => {
+                return this.loadEffect(name, path);
+            });
+            return Promise.all(effectPromises);
+        },
         loadEffect(name, path) {
             if (!path) return Promise.resolve(null);
             const ready = this.initPromise || Promise.resolve(this.context);

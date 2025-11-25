@@ -17,7 +17,7 @@ export const Game = {
     UI,
     Scenes: {},
     SceneManager: new SceneManager(),
-    init() {
+    async init() {
         // Link UI buttons to battle turn controls
         UI.bindTurnHandlers({
             onRequestTurn: () => Systems.Battle.requestPlayerTurn(),
@@ -28,6 +28,7 @@ export const Game = {
         Systems.Map.generateFloor();
         Systems.Explore.init();
         Systems.Battle3D.init();
+        await Systems.Effekseer.preload();
 
         // Starting party
         populateActiveSlots(Data.party.initial);
@@ -58,8 +59,8 @@ window.addEventListener('resize', () => {
     Systems.Battle3D.resize();
 });
 
-window.addEventListener('load', () => {
-    Game.init();
+window.addEventListener('load', async () => {
+    await Game.init();
 });
 
 // Expose Game for inline handlers
