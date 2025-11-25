@@ -1,9 +1,11 @@
 import { Creatures } from './creatures.js';
 import { Dungeons } from './dungeon.js';
 import { Events } from './events.js';
-import { Equipment, Items } from './items.js';
+import { Equipment } from './equipment.js';
+import { Items } from './items.js';
 import { Party } from './party.js';
 import { Skills } from './skills.js';
+import { Passives } from './passives.js';
 
 // ------------------- DATA DEFINITIONS -------------------
 export const Data = {
@@ -172,5 +174,6 @@ export const Data = {
     equipment: Equipment,
     items: Items,
     party: Party,
-    skills: Skills
+    skills: Skills,
+    passives: Passives
 };

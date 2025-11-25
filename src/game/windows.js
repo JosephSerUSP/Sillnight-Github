@@ -355,7 +355,21 @@ class ShellUI {
         document.getElementById('modal-xp').innerText = `${unit.exp ?? 0}`;
         document.getElementById('modal-race').innerText = def.race;
         document.getElementById('modal-elements').innerText = (unit.elements || []).join(', ');
-        document.getElementById('modal-passive').innerText = def.passive || '—';
+        const passiveContainer = document.getElementById('modal-passive');
+        if (def.passives && def.passives.length > 0) {
+            passiveContainer.innerHTML = '';
+            def.passives.forEach(passiveId => {
+                const passive = Data.passives[passiveId];
+                if (passive) {
+                    const passiveEl = document.createElement('div');
+                    passiveEl.className = 'text-xs';
+                    passiveEl.innerHTML = `<div class="text-yellow-200">${passive.name}</div> <div class="text-gray-400">${passive.description}</div>`;
+                    passiveContainer.appendChild(passiveEl);
+                }
+            });
+        } else {
+            passiveContainer.innerText = '—';
+        }
         document.getElementById('modal-desc').innerText = def.description;
         const actions = document.getElementById('modal-actions');
         actions.innerHTML = '';

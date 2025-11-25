@@ -13,7 +13,7 @@ export const Creatures = {
         temperament: 'kind',
         race: 'Fey',
         elements: ['G', 'G'],
-        passive: null,
+        passives: ['soothingBreeze'],
         acts: [
             ['attack'],
             ['cure']
@@ -33,7 +33,7 @@ export const Creatures = {
         temperament: 'selfish',
         race: 'Unknown',
         elements: [],
-        passive: null,
+        passives: ['devilLeech'],
         acts: [
             ['attack', 'wait'],
             ['guard']
@@ -53,7 +53,7 @@ export const Creatures = {
         temperament: 'free',
         race: 'Undead',
         elements: [],
-        passive: null,
+        passives: [],
         acts: [
             ['attack'],
             ['guard', 'attack']
@@ -73,7 +73,7 @@ export const Creatures = {
         temperament: 'kind',
         race: 'Celestial',
         elements: [],
-        passive: null,
+        passives: [],
         acts: [
             ['cure'],
             ['ray', 'attack']
@@ -93,7 +93,7 @@ export const Creatures = {
         temperament: 'kind',
         race: 'Fey',
         elements: ['G'],
-        passive: null,
+        passives: ['soothingBreeze'],
         acts: [
             ['tornado', 'cure'],
             ['thunder']
@@ -113,7 +113,7 @@ export const Creatures = {
         temperament: 'free',
         race: 'Construct',
         elements: ['R'],
-        passive: null,
+        passives: ['highVitality'],
         acts: [
             ['wait'],
             ['attackRow']
@@ -133,7 +133,7 @@ export const Creatures = {
         temperament: 'ruthless',
         race: 'Undead',
         elements: ['K'],
-        passive: null,
+        passives: [],
         acts: [
             ['curse'],
             ['attack']
@@ -153,7 +153,7 @@ export const Creatures = {
         temperament: 'free',
         race: 'Eldritch',
         elements: ['B'],
-        passive: null,
+        passives: [],
         // Front: single-target snipe; Back: slower AoE control
         acts: [
             ['cosmicRay', 'ray'],
@@ -175,7 +175,7 @@ export const Creatures = {
         temperament: 'kind',
         race: 'Undead',
         elements: [],
-        passive: null,
+        passives: [],
         // Front: row bash; Back: double-duty healer
         acts: [
             ['silverTray', 'attack'],
@@ -197,7 +197,7 @@ export const Creatures = {
         temperament: 'kind',
         race: 'Human',
         elements: ['W'],
-        passive: null,
+        passives: ['highVitality'],
         // Front: premium heals; Back: holy nukes
         acts: [
             ['latexPrayer', 'cure'],
@@ -219,7 +219,7 @@ export const Creatures = {
         temperament: 'free',
         race: 'Eldritch',
         elements: ['G'],
-        passive: null,
+        passives: [],
         // Front: dreamy AoE caster; Back: wind + healing
         acts: [
             ['sleepMist', 'wait'],
@@ -241,7 +241,7 @@ export const Creatures = {
         temperament: 'ruthless',
         race: 'Elemental',
         elements: ['B'],
-        passive: null,
+        passives: [],
         // Row-freeze plus huge all-enemy finisher
         acts: [
             ['diamondDust', 'wait'],
@@ -263,7 +263,7 @@ export const Creatures = {
         temperament: 'ruthless',
         race: 'Undead',
         elements: ['K'],
-        passive: null,
+        passives: [],
         // Heavy ST physical plus dark nuke
         acts: [
             ['shadowSpike', 'anvil'],
@@ -285,7 +285,7 @@ export const Creatures = {
         temperament: 'ruthless',
         race: 'Elemental',
         elements: ['R'],
-        passive: null,
+        passives: ['exploder'],
         // Row pressure and huge fire AoE
         acts: [
             ['attackRow', 'hellfire'],
@@ -307,7 +307,7 @@ export const Creatures = {
         temperament: 'kind',
         race: 'Human',
         elements: ['W'],
-        passive: null,
+        passives: [],
         // Front: poke & pressure; Back: fast heals
         acts: [
             ['injection', 'attack'],
@@ -329,7 +329,7 @@ export const Creatures = {
         temperament: 'ruthless',
         race: 'Human',
         elements: ['G'],
-        passive: null,
+        passives: ['flyHigh'],
         // Always aggressive, very fast row DPS
         acts: [
             ['windBlades', 'attack'],
@@ -351,7 +351,7 @@ export const Creatures = {
         temperament: 'free',
         race: 'Unknown',
         elements: ['K'],
-        passive: null,
+        passives: [],
         // Dark single-target pressure + curse
         acts: [
             ['maskTear', 'ray'],
@@ -373,7 +373,7 @@ export const Creatures = {
         temperament: 'selfish',
         race: 'Beast',
         elements: ['R'],
-        passive: null,
+        passives: [],
         // Big row/ ST damage and greedy self-heal
         acts: [
             ['attackRow', 'anvil'],

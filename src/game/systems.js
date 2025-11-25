@@ -846,6 +846,133 @@ export const Systems = {
             }
         }
     },
+    Triggers: {
+        fire(eventName, ...args) {
+            // Find all units with passives or equipment that respond to this event
+            const allUnits = [...(GameState.battle?.allies || []), ...(GameState.battle?.enemies || [])];
+
+            allUnits.forEach(unit => {
+                if(unit.hp <= 0) return;
+
+                const unitWithStats = Systems.Battle.getUnitWithStats(unit);
+                const traits = [];
+
+                // Get traits from passives
+                const species = Data.creatures[unit.speciesId];
+                if (species && species.passives) {
+                    species.passives.forEach(passiveId => {
+                        const passive = Data.passives[passiveId];
+                        if (passive) {
+                            traits.push(...passive.traits);
+                        }
+                    });
+                }
+
+                // Get traits from equipment
+                if (unit.equipmentId) {
+                    const equipment = Data.equipment[unit.equipmentId];
+                    if (equipment) {
+                        traits.push(...equipment.traits);
+                    }
+                }
+
+                traits.forEach(trait => {
+                    this.handleTrait(eventName, trait, unit, ...args);
+                });
+            });
+        },
+
+        handleTrait(eventName, trait, unit, ...args) {
+            switch (eventName) {
+                case 'onBattleEnd':
+                    if(unit.evadeBonus) unit.evadeBonus = 0;
+
+                    if (trait.type === 'post_battle_heal') {
+                        const healAmount = Math.floor(Math.pow(Math.random(), 2) * unit.level) + 1;
+                        unit.hp = Math.min(Systems.Battle.getMaxHp(unit), unit.hp + healAmount);
+                        Log.add(`${unit.name} was healed by Soothing Breeze.`);
+                    } else if (trait.type === 'post_battle_leech') {
+                        // In onBattleEnd, args could be the party members
+                        const party = args[0];
+                        const adjacent = this.getAdjacentUnits(unit, party);
+                        let totalDamage = 0;
+                        adjacent.forEach(target => {
+                            const damage = parseInt(trait.formula) || 0;
+                            target.hp = Math.max(0, target.hp - damage);
+                            totalDamage += damage;
+                            Log.add(`${unit.name} leeched ${damage} HP from ${target.name}.`);
+                        });
+                        const leechHeal = Math.floor(totalDamage / 2);
+                        unit.hp = Math.min(Systems.Battle.getMaxHp(unit), unit.hp + leechHeal);
+                        Log.add(`${unit.name} recovered ${leechHeal} HP.`);
+                    }
+                    break;
+                case 'onTurnStart':
+                    if (trait.type === 'turn_heal') {
+                        const healAmount = parseInt(trait.formula) || 0;
+                        unit.hp = Math.min(Systems.Battle.getMaxHp(unit), unit.hp + healAmount);
+                    }
+                    break;
+                case 'onUnitDeath':
+                    if (trait.type === 'on_death_cast') {
+                        const [deadUnit] = args;
+                        if (deadUnit.uid === unit.uid) {
+                            const skill = Data.skills[trait.skill.toLowerCase()];
+                            if (skill) {
+                                const enemies = GameState.battle.enemies.filter(e => e.hp > 0);
+                                Systems.Battle.applyEffects(skill, unit, enemies);
+                                Log.battle(`${unit.name} casts ${skill.name} upon death!`);
+                            }
+                        }
+                    }
+                    break;
+                case 'onUnitEvade':
+                     if (trait.type === 'evade_bonus') {
+                        const [evadingUnit] = args;
+                        if (evadingUnit.uid === unit.uid) {
+                            const maxBonus = Math.floor(unit.level / 2);
+                            if(!unit.evadeBonus) unit.evadeBonus = 0;
+
+                            if(unit.evadeBonus < maxBonus){
+                                unit.evadeBonus += 1;
+                                Log.battle(`${unit.name} gained +1 bonus from evading!`);
+                            }
+                        }
+                    }
+                    break;
+            }
+        },
+
+        getAdjacentUnits(unit, party) {
+            const adjacent = [];
+            const index = unit.slotIndex;
+
+            // Not in active party
+            if(index === -1) return [];
+
+            // units are in a 2x3 grid.  0 1 2 are front, 3 4 5 are back.
+            // adjacent means left, right, front, back.
+            const potentialAdjacent = [
+                index - 1, // left
+                index + 1, // right
+                index - 3, // front
+                index + 3  // back
+            ];
+
+            potentialAdjacent.forEach(adjIndex => {
+                // check for row wrapping
+                if(index % 3 === 0 && adjIndex === index-1) return;
+                if(index % 3 === 2 && adjIndex === index+1) return;
+
+                const adjacentUnit = party.find(u => u && u.slotIndex === adjIndex);
+                if(adjacentUnit) {
+                    adjacent.push(adjacentUnit);
+                }
+            });
+
+            return adjacent;
+        }
+    },
     /*
      * Battle system: orchestrates the turn-based combat loop. It uses Data and
      * GameState to determine combatants, their actions, and outcomes. It
@@ -887,16 +1014,23 @@ export const Systems = {
 
             const element = action.element;
             // Get attacker stats from the new centralized function
-            const attackerWithStats = this.getUnitWithEquipmentStats(a);
+            const attackerWithStats = this.getUnitWithStats(a);
 
             const attackMult = this.elementMultiplier(element, attackerWithStats, 'attacker');
             // Get defender stats from the new centralized function to fix the bug
-            const defenderWithStats = this.getUnitWithEquipmentStats(b);
+            const defenderWithStats = this.getUnitWithStats(b);
             const defenseMult = this.elementMultiplier(element, defenderWithStats, 'defender');
 
             // Add power bonus to the base value *before* multipliers are applied.
             const baseDamage = value + attackerWithStats.power_bonus;
             let finalValue = Math.floor(baseDamage * attackMult * defenseMult);
+
+            // Add evasion logic
+            const evadeChance = (defenderWithStats.evade_chance || 0);
+            if (Math.random() < evadeChance) {
+                Systems.Triggers.fire('onUnitEvade', b);
+                return 0;
+            }
 
             // Add critical hit logic
             const critChance = (Data.config.baseCritChance || 0.05) + (attackerWithStats.crit_bonus_percent || 0);
@@ -924,7 +1058,7 @@ export const Systems = {
             });
             return results;
         },
-        getUnitWithEquipmentStats(unit) {
+        getUnitWithStats(unit) {
             // Start with a shallow copy
             const unitWithStats = { ...unit };
             // Deep copy arrays to prevent mutation of the original object
@@ -940,12 +1074,8 @@ export const Systems = {
             unitWithStats.revive_on_ko_percent = 0;
             unitWithStats.xp_bonus_percent = 0;
 
-            if (!unit.equipmentId) return unitWithStats;
-
-            const equipment = Data.equipment[unit.equipmentId];
-            if (!equipment) return unitWithStats;
-
-            equipment.traits.forEach(trait => {
+            const processTraits = (traits) => {
+              traits.forEach(trait => {
                 switch (trait.type) {
                     case 'hp_bonus_percent':
                         // This bonus is applied dynamically by getMaxHp to ensure it's always
@@ -975,7 +1105,27 @@ export const Systems = {
                         unitWithStats.xp_bonus_percent += parseFloat(trait.formula) || 0;
                         break;
                 }
-            });
+              });
+            }
+
+            // Process equipment traits
+            if (unit.equipmentId) {
+                const equipment = Data.equipment[unit.equipmentId];
+                if (equipment) {
+                    processTraits(equipment.traits);
+                }
+            }
+
+            // Process passive traits
+            const species = Data.creatures[unit.speciesId];
+            if (species && species.passives) {
+                species.passives.forEach(passiveId => {
+                    const passive = Data.passives[passiveId];
+                    if (passive) {
+                        processTraits(passive.traits);
+                    }
+                });
+            }
 
             return unitWithStats;
         },
@@ -1089,7 +1239,7 @@ export const Systems = {
             const allUnits = [...GameState.battle.allies, ...GameState.battle.enemies]
                 .filter(u => u.hp > 0)
                 .map(u => {
-                    const unitWithStats = this.getUnitWithEquipmentStats(u);
+                    const unitWithStats = this.getUnitWithStats(u);
                     // Combine the original unit with its calculated speed bonus for sorting.
                     return { ...u, speed: unitWithStats.speed_bonus };
                 });
@@ -1143,6 +1293,7 @@ export const Systems = {
                 this.processNextTurn();
                 return;
             }
+            Systems.Triggers.fire('onTurnStart', unit);
             const isAlly = GameState.battle.allies.some(a => a.uid === unit.uid);
             Systems.Battle3D.setFocus(isAlly ? 'ally' : 'enemy');
             const enemies = isAlly ? GameState.battle.enemies : GameState.battle.allies;
@@ -1209,7 +1360,7 @@ export const Systems = {
                         case 'hp_damage':
                             let dealtDamage = value;
                             let newHp = target.hp - dealtDamage;
-                            const defenderWithStats = Systems.Battle.getUnitWithEquipmentStats(target);
+                            const defenderWithStats = Systems.Battle.getUnitWithStats(target);
 
                             if (newHp <= 0) {
                                 if (Math.random() < (defenderWithStats.survive_ko_chance || 0)) {
@@ -1229,6 +1380,7 @@ export const Systems = {
                                 Log.battle(`> ${target.name} was defeated!`);
                                 const ts = Systems.Battle3D.sprites[target.uid];
                                 if (ts) ts.visible = false;
+                                Systems.Triggers.fire('onUnitDeath', target);
 
                                 if (Math.random() < (defenderWithStats.revive_on_ko_chance || 0)) {
                                     const revivePercent = defenderWithStats.revive_on_ko_percent || 0.5;
@@ -1299,6 +1451,7 @@ export const Systems = {
                 UI.showBanner('VICTORY');
                 GameState.ui.mode = 'BATTLE_WIN';
                 Systems.sceneHooks?.onBattleEnd?.();
+                Systems.Triggers.fire('onBattleEnd', [...GameState.battle.allies, ...GameState.battle.enemies].filter(u => u && u.hp > 0));
                 Systems.Battle3D.setFocus('victory');
                 // Calculate rewards
                 const gold = GameState.battle.enemies.length * Data.config.baseGoldPerEnemy * GameState.run.floor;
@@ -1307,7 +1460,7 @@ export const Systems = {
                 let finalXp = baseXp;
                 GameState.party.activeSlots.forEach(p => {
                     if (p) {
-                        const unitWithStats = this.getUnitWithEquipmentStats(p);
+                        const unitWithStats = this.getUnitWithStats(p);
                         finalXp = Math.round(baseXp * (1 + (unitWithStats.xp_bonus_percent || 0)));
 
                         // Add XP and level up if necessary
