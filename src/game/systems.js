@@ -1,4 +1,4 @@
-import { Data } from '.assets/data/data.js';
+import { Data } from './assets/data/data.js';
 import { GameState } from './state.js';
 import { Log } from './log.js';
 import { resolveAssetPath } from './core.js';
