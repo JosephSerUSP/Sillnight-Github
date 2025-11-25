@@ -945,34 +945,34 @@ export const Systems = {
             const equipment = Data.equipment[unit.equipmentId];
             if (!equipment) return unitWithStats;
 
-            equipment.effects.forEach(effect => {
-                switch (effect.type) {
+            equipment.traits.forEach(trait => {
+                switch (trait.type) {
                     case 'hp_bonus_percent':
                         // This bonus is applied dynamically by getMaxHp to ensure it's always
                         // calculated against the correct base HP for the unit's level.
                         break;
                     case 'power_bonus':
-                        unitWithStats.power_bonus += parseInt(effect.formula) || 0;
+                        unitWithStats.power_bonus += parseInt(trait.formula) || 0;
                         break;
                     case 'speed_bonus':
-                        unitWithStats.speed_bonus += parseInt(effect.formula) || 0;
+                        unitWithStats.speed_bonus += parseInt(trait.formula) || 0;
                         break;
                     case 'element_change':
                         // Overwrites the unit's base elements.
-                        unitWithStats.elements = [effect.element];
+                        unitWithStats.elements = [trait.element];
                         break;
                     case 'crit_bonus_percent':
-                        unitWithStats.crit_bonus_percent += parseFloat(effect.formula) || 0;
+                        unitWithStats.crit_bonus_percent += parseFloat(trait.formula) || 0;
                         break;
                     case 'survive_ko':
-                        unitWithStats.survive_ko_chance += parseFloat(effect.formula) || 0;
+                        unitWithStats.survive_ko_chance += parseFloat(trait.formula) || 0;
                         break;
                     case 'revive_on_ko':
-                        unitWithStats.revive_on_ko_chance += parseFloat(effect.chance) || 0;
-                        unitWithStats.revive_on_ko_percent += parseFloat(effect.formula) || 0;
+                        unitWithStats.revive_on_ko_chance += parseFloat(trait.chance) || 0;
+                        unitWithStats.revive_on_ko_percent += parseFloat(trait.formula) || 0;
                         break;
                     case 'xp_bonus_percent':
-                        unitWithStats.xp_bonus_percent += parseFloat(effect.formula) || 0;
+                        unitWithStats.xp_bonus_percent += parseFloat(trait.formula) || 0;
                         break;
                 }
             });
@@ -986,9 +986,9 @@ export const Systems = {
             if (unit.equipmentId) {
                 const eq = Data.equipment[unit.equipmentId];
                 if (eq) {
-                    eq.effects.forEach(effect => {
-                        if (effect.type === 'hp_bonus_percent') {
-                            baseMax = Math.round(baseMax * (1 + parseFloat(effect.formula)));
+                    eq.traits.forEach(trait => {
+                        if (trait.type === 'hp_bonus_percent') {
+                            baseMax = Math.round(baseMax * (1 + parseFloat(trait.formula)));
                         }
                     });
                 }
