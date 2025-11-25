@@ -958,6 +958,7 @@ export const Data = {
         exp_boost1: { id: 'exp_boost', name: 'Golden Egg', description: 'earn 10% more XP from battles', xpBonus: 0.5, cost: 15000 },
         rabbits_foot: { id: 'rabbits_foot', name: "Rabbit's Foot", description: 'greatly improves Critical Hit chance', critBonus: 0.15, cost: 250 },
         straw_doll: { id: 'straw_doll', name: 'Straw Doll', description: 'can survive a fatal blow once per battle', surviveKO:1, cost: 2500 },
+        angel_curio: { id: 'angel_curio', name: 'Angel Curio', description: 'Breaks to revive unit with 100% HP upon death', reviveOnKO: true, cost: 5000 },
         charm_magic: { id: 'charm_magic', name: 'Arcane Charm', description: '+1 Power', powerBonus: 1, cost: 120 },
         holy_sword_gram: { id: 'holy_sword_gram', name: 'Holy Sword Gram', description: '+3 Power, user becomes ⚪ elemental', powerBonus: 3, elementChange: 'W', cost: 1500 },
         dark_scepter_lucille: { id: 'dark_scepter_lucille', name: 'Dark Scepter Lucille', description: '+3 Power, user becomes ⚫ elemental', powerBonus: 3, elementChange: 'K', cost: 1500 },
@@ -968,6 +969,8 @@ export const Data = {
     // Consumable item definitions. healRatio defines percent of max HP to heal; reviveHpRatio defines percent restored on revival.
     items: {
         potion_small: { id: 'potion_small', name: 'Small Potion', description: 'Heals 30% HP', healRatio: 0.3, cost: 30 },
+        life_incense: { id: 'life_incense', name: 'Life Incense', description: 'Raises MaxHP by 2.', increase:[ 'maxHp', 2 ], cost: 200 },
+        wisdom_incense: { id: 'wisdom_incense', name: 'Wisdom Incense', description: 'Raises Level by 1.', increase:[ 'level', 1 ], cost: 2500 },
         revive_leaf: { id: 'revive_leaf', name: 'Revive Leaf', description: 'Revives to 50% HP', reviveHpRatio: 0.5, cost: 200 }
     }
 };
