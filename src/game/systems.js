@@ -693,33 +693,61 @@ export const Systems = {
                 sprite.position.z = baseZ;
             }
         },
-        playDeathFade(uid) {
-            const sprite = this.sprites[uid];
-            if (!sprite) return;
+playDeathFade(uid) {
+    const sprite = this.sprites[uid];
+    if (!sprite) return;
 
-            const duration = 800;
-            let startTime = null;
+    const duration = 800;
+    let startTime = null;
 
-            const animateFade = (timestamp) => {
-                if (!startTime) startTime = timestamp;
-                const elapsed = timestamp - startTime;
-                const p = Math.min(1, elapsed / duration);
+    // 1. Store original Z (World Altitude) and base height
+    const startZ = sprite.position.z;
+    const baseHeight = sprite.userData.baseScale.y;
 
-                sprite.material.blending = THREE.AdditiveBlending;
-                sprite.material.color.setHex(0xff00ff);
-                sprite.scale.x = sprite.userData.baseScale.x * (1 - p);
-                sprite.scale.y = sprite.userData.baseScale.y * (1 + p * 2);
-                sprite.material.opacity = 1 - p;
+    const animateFade = (timestamp) => {
+        if (!startTime) startTime = timestamp;
+        const elapsed = timestamp - startTime;
+        const p = Math.min(1, elapsed / duration);
 
-                if (p < 1) {
-                    requestAnimationFrame(animateFade);
-                } else {
-                    sprite.visible = false;
-                }
-            };
+        // --- Define Easings ---
+        // Ease In (Quad): Starts slow, accelerates. 
+        // Good for X so it holds width initially then snaps shut.
+        const easeIn = p * p;
 
+        // Ease Out (Quad): Starts fast, decelerates. 
+        // Good for Y so it pops up explosively then drifts to a stop.
+        const easeOut = p * (2 - p); 
+
+        sprite.material.blending = THREE.AdditiveBlending;
+        sprite.material.color.setHex(0xff00ff);
+
+        // --- Apply Specific Easings ---
+        // X uses easeIn (1 minus easeIn implies it stays near 1 longer)
+        const newScaleX = sprite.userData.baseScale.x * (1 - easeIn);
+        
+        // Y uses easeOut (grows fast immediately)
+        const newScaleY = baseHeight * (1 + easeOut * 2);
+
+        sprite.scale.x = newScaleX;
+        sprite.scale.y = newScaleY;
+
+        // --- Anchor Logic (Z-Up) ---
+        // We use the *eased* newScaleY here, so the feet never slide
+        const heightDifference = newScaleY - baseHeight;
+        sprite.position.z = startZ + (heightDifference / 2);
+
+        // Opacity can stay linear, or use easeIn to stay visible longer
+        sprite.material.opacity = 1 - easeIn; 
+
+        if (p < 1) {
             requestAnimationFrame(animateFade);
-        },
+        } else {
+            sprite.visible = false;
+        }
+    };
+
+    requestAnimationFrame(animateFade);
+},
 
         // Executes a high-level action sequence, triggering Effekseer effects and timing
         // callbacks when damage/heal application should occur.
@@ -750,28 +778,54 @@ export const Systems = {
             const stepHandlers = {
                 feedback: (step) => new Promise(resolve => {
                     const boundSprites = step.bind === 'target' ? targets.map(t => this.sprites[t.uid]).filter(Boolean) : [sprite];
-                    const duration = step.duration || 200;
+                    
+                    // 1. Snapshot original positions to prevent drifting
+                    const startPositions = boundSprites.map(sp => sp.position.clone());
+                    
+                    const duration = step.duration || 250;
                     let startTime = null;
 
                     const animateFlash = (timestamp) => {
                         if (!startTime) startTime = timestamp;
                         const elapsed = timestamp - startTime;
                         const p = Math.min(1, elapsed / duration);
-                        const p2 = Math.sin(p * Math.PI);
-                        const flashOpacity = step.opacity === undefined ? 1.0 : step.opacity;
 
-                        boundSprites.forEach(sp => {
-                            if (step.color) sp.material.color.setHex(step.color);
-                            sp.material.opacity = 1 - (p2 * flashOpacity);
-                            if (step.shake) {
-                                sp.position.x += (Math.random() - 0.5) * step.shake * p2;
+                        // High frequency flicker (Strobe effect every 40ms)
+                        // If result is 1: Apply damage color. If 0: Revert to normal.
+                        const isFlashFrame = Math.floor(elapsed / 40) % 2 === 0;
+
+                        // Shake intensity decays over time (Strong -> Weak)
+                        const currentShake = (step.shake || 0) * (1 - p);
+
+                        boundSprites.forEach((sp, i) => {
+                            const base = startPositions[i];
+
+                            // 2. Apply random offset from BASE position (not current position)
+                            if (currentShake > 0) {
+                                sp.position.x = base.x + (Math.random() - 0.5) * currentShake;
+                                sp.position.y = base.y + (Math.random() - 0.5) * currentShake;
+                            }
+
+                            // 3. Flicker Logic
+                            if (step.color) {
+                                if (isFlashFrame) {
+                                    sp.material.color.setHex(step.color);
+                                    sp.material.blending = THREE.AdditiveBlending; // Optional: makes it "hotter"
+                                } else {
+                                    sp.material.color.setHex(0xffffff);
+                                    sp.material.blending = THREE.NormalBlending;
+                                }
                             }
                         });
 
                         if (p < 1) {
                             requestAnimationFrame(animateFlash);
                         } else {
-                            boundSprites.forEach(sp => this.resetSprite(sp.userData.uid));
+                            // 4. Cleanup: Force positions back to exact originals
+                            boundSprites.forEach((sp, i) => {
+                                sp.position.copy(startPositions[i]);
+                                this.resetSprite(sp.userData.uid);
+                            });
                             resolve();
                         }
                     };
@@ -898,7 +952,7 @@ export const Systems = {
             // Create a temporary object positioned at the top of the sprite
             const topOfSprite = new THREE.Object3D();
             topOfSprite.position.copy(sprite.position);
-            topOfSprite.position.z += sprite.userData.baseScale.y;
+            topOfSprite.position.z += sprite.userData.baseScale.y / 2;
 
             const screenPos = this.toScreen(topOfSprite);
             const el = document.createElement('div');
