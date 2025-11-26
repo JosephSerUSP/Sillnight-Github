@@ -337,56 +337,86 @@ class ShellUI {
     }
 
     showCreatureModal(unit) {
+        // Do not open the modal if the game is not ready
+        if (!window.Game || !window.Game.ready) {
+            console.warn("Attempted to open creature modal before game was ready.");
+            return;
+        }
+
         this.activeModalUnit = unit;
-        document.getElementById('creature-modal').classList.remove('hidden');
+        const modal = document.getElementById('creature-modal');
+        modal.classList.remove('hidden');
         this.renderStatusModal();
     }
 
     renderStatusModal() {
+        const modal = document.getElementById('creature-modal');
+        if (modal.classList.contains('hidden')) return;
+
         const unit = this.activeModalUnit;
         if (!unit) return;
+
         const def = Data.creatures[unit.speciesId];
-        const maxhp = getMaxHp(unit);
-        document.getElementById('modal-sprite').innerHTML = this.spriteMarkup(unit, 'h-28 w-28 object-contain', 'status-sprite');
-        document.getElementById('modal-name').innerText = unit.name;
-        document.getElementById('modal-lvl').innerText = unit.level;
-        document.getElementById('modal-temperament').innerText = def.temperament;
-        document.getElementById('modal-hp').innerText = `${unit.hp}/${maxhp}`;
-        document.getElementById('modal-xp').innerText = `${unit.exp ?? 0}`;
-        document.getElementById('modal-race').innerText = def.race;
-        document.getElementById('modal-elements').innerText = (unit.elements || []).join(', ');
-        const passiveContainer = document.getElementById('modal-passive');
-        if (def.passives && def.passives.length > 0) {
-            passiveContainer.innerHTML = '';
-            def.passives.forEach(passiveId => {
-                const passive = Data.passives[passiveId];
-                if (passive) {
-                    const passiveEl = document.createElement('div');
-                    passiveEl.className = 'text-xs';
-                    passiveEl.innerHTML = `<div class="text-yellow-200">${passive.name}</div> <div class="text-gray-400">${passive.description}</div>`;
-                    passiveContainer.appendChild(passiveEl);
-                }
-            });
-        } else {
-            passiveContainer.innerText = '—';
+        console.log("Rendering Status Modal. Creature Def:", def); // Add logging
+        if (!def) {
+            console.error("Creature definition not found for speciesId:", unit.speciesId);
+            return;
         }
-        document.getElementById('modal-desc').innerText = def.description;
+
+        const maxhp = getMaxHp(unit);
+
+        document.getElementById('modal-sprite').innerHTML = this.spriteMarkup(unit, 'h-48 w-48 object-contain', 'status-sprite');
+        document.getElementById('modal-name').innerText = unit.name || 'N/A';
+        document.getElementById('modal-lvl').innerText = unit.level || 'N/A';
+        document.getElementById('modal-temperament').innerText = def.temperament || 'N/A';
+        document.getElementById('modal-hp').innerText = `${unit.hp}/${maxhp}`;
+
+        const nextLvlXp = getXpForNextLevel(unit.level);
+        document.getElementById('modal-xp').innerText = `${unit.exp ?? 0} / ${nextLvlXp}`;
+
+        document.getElementById('modal-race').innerText = def.race || 'N/A';
+        document.getElementById('modal-elements').innerText = (def.elements || []).join(', ') || 'None';
+        document.getElementById('modal-desc').innerText = def.description || 'N/A';
+
+        const passiveContainer = document.getElementById('modal-passive');
+        if (passiveContainer) {
+            if (def.passives && def.passives.length > 0) {
+                passiveContainer.innerHTML = '';
+                def.passives.forEach(passiveId => {
+                    const passive = Data.passives[passiveId];
+                    if (passive) {
+                        const passiveEl = document.createElement('div');
+                        passiveEl.className = 'text-xs';
+                        passiveEl.innerHTML = `<div class="text-yellow-200">${passive.name}</div> <div class="text-gray-400">${passive.description}</div>`;
+                        passiveContainer.appendChild(passiveEl);
+                    }
+                });
+            } else {
+                passiveContainer.innerText = '—';
+            }
+        }
+
         const actions = document.getElementById('modal-actions');
-        actions.innerHTML = '';
-        (def.acts || []).forEach(act => {
-            const card = document.createElement('div');
-            card.className = 'rpg-window px-3 py-2 bg-black/70 border border-gray-700';
-            card.innerHTML = `<div class="text-yellow-200">${act.name}</div><div class="text-xs text-gray-400">${act.description}</div>`;
-            actions.appendChild(card);
-        });
+        if (actions) {
+            actions.innerHTML = '';
+            (def.acts || []).forEach(act => {
+                const card = document.createElement('div');
+                card.className = 'rpg-window px-3 py-2 bg-black/70 border border-gray-700';
+                card.innerHTML = `<div class="text-yellow-200">${act.name}</div><div class="text-xs text-gray-400">${act.description}</div>`;
+                actions.appendChild(card);
+            });
+        }
+
         const equipBtn = document.getElementById('modal-equip-slot');
-        if (unit.equipmentId) {
-            const eq = Data.equipment[unit.equipmentId];
-            equipBtn.innerText = eq.name;
-            equipBtn.onclick = () => this.unequipUnit(unit);
-        } else {
-            equipBtn.innerText = '[ Empty ]';
-            equipBtn.onclick = () => this.startEquipFlow(null);
+        if (equipBtn) {
+            if (unit.equipmentId) {
+                const eq = Data.equipment[unit.equipmentId];
+                equipBtn.innerText = eq.name;
+                equipBtn.onclick = () => this.unequipUnit(unit);
+            } else {
+                equipBtn.innerText = '[ Empty ]';
+                equipBtn.onclick = () => this.startEquipFlow(null);
+            }
         }
     }
 

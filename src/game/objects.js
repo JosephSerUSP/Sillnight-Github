@@ -44,7 +44,7 @@ export function createUnit(speciesId, level, slotIndex = -1) {
         level,
         maxhp,
         hp: maxhp,
-        exp: 0,
+        exp: level > 1 ? getXpForNextLevel(level - 1) : 0,
         temperament: def.temperament,
         elements: def.elements ? [...def.elements] : [],
         acts: def.acts,
