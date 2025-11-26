@@ -105,17 +105,31 @@
         }
 
         /* Battle Effects */
-        .damage-number {
-            position: absolute; font-size: 2.5rem; font-weight: bold;
-            text-shadow: 2px 2px 0 #000; pointer-events: none; z-index: 50;
-            animation: gravity-bounce 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+.damage-number {
+            position: absolute;
+            top: 0;
+            left: 0;
+            
+            /* Smaller, cleaner font */
+            font-family: 'Verdana', sans-serif; 
+            font-size: 2rem; /* Reduced from 3.5rem */
+            font-weight: 900;
+            
+            /* Cleaner Border/Shadow */
+            text-shadow: 
+                -1px -1px 0 #000,  
+                 1px -1px 0 #000,
+                -1px  1px 0 #000,
+                 1px  1px 0 #000,
+                 2px 2px 4px rgba(0,0,0,0.6);
+            
+            pointer-events: none; 
+            z-index: 50;
+            will-change: transform, opacity;
+            transition: none; /* JS handles movement */
         }
-        @keyframes gravity-bounce {
-            0% { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
-            20% { transform: translate(-50%, -60px) scale(1.5); opacity: 1; }
-            40% { transform: translate(-50%, -50px) scale(1.2); }
-            100% { transform: translate(-50%, 20px) scale(1); opacity: 0; }
-        }
+
+        /* @keyframes gravity-bounce ... REMOVED because JS handles the bounce now */
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .hidden-scene { opacity: 0; pointer-events: none; transition: opacity 0.5s; }

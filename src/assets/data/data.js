@@ -34,14 +34,14 @@ export const Data = {
         attack: [
             { type: 'jump', height: 0.8, duration: 500 },
             { type: 'approach', distance: 1.2, duration: 250 },
-            { type: 'effect', effect: 'BasicHit', bind: 'target', height: 0.5, hold: 350 },
+            { type: 'effect', effect: 'BasicHit', bind: 'target', anchor: 0.5, hold: 350 },
             { type: 'apply' },
             { type: 'retreat', duration: 250 }
         ],
         attackRow: [
             { type: 'jump', height: 0.6, duration: 400 },
             { type: 'approach', distance: 1.0, duration: 220 },
-            { type: 'effect', effect: 'BasicHit', bind: 'target', height: 0.5, hold: 320 },
+            { type: 'effect', effect: 'BasicHit', bind: 'target', anchor: 0.5, hold: 320 },
             { type: 'apply' },
             { type: 'retreat', duration: 220 }
         ],
@@ -53,22 +53,22 @@ export const Data = {
             { type: 'wait', duration: 400 }
         ],
         cure: [
-            { type: 'effect', effect: 'Cure', bind: 'target', height: 0.5, hold: 500 },
+            { type: 'effect', effect: 'Cure', bind: 'target', anchor: 0.5, hold: 500 },
             { type: 'apply' }
         ],
         serveDrink: [
             { type: 'wait', duration: 200 },
-            { type: 'effect', effect: 'Cure', bind: 'target', height: 0.5, hold: 450 },
+            { type: 'effect', effect: 'Cure', bind: 'target', anchor: 0.5, hold: 450 },
             { type: 'apply' }
         ],
         latexPrayer: [
             { type: 'wait', duration: 250 },
-            { type: 'effect', effect: 'Cure', bind: 'target', height: 0.5, hold: 520 },
+            { type: 'effect', effect: 'Cure', bind: 'target', anchor: 0.5, hold: 520 },
             { type: 'apply' }
         ],
         triage: [
             { type: 'wait', duration: 200 },
-            { type: 'effect', effect: 'Cure', bind: 'target', height: 0.5, hold: 420 },
+            { type: 'effect', effect: 'Cure', bind: 'target', anchor: 0.5, hold: 420 },
             { type: 'apply' }
         ],
         feast: [
@@ -77,93 +77,93 @@ export const Data = {
         ],
         thunder: [
             { type: 'wait', duration: 250 },
-            { type: 'effect', effect: 'Thunder', bind: 'target', height: 0, hold: 520 },
+            { type: 'effect', effect: 'Thunder', bind: 'target', anchor: 0.0, hold: 520 },
             { type: 'apply' }
         ],
         divineBolt: [
             { type: 'wait', duration: 250 },
-            { type: 'effect', effect: 'Thunder', bind: 'target', height: 0, hold: 520 },
+            { type: 'effect', effect: 'Thunder', bind: 'target', anchor: 0.0, hold: 520 },
             { type: 'apply' }
         ],
         tornado: [
             { type: 'wait', duration: 220 },
-            { type: 'effect', effect: 'Tornado', bind: 'target', height: 0, hold: 600 },
+            { type: 'effect', effect: 'Tornado', bind: 'target', anchor: 0.0, hold: 600 },
             { type: 'apply' }
         ],
         gravityWell: [
             { type: 'wait', duration: 250 },
-            { type: 'effect', effect: 'Tornado', bind: 'target', height: 0, hold: 580 },
+            { type: 'effect', effect: 'Tornado', bind: 'target', anchor: 0.0, hold: 580 },
             { type: 'apply' }
         ],
         hellfire: [
             { type: 'wait', duration: 280 },
-            { type: 'effect', effect: 'Apocalypse', bind: 'target', height: 0, hold: 640 },
+            { type: 'effect', effect: 'Apocalypse', bind: 'target', anchor: 0.0, hold: 640 },
             { type: 'apply' }
         ],
         apocalypse: [
             { type: 'wait', duration: 300 },
-            { type: 'effect', effect: 'Apocalypse', bind: 'target', height: 0, hold: 650 },
+            { type: 'effect', effect: 'Apocalypse', bind: 'target', anchor: 0.0, hold: 650 },
             { type: 'apply' }
         ],
         curse: [
             { type: 'wait', duration: 220 },
-            { type: 'effect', effect: 'Curse', bind: 'target', height: 0.5, hold: 520 },
+            { type: 'effect', effect: 'Curse', bind: 'target', anchor: 0.5, hold: 520 },
             { type: 'apply' }
         ],
         sleepMist: [
             { type: 'wait', duration: 220 },
-            { type: 'effect', effect: 'Curse', bind: 'target', height: 0.5, hold: 520 },
+            { type: 'effect', effect: 'Curse', bind: 'target', anchor: 0.5, hold: 520 },
             { type: 'apply' }
         ],
         anvil: [
             { type: 'approach', distance: 1.0, duration: 250 },
-            { type: 'effect', effect: 'Impact', bind: 'target', height: 0, hold: 520 },
+            { type: 'effect', effect: 'Impact', bind: 'target', anchor: 0.0, hold: 520 },
             { type: 'apply' },
             { type: 'retreat', duration: 250 }
         ],
         silverTray: [
             { type: 'approach', distance: 1.0, duration: 250 },
-            { type: 'effect', effect: 'Impact', bind: 'target', height: 0, hold: 420 },
+            { type: 'effect', effect: 'Impact', bind: 'target', anchor: 0.0, hold: 420 },
             { type: 'apply' },
             { type: 'retreat', duration: 250 }
         ],
         ray: [
             { type: 'wait', duration: 180 },
-            { type: 'effect', effect: 'BasicHit', bind: 'target', height: 0, hold: 300 },
+            { type: 'effect', effect: 'BasicHit', bind: 'target', anchor: 0.0, hold: 300 },
             { type: 'apply' }
         ],
         cosmicRay: [
             { type: 'wait', duration: 200 },
-            { type: 'effect', effect: 'BasicHit', bind: 'target', height: 0, hold: 320 },
+            { type: 'effect', effect: 'BasicHit', bind: 'target', anchor: 0.0, hold: 320 },
             { type: 'apply' }
         ],
         shadowSpike: [
             { type: 'jump', height: 0.9, duration: 420 },
-            { type: 'effect', effect: 'Impact', bind: 'target', height: 0, hold: 420 },
+            { type: 'effect', effect: 'Impact', bind: 'target', anchor: 0.0, hold: 420 },
             { type: 'apply' },
             { type: 'retreat', duration: 240 }
         ],
         injection: [
             { type: 'jump', height: 0.6, duration: 420 },
-            { type: 'effect', effect: 'Impact', bind: 'target', height: 0, hold: 380 },
+            { type: 'effect', effect: 'Impact', bind: 'target', anchor: 0.0, hold: 380 },
             { type: 'apply' },
             { type: 'retreat', duration: 240 }
         ],
         windBlades: [
             { type: 'jump', height: 0.7, duration: 380 },
-            { type: 'effect', effect: 'BasicHit', bind: 'target', height: 0.5, hold: 360 },
+            { type: 'effect', effect: 'BasicHit', bind: 'target', anchor: 0.5, hold: 360 },
             { type: 'apply' },
             { type: 'retreat', duration: 220 }
         ],
         maskTear: [
             { type: 'jump', height: 0.7, duration: 420 },
-            { type: 'effect', effect: 'Impact', bind: 'target', height: 0.5, hold: 380 },
+            { type: 'effect', effect: 'Impact', bind: 'target', anchor: 0.5, hold: 380 },
             { type: 'apply' },
             { type: 'retreat', duration: 240 }
         ],
         diamondDust: [
             { type: 'wait', duration: 200 },
-            { type: 'effect', effect: 'IceWind', bind: 'target', height: 0, hold: 520 },
+            { type: 'effect', effect: 'IceWind', bind: 'target', anchor: 0.0, hold: 520 },
             { type: 'apply' }
         ]
     },

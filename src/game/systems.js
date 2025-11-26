@@ -5,18 +5,15 @@ import { resolveAssetPath } from './core.js';
 import { UI } from './windows.js';
 
 // ------------------- SYSTEMS DEFINITIONS -------------------
-// All gameplay logic is organized under a single Systems object. Each system operates
-// exclusively on GameState and Data, without direct DOM manipulation.
 
 export const Systems = {
     sceneHooks: { onBattleStart: null, onBattleEnd: null },
+
     Effekseer: {
         context: null,
         initPromise: null,
         cache: {},
-        // Rotation matrix to convert the game's Z-up coordinates to Effekseer's Y-up system.
         zToYUpMatrix: new THREE.Matrix4().makeRotationX(-Math.PI / 2),
-        // Inverse rotation for converting Effekseer-space camera matrices back to world space.
         yToZUpMatrix: new THREE.Matrix4().makeRotationX(Math.PI / 2),
         convertToEffekseerPosition(position = { x: 0, y: 0, z: 0 }) {
             const vec = new THREE.Vector3(position.x, position.y, position.z);
@@ -96,12 +93,6 @@ export const Systems = {
         },
         update(camera) {
             if (!this.context || !camera) return;
-            // Convert the camera's world-space view matrix into Effekseer's Y-up space so
-            // that effects and sprites line up. Because effect positions are rotated into
-            // Effekseer space (Z-up -> Y-up), we need to apply the inverse rotation when
-            // supplying the view matrix: view = M_view_world * R^-1.
-            // Use the inverse rotation on the camera side (V = Vz * R^-1) so the view
-            // cancels the position conversion instead of rotating twice.
             const viewMatrix = new THREE.Matrix4().multiplyMatrices(
                 camera.matrixWorldInverse,
                 this.yToZUpMatrix
@@ -112,21 +103,18 @@ export const Systems = {
             this.context.draw();
         }
     },
-    /*
-     * Map system: generates and manages dungeon floors, and resolves tile effects.
-     */
+
     Map: {
         generateFloor() {
             const floor = GameState.run.floor;
-            const dungeon = Data.dungeons.default; // Assuming 'default' dungeon for now
+            const dungeon = Data.dungeons.default;
             const mapCfg = dungeon.map;
 
-            // Initialize map filled with walls (code 1)
             const map = Array(mapCfg.height).fill().map(() => Array(mapCfg.width).fill(1));
             let x = Math.floor(mapCfg.width / 2);
             let y = Math.floor(mapCfg.height / 2);
             GameState.exploration.playerPos = { x, y };
-            // Carve a random path
+            
             for (let i = 0; i < mapCfg.carveSteps; i++) {
                 map[y][x] = 0;
                 const dir = Math.floor(Math.random() * 4);
@@ -135,7 +123,7 @@ export const Systems = {
                 else if (dir === 2 && x > 1) x--;
                 else if (dir === 3 && x < mapCfg.width - 2) x++;
             }
-            // Collect empty floor tiles to place features on them
+            
             const emptyTiles = [];
             for (let ry = 0; ry < mapCfg.height; ry++) {
                 for (let rx = 0; rx < mapCfg.width; rx++) {
@@ -144,7 +132,7 @@ export const Systems = {
                     }
                 }
             }
-            // Helper to place tiles
+            
             const place = (code, count) => {
                 for (let i = 0; i < count; i++) {
                     if (emptyTiles.length === 0) break;
@@ -153,7 +141,7 @@ export const Systems = {
                     map[tile.y][tile.x] = code;
                 }
             };
-            // Calculate and place tile counts from dungeon data
+            
             const getCount = (def) => {
                 if (typeof def === 'number') return def;
                 const { base = 0, perFloor = 0, min = 0, max = Infinity, round = 'round' } = def;
@@ -169,28 +157,24 @@ export const Systems = {
             place(7, getCount(mapCfg.tileCounts.shrines));
             place(8, getCount(mapCfg.tileCounts.traps));
 
-            // Save to GameState
             GameState.exploration.map = map;
             GameState.exploration.visited = Array(mapCfg.height).fill().map(() => Array(mapCfg.width).fill(false));
             Log.add(`Floor ${floor} generated.`);
         },
-        // Returns the tile code at the given coordinates, or 1 if out of bounds
         tileAt(x, y) {
             const map = GameState.exploration.map;
             if (!map[y] || map[y][x] === undefined) return 1;
             return map[y][x];
         },
-        // Resolves effects when the player steps on a tile. Modifies game state.
         resolveTile(code) {
-            if (code === 2) { // enemy
-                // Clear the tile so encounters don't repeat
+            if (code === 2) { 
                 GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
                 Systems.Battle.startEncounter();
-            } else if (code === 3) { // stairs
+            } else if (code === 3) { 
                 GameState.run.floor++;
                 Log.add('Descended...');
                 Systems.Map.generateFloor();
-            } else if (code === 4) { // treasure
+            } else if (code === 4) { 
                 const treasure = Data.events.treasure;
                 const amt = treasure.gold.base
                     + Math.floor(Math.random() * treasure.gold.random)
@@ -198,29 +182,24 @@ export const Systems = {
                 GameState.run.gold += amt;
                 GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
                 Log.loot(`Found ${amt} Gold!`);
-            } else if (code === 5) { // shop
+            } else if (code === 5) { 
                 GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
                 Systems.Events.shop();
-            } else if (code === 6) { // recruit
+            } else if (code === 6) { 
                 GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
                 Systems.Events.recruit();
-            } else if (code === 7) { // shrine
+            } else if (code === 7) { 
                 GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
                 Systems.Events.shrine();
-            } else if (code === 8) { // trap
+            } else if (code === 8) { 
                 GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
                 Systems.Events.trap();
             }
         }
     },
-    /*
-     * Exploration system: handles movement and field-of-view updates. Has no DOM.
-     */
+
     Explore: {
-        init() {
-            // Called once to set canvas size and draw initial view
-            this.resize();
-        },
+        init() { this.resize(); },
         resize() {
             const canvas = document.getElementById('explore-canvas');
             canvas.width = window.innerWidth;
@@ -239,9 +218,7 @@ export const Systems = {
             }
         },
         checkTile(code) {
-            // Resolve what happens when stepping on this tile
             Systems.Map.resolveTile(code);
-            // Update HUD after potential gold change
             UI.updateHUD();
         },
         render() {
@@ -252,21 +229,22 @@ export const Systems = {
             const h = canvas.height;
             ctx.fillStyle = '#050505';
             ctx.fillRect(0, 0, w, h);
-            // Center offset to keep player in the middle of screen
+            
             const offsetX = (w / 2) - (GameState.exploration.playerPos.x * mapCfg.tileSize);
             const offsetY = (h / 2) - (GameState.exploration.playerPos.y * mapCfg.tileSize);
             ctx.save();
             ctx.translate(offsetX, offsetY);
-            // Draw map tiles with fog-of-war
+            
             for (let y = 0; y < mapCfg.height; y++) {
                 for (let x = 0; x < mapCfg.width; x++) {
                     const dist = Math.hypot(x - GameState.exploration.playerPos.x, y - GameState.exploration.playerPos.y);
                     if (dist < mapCfg.viewDistance) GameState.exploration.visited[y][x] = true;
                     if (!GameState.exploration.visited[y][x]) continue;
+                    
                     const tile = GameState.exploration.map[y][x];
                     const px = x * mapCfg.tileSize;
                     const py = y * mapCfg.tileSize;
-                    // Walls vs floor
+                    
                     if (tile === 1) {
                         ctx.fillStyle = '#333';
                         ctx.fillRect(px, py, mapCfg.tileSize, mapCfg.tileSize);
@@ -277,7 +255,7 @@ export const Systems = {
                         ctx.fillRect(px, py, mapCfg.tileSize, mapCfg.tileSize);
                         ctx.strokeStyle = '#222';
                         ctx.strokeRect(px, py, mapCfg.tileSize, mapCfg.tileSize);
-                        // Draw icons for special tiles
+                        
                         ctx.font = '32px serif';
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
@@ -291,14 +269,12 @@ export const Systems = {
                         else if (tile === 7) ctx.fillText('⛪', cx, cy);
                         else if (tile === 8) ctx.fillText('☠️', cx, cy);
                     }
-                    // Draw fog beyond view distance
                     if (dist >= mapCfg.viewDistance) {
                         ctx.fillStyle = 'rgba(0,0,0,0.7)';
                         ctx.fillRect(px, py, mapCfg.tileSize, mapCfg.tileSize);
                     }
                 }
             }
-            // Draw the player
             const playerX = GameState.exploration.playerPos.x * mapCfg.tileSize;
             const playerY = GameState.exploration.playerPos.y * mapCfg.tileSize;
             ctx.font = '36px serif';
@@ -310,11 +286,8 @@ export const Systems = {
             ctx.restore();
         }
     },
-    /*
-     * Event system: handles shops, recruitment, shrines, and traps.
-     */
+
     Events: {
-        // Helper to display a modal for events
         show(title, content) {
             const modal = document.getElementById('event-modal');
             const tEl = document.getElementById('event-title');
@@ -328,12 +301,10 @@ export const Systems = {
         close() {
             document.getElementById('event-modal').classList.add('hidden');
         },
-        // Shop event: sell items and equipment
         shop() {
             Log.add('You discover a mysterious merchant.');
             const container = document.createElement('div');
             container.className = 'space-y-2';
-            // Build list of stock from event data
             const shopData = Data.events.shop;
             const stock = [];
             for (let i = 0; i < shopData.stock.count.items; i++) {
@@ -363,14 +334,12 @@ export const Systems = {
                 btn.onclick = () => {
                     if (GameState.run.gold >= price) {
                         GameState.run.gold -= price;
-                        // Add to inventory
                         if (s.type === 'item') {
                             GameState.inventory.items[s.id] = (GameState.inventory.items[s.id] || 0) + 1;
-                            Log.loot(`Bought ${def.name}.`);
                         } else {
                             GameState.inventory.equipment[s.id] = (GameState.inventory.equipment[s.id] || 0) + 1;
-                            Log.loot(`Bought ${def.name}.`);
                         }
+                        Log.loot(`Bought ${def.name}.`);
                         UI.updateHUD();
                         btn.disabled = true;
                         btn.innerText = 'SOLD';
@@ -381,7 +350,6 @@ export const Systems = {
                 row.appendChild(btn);
                 container.appendChild(row);
             });
-            // Add leave button
             const leaveBtn = document.createElement('button');
             leaveBtn.className = 'mt-4 border border-gray-600 px-4 py-2 hover:bg-gray-700';
             leaveBtn.innerText = 'Leave';
@@ -389,12 +357,10 @@ export const Systems = {
             container.appendChild(leaveBtn);
             this.show('SHOP', container);
         },
-        // Recruit event: offer one or two creatures to join
         recruit() {
             Log.add('You encounter a wandering soul.');
             const container = document.createElement('div');
             container.className = 'space-y-2';
-            // random set of recruits (1 or 2)
             const count = Math.random() < 0.5 ? 1 : 2;
             const speciesList = Object.keys(Data.creatures);
             const offers = [];
@@ -411,7 +377,6 @@ export const Systems = {
                 btn.innerText = 'RECRUIT';
                 btn.onclick = () => {
                     const empty = GameState.party.activeSlots.findIndex(u => u === null);
-                    // Create instance
                     const unit = {
                         uid: 'n' + Date.now() + '_' + Math.random().toString(16).slice(2),
                         speciesId: def.id,
@@ -450,10 +415,8 @@ export const Systems = {
             container.appendChild(leave);
             this.show('RECRUIT', container);
         },
-        // Shrine event: heal and revive party
         shrine() {
             Log.add('You find a glowing shrine.');
-            // Heal all roster members to full and revive if dead
             GameState.roster.forEach(u => {
                 const def = Data.creatures[u.speciesId];
                 u.maxhp = Math.round(def.baseHp * (1 + def.hpGrowth * (u.level - 1)));
@@ -466,11 +429,9 @@ export const Systems = {
             msg.querySelector('button').onclick = () => { Systems.Events.close(); };
             this.show('SHRINE', msg);
         },
-        // Trap event: damages all active party members
         trap() {
             Log.add('A hidden trap triggers!');
             const damage = (u) => {
-                // deal 20% of maxhp
                 const maxhp = Systems.Battle.getMaxHp(u);
                 const dmg = Math.ceil(maxhp * 0.2);
                 u.hp = Math.max(0, u.hp - dmg);
@@ -485,11 +446,7 @@ export const Systems = {
             this.show('TRAP', msg);
         }
     },
-    /*
-     * 3D Battle renderer: responsible for all Three.js rendering. It converts
-     *  battle data into sprites and animations. This module does not touch
-     *  GameState.Battle except to read it; it emits events via callbacks.
-     */
+
     Battle3D: {
         scene: null,
         camera: null,
@@ -500,33 +457,36 @@ export const Systems = {
         textureCache: {},
         spriteScaleFactor: 3,
         cameraState: { angle: -Math.PI / 4, targetAngle: -Math.PI / 4, targetX: 0, targetY: 0 },
+        damageLabels: [], // Track damage numbers
+
         init() {
             const container = document.getElementById('three-container');
             this.scene = new THREE.Scene();
             this.scene.background = new THREE.Color(0x0a0a0a);
-            // Setup camera
+            
             this.camera = new THREE.PerspectiveCamera(28, window.innerWidth / window.innerHeight, 0.1, 1000);
             this.camera.up.set(0, 0, 1);
-            // Setup renderer
+            
             this.renderer = new THREE.WebGLRenderer({ alpha: false, antialias: false });
             this.renderer.setSize(window.innerWidth, window.innerHeight);
             container.appendChild(this.renderer.domElement);
+            
             Systems.Effekseer.init(this.renderer);
-            // Lighting
+            
             const amb = new THREE.AmbientLight(0xffffff, 0.6);
             const dir = new THREE.DirectionalLight(0xffffff, 0.8);
             dir.position.set(10, -10, 20);
             this.scene.add(amb);
             this.scene.add(dir);
-            // Grid helper for floor
+            
             const grid = new THREE.GridHelper(30, 30, 0x444444, 0x111111);
             grid.rotation.x = Math.PI / 2;
             this.scene.add(grid);
+            
             this.textureLoader = new THREE.TextureLoader();
-            // Group to hold sprites
             this.group = new THREE.Group();
             this.scene.add(this.group);
-            // Begin animation loop
+            
             this.animate();
         },
         resize() {
@@ -535,7 +495,6 @@ export const Systems = {
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(window.innerWidth, window.innerHeight);
         },
-        // Converts an array of ally and enemy instances into Three.js sprites.
         setupScene(allies, enemies) {
             this.group.clear();
             this.sprites = {};
@@ -549,7 +508,6 @@ export const Systems = {
             };
             const loadTexture = (assetPath, ready) => {
                 if (!assetPath || !this.textureLoader) return ready(null);
-
                 const resolvedPath = resolveAssetPath(assetPath);
                 if (!resolvedPath) return ready(null);
                 if (this.textureCache[resolvedPath]) return ready(this.textureCache[resolvedPath]);
@@ -602,9 +560,10 @@ export const Systems = {
                     const baseScale = computeSpriteScale(texture);
                     sprite.scale.set(baseScale.x, baseScale.y, 1);
                     sprite.position.set(pos.x, pos.y, baseScale.y / 2);
+                    sprite.userData.uid = unit.uid;
                     sprite.userData.baseScale = baseScale;
                     sprite.userData.baseZ = baseScale.y / 2;
-                    // Add drop shadow
+                    
                     const shadow = new THREE.Mesh(
                         new THREE.CircleGeometry(0.8, 16),
                         new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.5, transparent: true })
@@ -623,7 +582,6 @@ export const Systems = {
             allies.forEach(u => createSprite(u, false));
             enemies.forEach(u => createSprite(u, true));
         },
-        // Adjust camera focus based on stage of battle
         setFocus(type) {
             const BASE = -Math.PI / 4;
             const SHIFT = Math.PI / 12;
@@ -662,10 +620,13 @@ export const Systems = {
             this.camera.position.y = cs.targetY + Math.sin(cs.angle) * R;
             this.camera.position.z = Z_HEIGHT;
             this.camera.lookAt(cs.targetX, cs.targetY, 2);
+            
             this.renderer.render(this.scene, this.camera);
             Systems.Effekseer.update(this.camera);
+
+            // Update damage labels every frame
+            this.updateDamageLabels();
         },
-        // Converts world coordinates to screen coordinates for UI overlays
         toScreen(obj) {
             const vec = new THREE.Vector3();
             obj.updateMatrixWorld();
@@ -679,7 +640,6 @@ export const Systems = {
                 y: (-(vec.y * 0.5) + 0.5) * height
             };
         },
-        // Resets a sprite to default appearance
         resetSprite(uid) {
             const sprite = this.sprites[uid];
             if (sprite) {
@@ -692,8 +652,162 @@ export const Systems = {
                 sprite.position.z = baseZ;
             }
         },
-        // Executes a high-level action sequence, triggering Effekseer effects and timing
-        // callbacks when damage/heal application should occur.
+        playDeathFade(uid) {
+            const sprite = this.sprites[uid];
+            if (!sprite) return;
+
+            const duration = 800;
+            let startTime = null;
+            const startZ = sprite.position.z;
+            const baseHeight = sprite.userData.baseScale.y;
+
+            const animateFade = (timestamp) => {
+                if (!startTime) startTime = timestamp;
+                const elapsed = timestamp - startTime;
+                const p = Math.min(1, elapsed / duration);
+
+                const easeIn = p * p;
+                const easeOut = p * (2 - p); 
+
+                sprite.material.blending = THREE.AdditiveBlending;
+                sprite.material.color.setHex(0xff00ff);
+
+                const newScaleX = sprite.userData.baseScale.x * (1 - easeIn);
+                const newScaleY = baseHeight * (1 + easeOut * 2);
+
+                sprite.scale.x = newScaleX;
+                sprite.scale.y = newScaleY;
+
+                const heightDifference = newScaleY - baseHeight;
+                sprite.position.z = startZ + (heightDifference / 2);
+
+                sprite.material.opacity = 1 - easeIn; 
+
+                if (p < 1) {
+                    requestAnimationFrame(animateFade);
+                } else {
+                    sprite.visible = false;
+                }
+            };
+            requestAnimationFrame(animateFade);
+        },
+        
+// Physics-based Damage Numbers (The "Final Fantasy" Bounce)
+showDamageNumber(uid, val, isCrit = false) {
+            if (val === 0) return;
+            const sprite = this.sprites[uid];
+            if (!sprite) return;
+
+            const valStr = Math.abs(val).toString();
+            const prefix = ''; 
+            
+            // 1. Setup Spacing (WIDER)
+            const spacing = 0.35; // Increased from 0.25
+            const totalWidth = (valStr.length - 1) * spacing;
+            const startX = -(totalWidth / 2);
+
+            // 2. Setup Spawn Position (Knee/Waist height)
+            const basePos = sprite.position.clone();
+            basePos.z += (sprite.userData.baseScale.y * 0.25); 
+
+            // 3. Physics Setup (Subtle)
+            const sharedVelocity = new THREE.Vector3(
+                (Math.random() - 0.5) * 0.01, 
+                (Math.random() - 0.5) * 0.01, 
+                0.06 + (Math.random() * 0.02)
+            );
+
+            for (let i = 0; i < valStr.length; i++) {
+                const char = valStr[i];
+                
+                const el = document.createElement('div');
+                el.className = 'damage-number';
+                el.innerText = (i === 0 ? prefix : '') + char;
+                el.style.opacity = '0'; 
+
+                if (val > 0) {
+                     el.style.color = '#4ade80';
+                } else {
+                    el.style.color = isCrit ? '#ffcc00' : '#ffffff'; 
+                    if (isCrit) el.style.fontSize = '3rem';
+                }
+
+                document.getElementById('battle-ui-overlay').appendChild(el);
+
+                const digitPos = basePos.clone();
+                digitPos.x += startX + (i * spacing);
+
+                this.damageLabels.push({
+                    el: el,
+                    worldPos: digitPos,
+                    offset: new THREE.Vector3(0, 0, 0),
+                    velocity: sharedVelocity.clone(), 
+                    gravity: 0.008, 
+                    elasticity: 0.5,
+                    floorHit: false,
+                    life: 60,
+                    wait: i * 3 
+                });
+            }
+        },
+
+        updateDamageLabels() {
+            if (this.damageLabels.length === 0) return;
+
+            for (let i = this.damageLabels.length - 1; i >= 0; i--) {
+                const label = this.damageLabels[i];
+
+                if (label.wait > 0) {
+                    label.wait--;
+                    continue; 
+                } else {
+                    if (label.el.style.opacity === '0') label.el.style.opacity = '1';
+                }
+
+                // Apply velocity to offset
+                label.velocity.z -= label.gravity;
+                label.offset.add(label.velocity);
+
+                // Floor Logic
+                const floorLevel = -1.25; 
+
+                if (label.offset.z <= floorLevel) {
+                    label.offset.z = floorLevel; // Clamp to floor
+                    
+                    if (!label.floorHit) {
+                        // First Bounce: Reverse vertical velocity
+                        label.velocity.z *= -label.elasticity;
+                        label.floorHit = true;
+                    } else {
+                        // Second Hit (Slide): Kill ALL movement (X, Y, Z)
+                        // This stops the drifting immediately.
+                        label.velocity.set(0, 0, 0);
+                        label.gravity = 0; // Disable gravity so it doesn't build up negative Z
+                    }
+                }
+
+                const currentWorldPos = label.worldPos.clone().add(label.offset);
+                currentWorldPos.project(this.camera);
+
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                
+                const x = (currentWorldPos.x * 0.5 + 0.5) * width;
+                const y = (-(currentWorldPos.y * 0.5) + 0.5) * height;
+
+                label.el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+
+                label.life--;
+                if (label.life < 15) {
+                    label.el.style.opacity = (label.life / 15).toString();
+                }
+
+                if (label.life <= 0) {
+                    label.el.remove();
+                    this.damageLabels.splice(i, 1);
+                }
+            }
+        },
         playAnim(uid, steps = [], context = {}) {
             const sprite = this.sprites[uid];
             if (!sprite) { context.onComplete?.(); return; }
@@ -719,24 +833,69 @@ export const Systems = {
             };
 
             const stepHandlers = {
+                // FIXED FEEDBACK HANDLER (Flicker Shake)
+                feedback: (step) => new Promise(resolve => {
+                    const boundSprites = step.bind === 'target' ? targets.map(t => this.sprites[t.uid]).filter(Boolean) : [sprite];
+                    const startPositions = boundSprites.map(sp => sp.position.clone());
+                    const duration = step.duration || 250;
+                    let startTime = null;
+
+                    const animateFlash = (timestamp) => {
+                        if (!startTime) startTime = timestamp;
+                        const elapsed = timestamp - startTime;
+                        const p = Math.min(1, elapsed / duration);
+                        const isFlashFrame = Math.floor(elapsed / 40) % 2 === 0;
+                        const currentShake = (step.shake || 0) * (1 - p);
+
+                        boundSprites.forEach((sp, i) => {
+                            const base = startPositions[i];
+                            if (currentShake > 0) {
+                                sp.position.x = base.x + (Math.random() - 0.5) * currentShake;
+                                sp.position.y = base.y + (Math.random() - 0.5) * currentShake;
+                            }
+                            if (step.color) {
+                                if (isFlashFrame) {
+                                    sp.material.color.setHex(step.color);
+                                    sp.material.blending = THREE.AdditiveBlending;
+                                } else {
+                                    sp.material.color.setHex(0xffffff);
+                                    sp.material.blending = THREE.NormalBlending;
+                                }
+                            }
+                        });
+
+                        if (p < 1) {
+                            requestAnimationFrame(animateFlash);
+                        } else {
+                            boundSprites.forEach((sp, i) => {
+                                sp.position.copy(startPositions[i]);
+                                this.resetSprite(sp.userData.uid);
+                            });
+                            resolve();
+                        }
+                    };
+                    requestAnimationFrame(animateFlash);
+                }),
                 wait: (step) => wait(step.duration || 300),
                 jump: (step) => new Promise(resolve => {
-                    let t = 0;
                     const axis = 'z';
                     const startPos = sprite.position[axis];
-                    const interval = 30;
                     const amp = step.height || 0.8;
                     const duration = step.duration || 500;
-                    const jump = setInterval(() => {
-                        t += interval;
-                        const progress = Math.min(1, t / duration);
+                    let startTime = null;
+                    const animateJump = (timestamp) => {
+                        if (!startTime) startTime = timestamp;
+                        const elapsed = timestamp - startTime;
+                        const progress = Math.min(1, elapsed / duration);
                         sprite.position[axis] = startPos + Math.sin(progress * Math.PI) * amp;
-                        if (progress >= 1) {
-                            clearInterval(jump);
+                        if (progress < 1) {
+                            requestAnimationFrame(animateJump);
+                        } else {
                             sprite.position[axis] = startPos;
                             resolve();
                         }
-                    }, interval);
+                    };
+                    requestAnimationFrame(animateJump);
                 }),
                 approach: (step) => new Promise(resolve => {
                     const targetPos = averageTargetPosition();
@@ -750,32 +909,46 @@ export const Systems = {
                         z: sprite.position.z
                     };
                     const duration = step.duration || 250;
-                    const interval = 30;
-                    let elapsed = 0;
-                    const move = setInterval(() => {
-                        elapsed += interval;
+                    let startTime = null;
+                    const animateMove = (timestamp) => {
+                        if (!startTime) startTime = timestamp;
+                        const elapsed = timestamp - startTime;
                         const p = Math.min(1, elapsed / duration);
                         sprite.position.x = origin.x + (destination.x - origin.x) * p;
                         sprite.position.y = origin.y + (destination.y - origin.y) * p;
-                        if (p >= 1) { clearInterval(move); resolve(); }
-                    }, interval);
+                        if (p < 1) {
+                            requestAnimationFrame(animateMove);
+                        } else {
+                            resolve();
+                        }
+                    };
+                    requestAnimationFrame(animateMove);
                 }),
                 retreat: (step) => new Promise(resolve => {
                     const duration = step.duration || 250;
-                    const interval = 30;
                     const start = sprite.position.clone();
-                    let elapsed = 0;
-                    const move = setInterval(() => {
-                        elapsed += interval;
+                    let startTime = null;
+                    const animateMove = (timestamp) => {
+                        if (!startTime) startTime = timestamp;
+                        const elapsed = timestamp - startTime;
                         const p = Math.min(1, elapsed / duration);
                         sprite.position.lerpVectors(start, origin, p);
-                        if (p >= 1) { clearInterval(move); sprite.position.copy(origin); resolve(); }
-                    }, interval);
+                        if (p < 1) {
+                            requestAnimationFrame(animateMove);
+                        } else {
+                            sprite.position.copy(origin);
+                            resolve();
+                        }
+                    };
+                    requestAnimationFrame(animateMove);
                 }),
                 effect: (step) => {
                     const boundSprites = step.bind === 'target' ? targets.map(t => this.sprites[t.uid]).filter(Boolean) : [sprite];
                     const plays = boundSprites.map(sp => {
-                        const pos = { x: sp.position.x, y: sp.position.y, z: sp.position.z + (step.height || 1) };
+                        const anchor = step.anchor ?? 0.5;
+                        const zOffset = sp.position.z - sp.userData.baseZ;
+                        const zPos = zOffset + (sp.userData.baseScale.y * anchor);
+                        const pos = { x: sp.position.x, y: sp.position.y, z: zPos };
                         return Systems.Effekseer.play(step.effect, pos);
                     });
                     const hold = step.hold ?? 300;
@@ -800,105 +973,41 @@ export const Systems = {
 
             if (steps.length === 0) { context.onComplete?.(); return; }
             runStep(0);
-        },
-        showDamageNumber(uid, val) {
-            if (val === 0) return;
-            const sprite = this.sprites[uid];
-            if (!sprite) return;
-            const screenPos = this.toScreen(sprite);
-            const el = document.createElement('div');
-            el.className = `damage-number ${val < 0 ? 'text-green-400' : 'text-white'}`;
-            el.innerText = Math.abs(val);
-            el.style.left = (screenPos.x / window.devicePixelRatio) + 'px';
-            el.style.top = (screenPos.y / window.devicePixelRatio) + 'px';
-            document.getElementById('battle-ui-overlay').appendChild(el);
-            setTimeout(() => el.remove(), 1500);
-        },
-        // Helper to create a billboard sprite with optional shadow
-        createBillboard(text, x, y, z, scale = 1.0) {
-            const canvas = document.createElement('canvas');
-            canvas.width = 128; canvas.height = 128;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = 'rgba(0,0,0,0)';
-            ctx.fillRect(0, 0, 128, 128);
-            ctx.font = '80px serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = 'white';
-            ctx.shadowColor = 'black';
-            ctx.shadowBlur = 0;
-            ctx.fillText(text, 64, 64);
-            const texture = new THREE.CanvasTexture(canvas);
-            texture.magFilter = THREE.NearestFilter;
-            texture.minFilter = THREE.NearestFilter;
-            const material = new THREE.SpriteMaterial({ map: texture });
-            const sprite = new THREE.Sprite(material);
-            sprite.position.set(x, y, z + 1.5 * scale);
-            sprite.scale.set(3 * scale, 3 * scale, 1);
-            if (scale >= 1.0) {
-                const shadow = new THREE.Mesh(
-                    new THREE.CircleGeometry(0.8 * scale, 16),
-                    new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.5, transparent: true })
-                );
-                shadow.position.set(x, y, 0.05);
-                const group = new THREE.Group();
-                group.add(sprite);
-                group.add(shadow);
-                return group;
-            } else {
-                const group = new THREE.Group();
-                group.add(sprite);
-                return group;
-            }
         }
     },
+
     Triggers: {
         fire(eventName, ...args) {
-            // Find all units with passives or equipment that respond to this event
             const allUnits = [...(GameState.battle?.allies || []), ...(GameState.battle?.enemies || [])];
-
             allUnits.forEach(unit => {
                 if(unit.hp <= 0) return;
-
                 const unitWithStats = Systems.Battle.getUnitWithStats(unit);
                 const traits = [];
-
-                // Get traits from passives
                 const species = Data.creatures[unit.speciesId];
                 if (species && species.passives) {
                     species.passives.forEach(passiveId => {
                         const passive = Data.passives[passiveId];
-                        if (passive) {
-                            traits.push(...passive.traits);
-                        }
+                        if (passive) traits.push(...passive.traits);
                     });
                 }
-
-                // Get traits from equipment
                 if (unit.equipmentId) {
                     const equipment = Data.equipment[unit.equipmentId];
-                    if (equipment) {
-                        traits.push(...equipment.traits);
-                    }
+                    if (equipment) traits.push(...equipment.traits);
                 }
-
                 traits.forEach(trait => {
                     this.handleTrait(eventName, trait, unit, ...args);
                 });
             });
         },
-
         handleTrait(eventName, trait, unit, ...args) {
             switch (eventName) {
                 case 'onBattleEnd':
                     if(unit.evadeBonus) unit.evadeBonus = 0;
-
                     if (trait.type === 'post_battle_heal') {
                         const healAmount = Math.floor(Math.pow(Math.random(), 2) * unit.level) + 1;
                         unit.hp = Math.min(Systems.Battle.getMaxHp(unit), unit.hp + healAmount);
                         Log.add(`${unit.name} was healed by Soothing Breeze.`);
                     } else if (trait.type === 'post_battle_leech') {
-                        // In onBattleEnd, args could be the party members
                         const party = args[0];
                         const adjacent = this.getAdjacentUnits(unit, party);
                         let totalDamage = 0;
@@ -938,7 +1047,6 @@ export const Systems = {
                         if (evadingUnit.uid === unit.uid) {
                             const maxBonus = Math.floor(unit.level / 2);
                             if(!unit.evadeBonus) unit.evadeBonus = 0;
-
                             if(unit.evadeBonus < maxBonus){
                                 unit.evadeBonus += 1;
                                 Log.battle(`${unit.name} gained +1 bonus from evading!`);
@@ -948,47 +1056,29 @@ export const Systems = {
                     break;
             }
         },
-
         getAdjacentUnits(unit, party) {
             const adjacent = [];
             const index = unit.slotIndex;
-
-            // Not in active party
             if(index === -1) return [];
-
-            // units are in a 2x3 grid.  0 1 2 are front, 3 4 5 are back.
-            // adjacent means left, right, front, back.
             const potentialAdjacent = [
-                index - 1, // left
-                index + 1, // right
-                index - 3, // front
-                index + 3  // back
+                index - 1, 
+                index + 1, 
+                index - 3, 
+                index + 3  
             ];
-
             potentialAdjacent.forEach(adjIndex => {
-                // check for row wrapping
                 if(index % 3 === 0 && adjIndex === index-1) return;
                 if(index % 3 === 2 && adjIndex === index+1) return;
-
                 const adjacentUnit = party.find(u => u && u.slotIndex === adjIndex);
-                if(adjacentUnit) {
-                    adjacent.push(adjacentUnit);
-                }
+                if(adjacentUnit) adjacent.push(adjacentUnit);
             });
-
             return adjacent;
         }
     },
-    /*
-     * Battle system: orchestrates the turn-based combat loop. It uses Data and
-     * GameState to determine combatants, their actions, and outcomes. It
-     * interacts with UI and Battle3D modules via callbacks to present the
-     * fight to the player.
-    */
+
     Battle: {
         elementStrengths: { G: 'B', B: 'R', R: 'G', W: 'K', K: 'W' },
         elementWeaknesses: { G: 'R', B: 'G', R: 'B', W: 'W', K: 'K' },
-        // Computes how a single element instance interacts with an action's element.
         elementRelation(actionElement, creatureElement, role) {
             if (!actionElement || !creatureElement) return 1;
             const strongAgainst = this.elementStrengths[actionElement];
@@ -1017,28 +1107,21 @@ export const Systems = {
                 console.error('Error evaluating formula:', effect.formula, e);
                 return 0;
             }
-
             const element = action.element;
-            // Get attacker stats from the new centralized function
             const attackerWithStats = this.getUnitWithStats(a);
-
             const attackMult = this.elementMultiplier(element, attackerWithStats, 'attacker');
-            // Get defender stats from the new centralized function to fix the bug
             const defenderWithStats = this.getUnitWithStats(b);
             const defenseMult = this.elementMultiplier(element, defenderWithStats, 'defender');
 
-            // Add power bonus to the base value *before* multipliers are applied.
             const baseDamage = value + attackerWithStats.power_bonus;
             let finalValue = Math.floor(baseDamage * attackMult * defenseMult);
 
-            // Add evasion logic
             const evadeChance = (defenderWithStats.evade_chance || 0);
             if (Math.random() < evadeChance) {
                 Systems.Triggers.fire('onUnitEvade', b);
                 return 0;
             }
 
-            // Add critical hit logic
             const critChance = (Data.config.baseCritChance || 0.05) + (attackerWithStats.crit_bonus_percent || 0);
             if (Math.random() < critChance) {
                 finalValue = Math.floor(finalValue * (Data.config.baseCritMultiplier || 1.5));
@@ -1065,13 +1148,10 @@ export const Systems = {
             return results;
         },
         getUnitWithStats(unit) {
-            // Start with a shallow copy
             const unitWithStats = { ...unit };
-            // Deep copy arrays to prevent mutation of the original object
             if (unit.elements) unitWithStats.elements = [...unit.elements];
             if (unit.status) unitWithStats.status = [...unit.status];
 
-            // Initialize bonuses that are aggregated
             unitWithStats.power_bonus = 0;
             unitWithStats.speed_bonus = 0;
             unitWithStats.crit_bonus_percent = 0;
@@ -1083,62 +1163,37 @@ export const Systems = {
             const processTraits = (traits) => {
               traits.forEach(trait => {
                 switch (trait.type) {
-                    case 'hp_bonus_percent':
-                        // This bonus is applied dynamically by getMaxHp to ensure it's always
-                        // calculated against the correct base HP for the unit's level.
-                        break;
-                    case 'power_bonus':
-                        unitWithStats.power_bonus += parseInt(trait.formula) || 0;
-                        break;
-                    case 'speed_bonus':
-                        unitWithStats.speed_bonus += parseInt(trait.formula) || 0;
-                        break;
-                    case 'element_change':
-                        // Overwrites the unit's base elements.
-                        unitWithStats.elements = [trait.element];
-                        break;
-                    case 'crit_bonus_percent':
-                        unitWithStats.crit_bonus_percent += parseFloat(trait.formula) || 0;
-                        break;
-                    case 'survive_ko':
-                        unitWithStats.survive_ko_chance += parseFloat(trait.formula) || 0;
-                        break;
+                    case 'hp_bonus_percent': break;
+                    case 'power_bonus': unitWithStats.power_bonus += parseInt(trait.formula) || 0; break;
+                    case 'speed_bonus': unitWithStats.speed_bonus += parseInt(trait.formula) || 0; break;
+                    case 'element_change': unitWithStats.elements = [trait.element]; break;
+                    case 'crit_bonus_percent': unitWithStats.crit_bonus_percent += parseFloat(trait.formula) || 0; break;
+                    case 'survive_ko': unitWithStats.survive_ko_chance += parseFloat(trait.formula) || 0; break;
                     case 'revive_on_ko':
                         unitWithStats.revive_on_ko_chance += parseFloat(trait.chance) || 0;
                         unitWithStats.revive_on_ko_percent += parseFloat(trait.formula) || 0;
                         break;
-                    case 'xp_bonus_percent':
-                        unitWithStats.xp_bonus_percent += parseFloat(trait.formula) || 0;
-                        break;
+                    case 'xp_bonus_percent': unitWithStats.xp_bonus_percent += parseFloat(trait.formula) || 0; break;
                 }
               });
             }
 
-            // Process equipment traits
             if (unit.equipmentId) {
                 const equipment = Data.equipment[unit.equipmentId];
-                if (equipment) {
-                    processTraits(equipment.traits);
-                }
+                if (equipment) processTraits(equipment.traits);
             }
-
-            // Process passive traits
             const species = Data.creatures[unit.speciesId];
             if (species && species.passives) {
                 species.passives.forEach(passiveId => {
                     const passive = Data.passives[passiveId];
-                    if (passive) {
-                        processTraits(passive.traits);
-                    }
+                    if (passive) processTraits(passive.traits);
                 });
             }
-
             return unitWithStats;
         },
         getMaxHp(unit) {
             const def = Data.creatures[unit.speciesId];
             let baseMax = Math.round(def.baseHp * (1 + def.hpGrowth * (unit.level - 1)));
-
             if (unit.equipmentId) {
                 const eq = Data.equipment[unit.equipmentId];
                 if (eq) {
@@ -1152,22 +1207,17 @@ export const Systems = {
             return baseMax + (unit.maxHpBonus || 0);
         },
         startEncounter() {
-            // Trigger a screen wipe and transition to battle
             const swipe = document.getElementById('swipe-overlay');
             swipe.className = 'swipe-down';
             setTimeout(() => {
-                // Initialize battle state
                 Systems.sceneHooks?.onBattleStart?.();
                 GameState.ui.mode = 'BATTLE';
                 UI.switchScene(true);
-                // Reset camera state
                 Systems.Battle3D.cameraState.angle = -Math.PI / 4;
                 Systems.Battle3D.cameraState.targetAngle = -Math.PI / 4;
                 Systems.Battle3D.setFocus('neutral');
                 Systems.Battle3D.resize();
-                // Build allies from active party
                 const allies = GameState.party.activeSlots.filter(u => u !== null).map(u => u);
-                // Generate random enemies based on dungeon data for the current floor
                 const floor = GameState.run.floor;
                 const dungeon = Data.dungeons.default;
                 const enc = dungeon.encounters;
@@ -1178,7 +1228,6 @@ export const Systems = {
                 for (let i = 0; i < enemyCount; i++) {
                     const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
                     const def = Data.creatures[type];
-                    // Level scaling: base HP times a factor per floor
                     const mult = 1 + (floor * 0.1);
                     enemies.push({
                         uid: `e${i}_${Date.now()}`,
@@ -1196,7 +1245,6 @@ export const Systems = {
                         status: []
                     });
                 }
-                // Initialize battle state structure
                 GameState.battle = {
                     allies: allies,
                     enemies: enemies,
@@ -1206,11 +1254,9 @@ export const Systems = {
                     playerTurnRequested: false,
                     phase: 'INIT'
                 };
-                // Setup 3D scene for battle
                 Systems.Battle3D.setupScene(GameState.battle.allies, GameState.battle.enemies);
                 Log.battle(`Enemies: ${enemies.map(e => e.name).join(', ')}`);
                 UI.showBanner('ENCOUNTER');
-                // Swipe up and begin after delay
                 swipe.className = 'swipe-clear';
                 setTimeout(() => {
                     swipe.className = 'swipe-reset';
@@ -1226,7 +1272,6 @@ export const Systems = {
             if (GameState.battle.allies.every(u => u.hp <= 0)) return this.end(false);
             if (GameState.battle.enemies.every(u => u.hp <= 0)) return this.end(true);
 
-            // Clear turn-based statuses like 'guarding'
             [...GameState.battle.allies, ...GameState.battle.enemies].forEach(u => {
                 if (u.status) {
                     u.status = u.status.filter(s => s !== 'guarding');
@@ -1241,12 +1286,10 @@ export const Systems = {
                 Log.battle('Waiting for orders...');
                 return;
             }
-            // Build action queue from all living units, factoring in speed
             const allUnits = [...GameState.battle.allies, ...GameState.battle.enemies]
                 .filter(u => u.hp > 0)
                 .map(u => {
                     const unitWithStats = this.getUnitWithStats(u);
-                    // Combine the original unit with its calculated speed bonus for sorting.
                     return { ...u, speed: unitWithStats.speed_bonus };
                 });
 
@@ -1265,7 +1308,6 @@ export const Systems = {
             }
         },
         resumeAuto() {
-            // Resume auto-battle after player input
             UI.togglePlayerTurn(false);
             GameState.battle.playerTurnRequested = false;
             const btn = document.getElementById('btn-player-turn');
@@ -1273,7 +1315,6 @@ export const Systems = {
             btn.innerText = 'STOP ROUND (SPACE)';
             this.processNextTurn();
         },
-        // Swap units when the player reorganizes the formation during battle
         swapUnits(idx1, idx2) {
             const u1 = GameState.party.activeSlots[idx1];
             const u2 = GameState.party.activeSlots[idx2];
@@ -1304,9 +1345,7 @@ export const Systems = {
             Systems.Battle3D.setFocus(isAlly ? 'ally' : 'enemy');
             const enemies = isAlly ? GameState.battle.enemies : GameState.battle.allies;
             const friends = isAlly ? GameState.battle.allies : GameState.battle.enemies;
-            // Flatten acts grid for available skills
             const possibleActs = [...unit.acts[0], ...(unit.acts[1] || [])];
-            // Simple AI: choose heal if temperament is kind and a friend is hurt
             let chosen = null;
             if (unit.temperament === 'kind') {
                 const hurt = friends.filter(f => f.hp < f.maxhp).sort((a, b) => a.hp - b.hp)[0];
@@ -1321,29 +1360,22 @@ export const Systems = {
                 chosen = possibleActs[Math.floor(Math.random() * possibleActs.length)];
             }
 
-            // Case-insensitive lookup for action
             let action = null;
             const chosenLower = chosen.toLowerCase();
             const skillKey = Object.keys(Data.skills).find(k => k.toLowerCase() === chosenLower);
             const itemKey = Object.keys(Data.items).find(k => k.toLowerCase() === chosenLower);
 
-            if (skillKey) {
-                action = Data.skills[skillKey];
-            } else if (itemKey) {
-                action = Data.items[itemKey];
-            } else {
-                action = Data.skills['attack'];
-            }
+            if (skillKey) action = Data.skills[skillKey];
+            else if (itemKey) action = Data.items[itemKey];
+            else action = Data.skills['attack'];
 
             let targets = [];
             const validEnemies = enemies.filter(u => u.hp > 0);
             const validFriends = friends.filter(u => u.hp > 0);
-            // Target selection based on action.target
             if (action.target === 'self') targets = [unit];
             else if (action.target === 'ally-single') targets = [validFriends.sort((a, b) => a.hp - b.hp)[0]];
             else if (action.target === 'enemy-all') targets = validEnemies;
             else if (action.target === 'enemy-row') {
-                // All enemies in the front or back row (slotIndex < 3 = front; >=3 = back)
                 const frontRow = validEnemies.filter(e => e.slotIndex < 3);
                 const backRow = validEnemies.filter(e => e.slotIndex >= 3);
                 targets = frontRow.length > 0 ? frontRow : backRow;
@@ -1354,20 +1386,22 @@ export const Systems = {
                 this.processNextTurn();
                 return;
             }
-            // Show banner for the action
             UI.showBanner(`${unit.name} used ${action.name}!`);
             const results = this.applyEffects(action, unit, targets);
+
+            if (results.length === 0) {
+                Log.battle(`> ${unit.name} used ${action.name}!`);
+            }
+
             const script = Data.actionScripts[action.script] || Data.actionScripts.attack || [];
             const applyResults = () => {
                 results.forEach(({ target, value, effect }) => {
                     if (!target) return;
-
                     switch (effect.type) {
                         case 'hp_damage':
                             let dealtDamage = value;
                             let newHp = target.hp - dealtDamage;
                             const defenderWithStats = Systems.Battle.getUnitWithStats(target);
-
                             if (newHp <= 0) {
                                 if (Math.random() < (defenderWithStats.survive_ko_chance || 0)) {
                                     newHp = 1;
@@ -1375,19 +1409,16 @@ export const Systems = {
                                     Log.battle(`> ${target.name} survives with 1 HP!`);
                                 }
                             }
-
                             target.hp = Math.max(0, newHp);
                             if (dealtDamage > 0) {
                                 Log.battle(`> ${unit.name} hits ${target.name} for ${dealtDamage}.`);
-                                Systems.Battle3D.showDamageNumber(target.uid, dealtDamage);
+                                Systems.Battle3D.showDamageNumber(target.uid, -dealtDamage);
+                                Systems.Battle3D.playAnim(target.uid, [{type: 'feedback', bind: 'self', shake: 0.8, opacity: 0.7, color: 0xffffff}]);
                             }
-
                             if (target.hp <= 0) {
                                 Log.battle(`> ${target.name} was defeated!`);
-                                const ts = Systems.Battle3D.sprites[target.uid];
-                                if (ts) ts.visible = false;
+                                Systems.Battle3D.playDeathFade(target.uid);
                                 Systems.Triggers.fire('onUnitDeath', target);
-
                                 if (Math.random() < (defenderWithStats.revive_on_ko_chance || 0)) {
                                     const revivePercent = defenderWithStats.revive_on_ko_percent || 0.5;
                                     const revivedHp = Math.floor(Systems.Battle.getMaxHp(target) * revivePercent);
@@ -1402,14 +1433,15 @@ export const Systems = {
                             const maxhp = Systems.Battle.getMaxHp(target);
                             target.hp = Math.min(maxhp, target.hp + value);
                             Log.battle(`> ${target.name} healed for ${value}.`);
-                            Systems.Battle3D.showDamageNumber(target.uid, -value);
+                            Systems.Battle3D.showDamageNumber(target.uid, value);
+                            Systems.Battle3D.playAnim(target.uid, [{type: 'feedback', bind: 'self', opacity: 0.5, color: 0x00ff00}]);
                             break;
                         case 'hp_heal_ratio':
                             const maxHpRatio = Systems.Battle.getMaxHp(target);
                             const healAmount = Math.floor(maxHpRatio * parseFloat(effect.formula));
                             target.hp = Math.min(maxHpRatio, target.hp + healAmount);
                             Log.battle(`> ${target.name} healed for ${healAmount}.`);
-                            Systems.Battle3D.showDamageNumber(target.uid, -healAmount);
+                            Systems.Battle3D.showDamageNumber(target.uid, healAmount);
                             break;
                         case 'revive':
                             if (target.hp <= 0) {
@@ -1437,13 +1469,11 @@ export const Systems = {
                             break;
                     }
                 });
-                // Re-render party HP bars and check for end-of-battle
                 UI.renderParty();
                 if (GameState.battle.allies.every(u => u.hp <= 0) || GameState.battle.enemies.every(u => u.hp <= 0)) {
                     GameState.battle.turnIndex = 999;
                 }
             };
-
             Systems.Battle3D.playAnim(unit.uid, script, {
                 targets,
                 onApply: applyResults,
@@ -1451,7 +1481,6 @@ export const Systems = {
             });
         },
         end(win) {
-            // Clear all UI overlays
             document.getElementById('battle-ui-overlay').innerHTML = '';
             if (win) {
                 UI.showBanner('VICTORY');
@@ -1459,7 +1488,6 @@ export const Systems = {
                 Systems.sceneHooks?.onBattleEnd?.();
                 Systems.Triggers.fire('onBattleEnd', [...GameState.battle.allies, ...GameState.battle.enemies].filter(u => u && u.hp > 0));
                 Systems.Battle3D.setFocus('victory');
-                // Calculate rewards
                 const gold = GameState.battle.enemies.length * Data.config.baseGoldPerEnemy * GameState.run.floor;
                 const baseXp = GameState.battle.enemies.length * Data.config.baseXpPerEnemy * GameState.run.floor;
                 GameState.run.gold += gold;
@@ -1468,8 +1496,6 @@ export const Systems = {
                     if (p) {
                         const unitWithStats = this.getUnitWithStats(p);
                         finalXp = Math.round(baseXp * (1 + (unitWithStats.xp_bonus_percent || 0)));
-
-                        // Add XP and level up if necessary
                         p.exp = (p.exp || 0) + finalXp;
                         const def = Data.creatures[p.speciesId];
                         let levelCost = def.xpCurve * p.level;
@@ -1477,7 +1503,6 @@ export const Systems = {
                         while (p.exp >= levelCost) {
                             p.exp -= levelCost;
                             p.level++;
-                            // update maxhp using growth formula
                             const newMax = Math.round(def.baseHp * (1 + def.hpGrowth * (p.level - 1)));
                             p.maxhp = newMax;
                             p.hp = newMax;
@@ -1487,7 +1512,6 @@ export const Systems = {
                         if (levelUpOccurred) Log.add(`${p.name} Lv UP -> ${p.level}!`);
                     }
                 });
-                // Between battles recovery: heal 25% of maxhp
                 GameState.party.activeSlots.forEach(p => {
                     if (p) {
                         const maxhp = Systems.Battle.getMaxHp(p);
