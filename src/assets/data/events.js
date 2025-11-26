@@ -9,7 +9,7 @@ export const Events = {
             // In the future, we could have different pools for different floors.
             pools: {
                 items: ['potion', 'antidote', 'phoenixdown'],
-                equipment: ['sword', 'shield', 'helmet', 'armor']
+                equipment: ['hpBoost1', 'charmMagic', 'rabbitsFoot', 'strawDoll']
             }
         }
     },

@@ -261,13 +261,13 @@ export const Systems = {
                         ctx.textBaseline = 'middle';
                         const cx = px + mapCfg.tileSize / 2;
                         const cy = py + mapCfg.tileSize / 2;
-                        if (tile === 2) ctx.fillText('👹', cx, cy);
-                        else if (tile === 3) ctx.fillText('🪜', cx, cy);
-                        else if (tile === 4) ctx.fillText('💰', cx, cy);
-                        else if (tile === 5) ctx.fillText('🛒', cx, cy);
-                        else if (tile === 6) ctx.fillText('🤝', cx, cy);
-                        else if (tile === 7) ctx.fillText('⛪', cx, cy);
-                        else if (tile === 8) ctx.fillText('☠️', cx, cy);
+                        if (tile === 2) ctx.fillText(Data.ui.mapTiles.enemy, cx, cy);
+                        else if (tile === 3) ctx.fillText(Data.ui.mapTiles.stairs, cx, cy);
+                        else if (tile === 4) ctx.fillText(Data.ui.mapTiles.treasure, cx, cy);
+                        else if (tile === 5) ctx.fillText(Data.ui.mapTiles.shop, cx, cy);
+                        else if (tile === 6) ctx.fillText(Data.ui.mapTiles.recruit, cx, cy);
+                        else if (tile === 7) ctx.fillText(Data.ui.mapTiles.shrine, cx, cy);
+                        else if (tile === 8) ctx.fillText(Data.ui.mapTiles.trap, cx, cy);
                     }
                     if (dist >= mapCfg.viewDistance) {
                         ctx.fillStyle = 'rgba(0,0,0,0.7)';
@@ -282,7 +282,7 @@ export const Systems = {
             ctx.textBaseline = 'middle';
             ctx.shadowColor = '#d4af37';
             ctx.shadowBlur = 15;
-            ctx.fillText('🧙‍♂️', playerX + mapCfg.tileSize / 2, playerY + mapCfg.tileSize / 2);
+            ctx.fillText(Data.ui.mapTiles.player, playerX + mapCfg.tileSize / 2, playerY + mapCfg.tileSize / 2);
             ctx.restore();
         }
     },
@@ -1077,20 +1077,18 @@ showDamageNumber(uid, val, isCrit = false) {
     },
 
     Battle: {
-        elementStrengths: { G: 'B', B: 'R', R: 'G', W: 'K', K: 'W' },
-        elementWeaknesses: { G: 'R', B: 'G', R: 'B', W: 'W', K: 'K' },
         elementRelation(actionElement, creatureElement, role) {
             if (!actionElement || !creatureElement) return 1;
-            const strongAgainst = this.elementStrengths[actionElement];
-            const weakAgainst = this.elementWeaknesses[actionElement];
+            const strongAgainst = Data.elements.strengths[actionElement];
+            const weakAgainst = Data.elements.weaknesses[actionElement];
             if (role === 'attacker') {
                 if (creatureElement === actionElement) return 1.25;
-                if (this.elementStrengths[creatureElement] === actionElement) return 0.75;
+                if (Data.elements.strengths[creatureElement] === actionElement) return 0.75;
                 return 1;
             }
             if (creatureElement === actionElement && (creatureElement === 'W' || creatureElement === 'K')) return 0.75;
             if (strongAgainst === creatureElement) return 1.25;
-            if (weakAgainst === creatureElement || this.elementStrengths[creatureElement] === actionElement) return 0.75;
+            if (weakAgainst === creatureElement || Data.elements.strengths[creatureElement] === actionElement) return 0.75;
             return 1;
         },
         elementMultiplier(actionElement, unit, role) {
@@ -1122,9 +1120,9 @@ showDamageNumber(uid, val, isCrit = false) {
                 return 0;
             }
 
-            const critChance = (Data.config.baseCritChance || 0.05) + (attackerWithStats.crit_bonus_percent || 0);
+            const critChance = Data.config.baseCritChance + (attackerWithStats.crit_bonus_percent || 0);
             if (Math.random() < critChance) {
-                finalValue = Math.floor(finalValue * (Data.config.baseCritMultiplier || 1.5));
+                finalValue = Math.floor(finalValue * Data.config.baseCritMultiplier);
                 Log.battle('> Critical Hit!');
             }
 

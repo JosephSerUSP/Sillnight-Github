@@ -6,16 +6,15 @@ import { Items } from './items.js';
 import { Party } from './party.js';
 import { Skills } from './skills.js';
 import { Passives } from './passives.js';
+import { Config } from './config.js';
+import { UI } from './ui.js';
+import { Elements } from './elements.js';
 
 // ------------------- DATA DEFINITIONS -------------------
 export const Data = {
-    // Configuration constants controlling core parameters.
-    config: {
-        baseGoldPerEnemy: 20,
-        baseXpPerEnemy: 5
-    },
-    // Element symbols used for skills and creatures. Elements can stack.
-    elements: { R: '🔴', G: '🟢', B: '🔵', W: '⚪', K: '⚫' },
+    config: Config,
+    elements: Elements,
+    ui: UI,
     
     // Effekseer definitions and action scripts used by the battle renderer.
     effects: {
