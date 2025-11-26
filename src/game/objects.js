@@ -1,23 +1,9 @@
 // Domain helpers for game objects (similar to rmmz_objects.js).
-// Keep logic that manipulates GameState/Data here; avoid DOM work. To add a new helper,
+// Keep logic that manipulates data here; avoid DOM work. To add a new helper,
 // export a function or lightweight class that can be shared across scenes/systems.
 
 import { Data } from '../assets/data/data.js';
-import { GameState } from './state.js';
-
-export function getMaxHp(unit) {
-    const def = Data.creatures[unit.speciesId];
-    let baseMax = Math.round(def.baseHp * (1 + def.hpGrowth * (unit.level - 1)));
-    if (unit.equipmentId) {
-        const eq = Data.equipment[unit.equipmentId];
-        if (eq?.hpBonus) baseMax = Math.round(baseMax * (1 + eq.hpBonus));
-    }
-    return baseMax;
-}
-
-export function applyHealing(unit, amount) {
-    unit.hp = Math.min(getMaxHp(unit), unit.hp + amount);
-}
+import { Game_Actor } from './Game_Actor.js';
 
 export function getXpForNextLevel(level) {
     // Simple exponential curve: 100, 225, 379, 562...
@@ -97,12 +83,14 @@ export function populateActiveSlots(setup) {
     }
 
     // Clear active slots and populate
-    GameState.party.activeSlots.fill(null);
+    for (let i = 0; i < 6; i++) {
+        $gameParty.setPartyMember(i, null);
+    }
     partyToCreate.forEach((slot, idx) => {
         if (idx < 6) { // Ensure we don't go over the 6 slots
             const unit = createUnit(slot.species, slot.lvl, idx);
-            GameState.roster.push(unit);
-            GameState.party.activeSlots[idx] = unit;
+            $gameParty.addRosterMember(unit);
+            $gameParty.setPartyMember(idx, new Game_Actor(unit));
         }
     });
 }

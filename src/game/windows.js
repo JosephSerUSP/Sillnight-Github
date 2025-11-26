@@ -3,9 +3,8 @@
 // types by subclassing Window_Base and wiring them into the ShellUI container.
 
 import { Data } from '../assets/data/data.js';
-import { GameState } from './state.js';
 import { Log } from './log.js';
-import { getMaxHp, getXpProgress } from './objects.js';
+import { getXpProgress } from './objects.js';
 import { resolveAssetPath } from './core.js';
 
 export class Window_Base {
@@ -59,14 +58,14 @@ class ShellUI {
     }
 
     updateHUD() {
-        document.getElementById('hud-floor').innerText = GameState.run.floor;
-        document.getElementById('hud-gold').innerText = GameState.run.gold;
+        document.getElementById('hud-floor').innerText = $gameMap.floor();
+        document.getElementById('hud-gold').innerText = $gameParty.gold();
     }
 
     renderCreaturePanel(unit) {
         if (!unit) return '';
 
-        const maxhp = getMaxHp(unit);
+        const maxhp = unit.getMaxHp();
         const hpPct = (unit.hp / maxhp) * 100;
         const hpColor = hpPct < 30 ? 'bg-red-600' : 'bg-green-600';
         const xpPct = getXpProgress(unit);
@@ -88,24 +87,19 @@ class ShellUI {
     renderParty() {
         const grid = document.getElementById('party-grid');
         grid.innerHTML = '';
-        GameState.party.activeSlots.forEach((u, i) => {
+        $gameParty.members().forEach((u, i) => {
             const div = document.createElement('div');
             div.className = 'party-slot relative flex flex-col p-1';
             if (u) {
                 div.innerHTML = this.renderCreaturePanel(u);
                 div.onclick = () => {
-                    if (GameState.battle && GameState.battle.phase === 'PLAYER_INPUT' || GameState.ui.formationMode) {
+                    if ($gameSystem.battle && $gameSystem.battle.phase === 'PLAYER_INPUT' || $gameSystem.ui.formationMode) {
                         const selected = document.querySelector('.party-slot.selected');
                         if (selected) {
                             const idx = parseInt(selected.dataset.idx);
                             selected.classList.remove('selected');
                             if (idx !== i) {
-                                const u1 = GameState.party.activeSlots[idx];
-                                const u2 = GameState.party.activeSlots[i];
-                                GameState.party.activeSlots[idx] = u2;
-                                GameState.party.activeSlots[i] = u1;
-                                if (GameState.party.activeSlots[idx]) GameState.party.activeSlots[idx].slotIndex = idx;
-                                if (GameState.party.activeSlots[i]) GameState.party.activeSlots[i].slotIndex = i;
+                                $gameParty.swapOrder(idx, i);
                                 this.renderParty();
                             }
                         } else {
@@ -119,14 +113,11 @@ class ShellUI {
             } else {
                 div.innerHTML = '<span class="m-auto text-gray-800 text-xs">EMPTY</span>';
                 div.onclick = () => {
-                    if (GameState.battle && GameState.battle.phase === 'PLAYER_INPUT' || GameState.ui.formationMode) {
+                    if ($gameSystem.battle && $gameSystem.battle.phase === 'PLAYER_INPUT' || $gameSystem.ui.formationMode) {
                         const selected = document.querySelector('.party-slot.selected');
                         if (selected) {
                             const idx = parseInt(selected.dataset.idx);
-                            const u1 = GameState.party.activeSlots[idx];
-                            GameState.party.activeSlots[idx] = null;
-                            GameState.party.activeSlots[i] = u1;
-                            if (u1) u1.slotIndex = i;
+                            $gameParty.swapOrder(idx, i);
                             this.renderParty();
                         }
                     }
@@ -138,11 +129,11 @@ class ShellUI {
     }
 
     toggleFormationMode() {
-        if (GameState.ui.mode === 'BATTLE') return;
-        GameState.ui.formationMode = !GameState.ui.formationMode;
+        if ($gameSystem.ui.mode === 'BATTLE') return;
+        $gameSystem.ui.formationMode = !$gameSystem.ui.formationMode;
         const ind = document.getElementById('turn-indicator');
         const btn = document.getElementById('btn-formation');
-        if (GameState.ui.formationMode) {
+        if ($gameSystem.ui.formationMode) {
             ind.innerText = 'FORMATION MODE';
             ind.classList.remove('hidden');
             btn.classList.add('bg-yellow-900', 'text-white');
@@ -177,8 +168,8 @@ class ShellUI {
         const rows = 5;
         const totalSlots = columns * rows;
 
-        const activeSet = new Set(GameState.party.activeSlots.filter(Boolean).map(u => u.uid));
-        const reserveUnits = GameState.roster.filter(u => !activeSet.has(u.uid));
+        const activeSet = new Set($gameParty.members().filter(Boolean).map(u => u.uid));
+        const reserveUnits = $gameParty._roster.filter(u => !activeSet.has(u.uid));
         let reserveUnitIndex = 0;
 
         for (let i = 0; i < totalSlots; i++) {
@@ -193,7 +184,7 @@ class ShellUI {
             // Determine if the slot is for an active party member
             if (row < 2 && col < 3) {
                 const activeSlotIndex = row * 3 + col;
-                unit = GameState.party.activeSlots[activeSlotIndex];
+                unit = $gameParty.members()[activeSlotIndex];
                 index = activeSlotIndex;
                 isReserved = false;
                 if (!unit) {
@@ -251,11 +242,11 @@ class ShellUI {
 
             if (fromUid === toUid) return;
 
-            const fromUnit = fromIsReserved ? GameState.roster.find(u => u.uid === fromUid) : GameState.party.activeSlots[fromIndex];
-            const toUnit = toIsReserved ? GameState.roster.find(u => u.uid === toUid) : GameState.party.activeSlots[toIndex];
+            const fromUnit = fromIsReserved ? $gameParty._roster.find(u => u.uid === fromUid) : $gameParty.members()[fromIndex];
+            const toUnit = toIsReserved ? $gameParty._roster.find(u => u.uid === toUid) : $gameParty.members()[toIndex];
 
             // Enforce party limit
-            const activePartySize = GameState.party.activeSlots.filter(u => u !== null).length;
+            const activePartySize = $gameParty.members().filter(u => u !== null).length;
             if (fromIsReserved && !toIsReserved && !toUnit && activePartySize >= 4) {
                 alert("Your active party is full. Swap a member out before adding a new one.");
                 return;
@@ -263,17 +254,17 @@ class ShellUI {
 
             // Swap logic
             if (fromIsReserved && !toIsReserved) { // Reserve -> Active
-                GameState.party.activeSlots[toIndex] = fromUnit;
+                $gameParty.setPartyMember(toIndex, fromUnit);
                 if(toUnit) toUnit.slotIndex = -1;
                 fromUnit.slotIndex = toIndex;
 
             } else if (!fromIsReserved && toIsReserved) { // Active -> Reserve
-                GameState.party.activeSlots[fromIndex] = toUnit;
-                toUnit.slotIndex = fromIndex;
+                $gameParty.setPartyMember(fromIndex, toUnit);
+                if(toUnit) toUnit.slotIndex = fromIndex;
                 fromUnit.slotIndex = -1;
 
             } else if (!fromIsReserved && !toIsReserved) { // Active <-> Active
-                [GameState.party.activeSlots[fromIndex], GameState.party.activeSlots[toIndex]] = [toUnit, fromUnit];
+                $gameParty.swapOrder(fromIndex, toIndex);
                 if (fromUnit) fromUnit.slotIndex = toIndex;
                 if (toUnit) toUnit.slotIndex = fromIndex;
             }
@@ -291,14 +282,15 @@ class ShellUI {
         if (!modal.classList.contains('hidden')) {
             const list = document.getElementById('inventory-list');
             list.innerHTML = '';
-            const eqKeys = Object.keys(GameState.inventory.equipment);
+            const inventory = $gameParty.inventory();
+            const eqKeys = Object.keys(inventory.equipment);
             if (eqKeys.length > 0) {
                 const eqTitle = document.createElement('div');
                 eqTitle.className = 'text-yellow-400 mb-2';
                 eqTitle.innerText = 'Equipment';
                 list.appendChild(eqTitle);
                 eqKeys.forEach(id => {
-                    const count = GameState.inventory.equipment[id];
+                    const count = inventory.equipment[id];
                     const def = Data.equipment[id];
                     const row = document.createElement('div');
                     row.className = 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1';
@@ -313,14 +305,14 @@ class ShellUI {
                     list.appendChild(row);
                 });
             }
-            const itemKeys = Object.keys(GameState.inventory.items);
+            const itemKeys = Object.keys(inventory.items);
             if (itemKeys.length > 0) {
                 const itmTitle = document.createElement('div');
                 itmTitle.className = 'text-yellow-400 mt-4 mb-2';
                 itmTitle.innerText = 'Items';
                 list.appendChild(itmTitle);
                 itemKeys.forEach(id => {
-                    const count = GameState.inventory.items[id];
+                    const count = inventory.items[id];
                     const def = Data.items[id];
                     const row = document.createElement('div');
                     row.className = 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1';
@@ -346,12 +338,12 @@ class ShellUI {
         const unit = this.activeModalUnit;
         if (!unit) return;
         const def = Data.creatures[unit.speciesId];
-        const maxhp = getMaxHp(unit);
+        const maxhp = unit.getMaxHp();
         document.getElementById('modal-sprite').innerHTML = this.spriteMarkup(unit, 'h-28 w-28 object-contain', 'status-sprite');
         document.getElementById('modal-name').innerText = unit.name;
         document.getElementById('modal-lvl').innerText = unit.level;
         document.getElementById('modal-temperament').innerText = def.temperament;
-        document.getElementById('modal-hp').innerText = `${unit.hp}/${maxhp}`;
+        document.getElementById('modal-hp').innerText = `${unit.hp()}/${maxhp}`;
         document.getElementById('modal-xp').innerText = `${unit.exp ?? 0}`;
         document.getElementById('modal-race').innerText = def.race;
         document.getElementById('modal-elements').innerText = (unit.elements || []).join(', ');
@@ -394,10 +386,10 @@ class ShellUI {
         const box = document.getElementById('center-modal');
         box.classList.remove('hidden');
         box.classList.add('pointer-events-auto');
-        const list = GameState.roster.map(u => ({ owner: u, id: u.equipmentId, source: 'unit' })).filter(x => x.id);
-        const inv = Object.keys(GameState.inventory.equipment).map(key => ({ owner: null, id: key, source: 'inventory' }));
+        const list = $gameParty._roster.map(u => ({ owner: u, id: u.equipmentId, source: 'unit' })).filter(x => x.id);
+        const inv = Object.keys($gameParty.inventory().equipment).map(key => ({ owner: null, id: key, source: 'inventory' }));
         const options = [...list, ...inv];
-        const first = this.activeModalUnit || GameState.party.activeSlots.find(Boolean);
+        const first = this.activeModalUnit || $gameParty.members().find(Boolean);
         this.equipmentPickerPreset = id ? { id, source: 'inventory' } : null;
         box.innerHTML = '';
         const card = document.createElement('div');
@@ -440,14 +432,14 @@ class ShellUI {
     }
 
     equipFromInventory(target, equipmentId) {
-        const count = GameState.inventory.equipment[equipmentId] || 0;
+        const inventory = $gameParty.inventory();
+        const count = inventory.equipment[equipmentId] || 0;
         if (count <= 0) return;
         const previous = target.equipmentId;
         if (previous) {
-            GameState.inventory.equipment[previous] = (GameState.inventory.equipment[previous] || 0) + 1;
+            $gameParty.gainItem(Data.equipment[previous], 1);
         }
-        GameState.inventory.equipment[equipmentId] = count - 1;
-        if (GameState.inventory.equipment[equipmentId] <= 0) delete GameState.inventory.equipment[equipmentId];
+        $gameParty.gainItem(Data.equipment[equipmentId], -1);
         target.equipmentId = equipmentId;
         this.recomputeHp(target);
         Log.add(`${target.name} equipped ${Data.equipment[equipmentId].name}.`);
@@ -459,7 +451,7 @@ class ShellUI {
         const previous = target.equipmentId;
         if (previous === equipmentId && owner.uid === target.uid) return;
         if (previous) {
-            GameState.inventory.equipment[previous] = (GameState.inventory.equipment[previous] || 0) + 1;
+            $gameParty.gainItem(Data.equipment[previous], 1);
         }
         if (owner && owner.equipmentId === equipmentId) {
             owner.equipmentId = null;
@@ -476,7 +468,7 @@ class ShellUI {
         if (!unit.equipmentId) return;
         const previous = unit.equipmentId;
         unit.equipmentId = null;
-        GameState.inventory.equipment[previous] = (GameState.inventory.equipment[previous] || 0) + 1;
+        $gameParty.gainItem(Data.equipment[previous], 1);
         this.recomputeHp(unit);
         Log.add(`${unit.name} removed ${Data.equipment[previous].name}.`);
         this.renderParty();
@@ -484,8 +476,8 @@ class ShellUI {
     }
 
     recomputeHp(unit) {
-        const maxhp = getMaxHp(unit);
-        if (unit.hp > maxhp) unit.hp = maxhp;
+        const maxhp = unit.getMaxHp();
+        if (unit.hp() > maxhp) unit._hp = maxhp;
     }
 
     switchScene(toBattle, onExploreRefresh) {
