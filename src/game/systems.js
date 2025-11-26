@@ -602,6 +602,7 @@ export const Systems = {
                     const baseScale = computeSpriteScale(texture);
                     sprite.scale.set(baseScale.x, baseScale.y, 1);
                     sprite.position.set(pos.x, pos.y, baseScale.y / 2);
+                    sprite.userData.uid = unit.uid;
                     sprite.userData.baseScale = baseScale;
                     sprite.userData.baseZ = baseScale.y / 2;
                     // Add drop shadow
@@ -692,6 +693,34 @@ export const Systems = {
                 sprite.position.z = baseZ;
             }
         },
+        playDeathFade(uid) {
+            const sprite = this.sprites[uid];
+            if (!sprite) return;
+
+            const duration = 800;
+            let startTime = null;
+
+            const animateFade = (timestamp) => {
+                if (!startTime) startTime = timestamp;
+                const elapsed = timestamp - startTime;
+                const p = Math.min(1, elapsed / duration);
+
+                sprite.material.blending = THREE.AdditiveBlending;
+                sprite.material.color.setHex(0xff00ff);
+                sprite.scale.x = sprite.userData.baseScale.x * (1 - p);
+                sprite.scale.y = sprite.userData.baseScale.y * (1 + p * 2);
+                sprite.material.opacity = 1 - p;
+
+                if (p < 1) {
+                    requestAnimationFrame(animateFade);
+                } else {
+                    sprite.visible = false;
+                }
+            };
+
+            requestAnimationFrame(animateFade);
+        },
+
         // Executes a high-level action sequence, triggering Effekseer effects and timing
         // callbacks when damage/heal application should occur.
         playAnim(uid, steps = [], context = {}) {
@@ -719,24 +748,60 @@ export const Systems = {
             };
 
             const stepHandlers = {
+                feedback: (step) => new Promise(resolve => {
+                    const boundSprites = step.bind === 'target' ? targets.map(t => this.sprites[t.uid]).filter(Boolean) : [sprite];
+                    const duration = step.duration || 200;
+                    let startTime = null;
+
+                    const animateFlash = (timestamp) => {
+                        if (!startTime) startTime = timestamp;
+                        const elapsed = timestamp - startTime;
+                        const p = Math.min(1, elapsed / duration);
+                        const p2 = Math.sin(p * Math.PI);
+                        const flashOpacity = step.opacity === undefined ? 1.0 : step.opacity;
+
+                        boundSprites.forEach(sp => {
+                            if (step.color) sp.material.color.setHex(step.color);
+                            sp.material.opacity = 1 - (p2 * flashOpacity);
+                            if (step.shake) {
+                                sp.position.x += (Math.random() - 0.5) * step.shake * p2;
+                            }
+                        });
+
+                        if (p < 1) {
+                            requestAnimationFrame(animateFlash);
+                        } else {
+                            boundSprites.forEach(sp => this.resetSprite(sp.userData.uid));
+                            resolve();
+                        }
+                    };
+
+                    requestAnimationFrame(animateFlash);
+                }),
                 wait: (step) => wait(step.duration || 300),
                 jump: (step) => new Promise(resolve => {
-                    let t = 0;
                     const axis = 'z';
                     const startPos = sprite.position[axis];
-                    const interval = 30;
                     const amp = step.height || 0.8;
                     const duration = step.duration || 500;
-                    const jump = setInterval(() => {
-                        t += interval;
-                        const progress = Math.min(1, t / duration);
+                    let startTime = null;
+
+                    const animateJump = (timestamp) => {
+                        if (!startTime) startTime = timestamp;
+                        const elapsed = timestamp - startTime;
+                        const progress = Math.min(1, elapsed / duration);
+
                         sprite.position[axis] = startPos + Math.sin(progress * Math.PI) * amp;
-                        if (progress >= 1) {
-                            clearInterval(jump);
+
+                        if (progress < 1) {
+                            requestAnimationFrame(animateJump);
+                        } else {
                             sprite.position[axis] = startPos;
                             resolve();
                         }
-                    }, interval);
+                    };
+
+                    requestAnimationFrame(animateJump);
                 }),
                 approach: (step) => new Promise(resolve => {
                     const targetPos = averageTargetPosition();
@@ -750,32 +815,56 @@ export const Systems = {
                         z: sprite.position.z
                     };
                     const duration = step.duration || 250;
-                    const interval = 30;
-                    let elapsed = 0;
-                    const move = setInterval(() => {
-                        elapsed += interval;
+                    let startTime = null;
+
+                    const animateMove = (timestamp) => {
+                        if (!startTime) startTime = timestamp;
+                        const elapsed = timestamp - startTime;
                         const p = Math.min(1, elapsed / duration);
+
                         sprite.position.x = origin.x + (destination.x - origin.x) * p;
                         sprite.position.y = origin.y + (destination.y - origin.y) * p;
-                        if (p >= 1) { clearInterval(move); resolve(); }
-                    }, interval);
+
+                        if (p < 1) {
+                            requestAnimationFrame(animateMove);
+                        } else {
+                            resolve();
+                        }
+                    };
+
+                    requestAnimationFrame(animateMove);
                 }),
                 retreat: (step) => new Promise(resolve => {
                     const duration = step.duration || 250;
-                    const interval = 30;
                     const start = sprite.position.clone();
-                    let elapsed = 0;
-                    const move = setInterval(() => {
-                        elapsed += interval;
+                    let startTime = null;
+
+                    const animateMove = (timestamp) => {
+                        if (!startTime) startTime = timestamp;
+                        const elapsed = timestamp - startTime;
                         const p = Math.min(1, elapsed / duration);
+
                         sprite.position.lerpVectors(start, origin, p);
-                        if (p >= 1) { clearInterval(move); sprite.position.copy(origin); resolve(); }
-                    }, interval);
+
+                        if (p < 1) {
+                            requestAnimationFrame(animateMove);
+                        } else {
+                            sprite.position.copy(origin);
+                            resolve();
+                        }
+                    };
+
+                    requestAnimationFrame(animateMove);
                 }),
                 effect: (step) => {
                     const boundSprites = step.bind === 'target' ? targets.map(t => this.sprites[t.uid]).filter(Boolean) : [sprite];
                     const plays = boundSprites.map(sp => {
-                        const pos = { x: sp.position.x, y: sp.position.y, z: sp.position.z + (step.height || 1) };
+                        // Use anchor property for precise vertical positioning of effects.
+                        // 0.0 = feet, 0.5 = center, 1.0 = head.
+                        const anchor = step.anchor ?? 0.5;
+                        const zOffset = sp.position.z - sp.userData.baseZ;
+                        const zPos = zOffset + (sp.userData.baseScale.y * anchor);
+                        const pos = { x: sp.position.x, y: sp.position.y, z: zPos };
                         return Systems.Effekseer.play(step.effect, pos);
                     });
                     const hold = step.hold ?? 300;
@@ -805,7 +894,13 @@ export const Systems = {
             if (val === 0) return;
             const sprite = this.sprites[uid];
             if (!sprite) return;
-            const screenPos = this.toScreen(sprite);
+
+            // Create a temporary object positioned at the top of the sprite
+            const topOfSprite = new THREE.Object3D();
+            topOfSprite.position.copy(sprite.position);
+            topOfSprite.position.z += sprite.userData.baseScale.y;
+
+            const screenPos = this.toScreen(topOfSprite);
             const el = document.createElement('div');
             el.className = `damage-number ${val < 0 ? 'text-green-400' : 'text-white'}`;
             el.innerText = Math.abs(val);
@@ -1357,6 +1452,12 @@ export const Systems = {
             // Show banner for the action
             UI.showBanner(`${unit.name} used ${action.name}!`);
             const results = this.applyEffects(action, unit, targets);
+
+            // For actions that don't generate results (like 'wait'), log them directly.
+            if (results.length === 0) {
+                Log.battle(`> ${unit.name} used ${action.name}!`);
+            }
+
             const script = Data.actionScripts[action.script] || Data.actionScripts.attack || [];
             const applyResults = () => {
                 results.forEach(({ target, value, effect }) => {
@@ -1380,12 +1481,13 @@ export const Systems = {
                             if (dealtDamage > 0) {
                                 Log.battle(`> ${unit.name} hits ${target.name} for ${dealtDamage}.`);
                                 Systems.Battle3D.showDamageNumber(target.uid, dealtDamage);
+                                Systems.Battle3D.playAnim(target.uid, [{type: 'feedback', bind: 'self', shake: 0.8, opacity: 0.7, color: 0xffffff}]);
                             }
 
                             if (target.hp <= 0) {
                                 Log.battle(`> ${target.name} was defeated!`);
                                 const ts = Systems.Battle3D.sprites[target.uid];
-                                if (ts) ts.visible = false;
+                                Systems.Battle3D.playDeathFade(target.uid);
                                 Systems.Triggers.fire('onUnitDeath', target);
 
                                 if (Math.random() < (defenderWithStats.revive_on_ko_chance || 0)) {
@@ -1403,6 +1505,7 @@ export const Systems = {
                             target.hp = Math.min(maxhp, target.hp + value);
                             Log.battle(`> ${target.name} healed for ${value}.`);
                             Systems.Battle3D.showDamageNumber(target.uid, -value);
+                            Systems.Battle3D.playAnim(target.uid, [{type: 'feedback', bind: 'self', opacity: 0.5, color: 0x00ff00}]);
                             break;
                         case 'hp_heal_ratio':
                             const maxHpRatio = Systems.Battle.getMaxHp(target);
