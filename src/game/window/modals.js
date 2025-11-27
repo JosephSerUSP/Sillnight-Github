@@ -2,7 +2,7 @@ import { Data } from '../../assets/data/data.js';
 import { GameState } from '../state.js';
 import { Window_Selectable } from '../windows.js';
 import { renderCreaturePanel, spriteMarkup } from './common.js';
-import { getMaxHp } from '../objects.js';
+import { Systems } from '../systems.js';
 import { Log } from '../log.js';
 
 export class Window_CreatureModal extends Window_Selectable {
@@ -35,6 +35,7 @@ export class Window_CreatureModal extends Window_Selectable {
         const box = document.getElementById('center-modal');
         box.classList.remove('hidden');
         box.classList.add('pointer-events-auto');
+        // Roster is now a list of Game_Actor objects.
         const list = GameState.roster.map(u => ({ owner: u, id: u.equipmentId, source: 'unit' })).filter(x => x.id);
         const inv = Object.keys(GameState.inventory.equipment).map(key => ({ owner: null, id: key, source: 'inventory' }));
         const options = [...list, ...inv];
@@ -48,7 +49,8 @@ export class Window_CreatureModal extends Window_Selectable {
         grid.className = 'grid grid-cols-2 gap-2';
         options.forEach(opt => {
             const def = Data.equipment[opt.id];
-            const subtitle = opt.source === 'unit' ? `Held by ${opt.owner.name}` : 'Inventory';
+            const name = typeof opt.owner?.name === 'function' ? opt.owner.name() : opt.owner?.name;
+            const subtitle = opt.source === 'unit' ? `Held by ${name}` : 'Inventory';
             const cardInner = document.createElement('div');
             cardInner.className = 'rpg-window bg-black/60 border border-gray-700 p-2 cursor-pointer hover:border-yellow-400';
             if (this.equipmentPickerPreset && this.equipmentPickerPreset.id === opt.id && this.equipmentPickerPreset.source === opt.source) {
@@ -84,7 +86,9 @@ export class Window_CreatureModal extends Window_Selectable {
         if (GameState.inventory.equipment[equipmentId] <= 0) delete GameState.inventory.equipment[equipmentId];
         target.equipmentId = equipmentId;
         this.recomputeHp(target);
-        Log.add(`${target.name} equipped ${Data.equipment[equipmentId].name}.`);
+
+        const name = typeof target.name === 'function' ? target.name() : target.name;
+        Log.add(`${name} equipped ${Data.equipment[equipmentId].name}.`);
         window.Game.Windows.Party.refresh();
         this.refresh();
     }
@@ -101,7 +105,9 @@ export class Window_CreatureModal extends Window_Selectable {
         }
         target.equipmentId = equipmentId;
         this.recomputeHp(target);
-        Log.add(`${target.name} borrowed ${Data.equipment[equipmentId].name} from ${owner.name}.`);
+        const name = typeof target.name === 'function' ? target.name() : target.name;
+        const ownerName = typeof owner.name === 'function' ? owner.name() : owner.name;
+        Log.add(`${name} borrowed ${Data.equipment[equipmentId].name} from ${ownerName}.`);
         window.Game.Windows.Party.refresh();
         this.refresh();
     }
@@ -112,25 +118,40 @@ export class Window_CreatureModal extends Window_Selectable {
         unit.equipmentId = null;
         GameState.inventory.equipment[previous] = (GameState.inventory.equipment[previous] || 0) + 1;
         this.recomputeHp(unit);
-        Log.add(`${unit.name} removed ${Data.equipment[previous].name}.`);
+        const name = typeof unit.name === 'function' ? unit.name() : unit.name;
+        Log.add(`${name} removed ${Data.equipment[previous].name}.`);
         window.Game.Windows.Party.refresh();
         this.refresh();
     }
 
     recomputeHp(unit) {
-        const maxhp = getMaxHp(unit);
-        if (unit.hp > maxhp) unit.hp = maxhp;
+        // If class, it handles HP updates, but we need to ensure max HP is capped?
+        // Game_BattlerBase handles clamping in refresh().
+        // If using class, just set HP.
+        if (typeof unit.refresh === 'function') {
+            unit.refresh();
+        } else {
+             // Fallback
+            const maxhp = Systems.Battle.getMaxHp(unit);
+            if (unit.hp > maxhp) unit.hp = maxhp;
+        }
     }
 
     refresh() {
         if (!this._unit) return;
         const unit = this._unit;
         const def = Data.creatures[unit.speciesId];
-        const maxhp = getMaxHp(unit);
+
+        let maxhp = 0;
+        if (typeof unit.mhp === 'number') maxhp = unit.mhp;
+        else if (typeof unit.mhp === 'function') maxhp = unit.mhp();
+        else maxhp = Systems.Battle.getMaxHp(unit);
+
+        const name = typeof unit.name === 'function' ? unit.name() : unit.name;
 
         this.root.querySelector('#modal-sprite').innerHTML = spriteMarkup(unit, 'h-28 w-28 object-contain', 'status-sprite');
-        this.root.querySelector('#modal-name').innerText = unit.name;
-        this.root.querySelector('#modal-lvl').innerText = unit.level;
+        this.root.querySelector('#modal-name').innerText = name;
+        this.root.querySelector('#modal-lvl').innerText = unit.level || 1;
         this.root.querySelector('#modal-temperament').innerText = def.temperament;
         this.root.querySelector('#modal-hp').innerText = `${unit.hp}/${maxhp}`;
         this.root.querySelector('#modal-xp').innerText = `${unit.exp ?? 0}`;
@@ -284,7 +305,9 @@ export class Window_PartyMenu extends Window_Selectable {
 
             } else if (!fromIsReserved && toIsReserved) { // Active -> Reserve
                 GameState.party.activeSlots[fromIndex] = toUnit;
-                toUnit.slotIndex = fromIndex;
+                if (toUnit) {
+                    toUnit.slotIndex = fromIndex;
+                }
                 fromUnit.slotIndex = -1;
 
             } else if (!fromIsReserved && !toIsReserved) { // Active <-> Active

@@ -1,9 +1,9 @@
 import { Data } from '../assets/data/data.js';
 import { GameState } from './state.js';
+import { DataManager } from './DataManager.js';
 import { Log } from './log.js';
 import { Systems } from './systems.js';
-import { populateActiveSlots } from './objects.js';
-import { SceneManager, InputManager } from './managers.js';
+import { SceneManager, InputManager, BattleManager } from './managers.js';
 import { Scene_Explore, Scene_Battle } from './scenes.js';
 import { Window_HUD } from './window/hud.js';
 import { Window_Party } from './window/party.js';
@@ -21,6 +21,9 @@ export const Game = {
     SceneManager: new SceneManager(),
     Windows: {},
     async init() {
+        // Initialize Data (Create Party, Map, etc.)
+        DataManager.setupNewGame();
+
         // Create windows
         this.Windows.HUD = new Window_HUD();
         this.Windows.Party = new Window_Party();
@@ -29,14 +32,11 @@ export const Game = {
         this.Windows.PartyMenu = new Window_PartyMenu();
         this.Windows.BattleLog = new Window_BattleLog();
 
-        // Initial map generation and render setup
-        Systems.Map.generateFloor();
+        // Initial map generation (already done in setupNewGame, but need to render)
+        // Systems.Map.generateFloor(); // Moved to DataManager
         Systems.Explore.init();
         Systems.Battle3D.init();
         await Systems.Effekseer.preload();
-
-        // Starting party
-        populateActiveSlots(Data.party.initial);
 
         // Wire hooks for scene transitions originating from systems
         Systems.sceneHooks.onBattleStart = () => this.SceneManager.changeScene(this.Scenes.battle);
@@ -44,8 +44,8 @@ export const Game = {
 
         // Bind battle handlers
         this.Windows.BattleLog.togglePlayerTurn(false, {
-            onRequest: () => Systems.Battle.requestPlayerTurn(),
-            onResume: () => Systems.Battle.resumeAuto()
+            onRequest: () => BattleManager.requestPlayerTurn(),
+            onResume: () => BattleManager.resumeAuto()
         });
 
         // Render shell UI
