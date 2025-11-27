@@ -121,7 +121,8 @@ export const BattleManager = {
             .filter(u => u.hp > 0)
             .map(u => {
                 const unitWithStats = Systems.Battle.getUnitWithStats(u);
-                return { ...u, speed: unitWithStats.speed_bonus };
+                u.speed = unitWithStats.speed_bonus;
+                return u;
             });
 
         allUnits.sort((a, b) => b.speed - a.speed || Math.random() - 0.5);

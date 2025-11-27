@@ -23,6 +23,7 @@ export class Game_Actor extends Game_Battler {
     setup(speciesId, level) {
         this._speciesId = speciesId;
         this._level = level;
+        this._exp = this.expForLevel(this._level);
         const def = Data.creatures[speciesId];
         this._name = def.name;
         this.recoverAll();
@@ -107,12 +108,20 @@ export class Game_Actor extends Game_Battler {
     currentExp() { return this._exp; }
 
     nextLevelExp() {
-         const def = Data.creatures[this._speciesId];
-         // Using the logic from objects.js: getXpForNextLevel
-         // Math.round(100 * Math.pow(level, 1.1)) is total XP for next level?
-         // Or is it accumulated? objects.js logic was a bit weird.
-         // Let's stick to a simple formula for now or adapt objects.js
-         return Math.round(100 * Math.pow(this._level, 1.1));
+         // Threshold to reach the *next* level (current level + 1)
+         return this.expForLevel(this._level + 1);
+    }
+
+    expForLevel(level) {
+        if (level <= 1) return 0;
+        // Cumulative XP required to reach 'level'
+        // Using formula: 100 * (level-1)^1.1
+        // This matches common.js getXpForNextLevel logic where:
+        // getXpForNextLevel(1) = 100 (Threshold for L2)
+        // getXpForNextLevel(2) = 214 (Threshold for L3)
+        // So expForLevel(2) should be 100.
+        // expForLevel(3) should be 214.
+        return Math.round(100 * Math.pow(level - 1, 1.1));
     }
 
     levelUp() {

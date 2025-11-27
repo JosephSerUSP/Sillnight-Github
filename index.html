@@ -223,7 +223,7 @@
         <div class="rpg-window w-2/3 h-3/4 flex flex-col bg-[#0a0a0a]">
             <div class="rpg-header flex justify-between">
                 <span>PARTY / RESERVE</span>
-                <button onclick="Game.Views.UI.toggleParty()" class="text-red-500 px-2 hover:bg-red-900">X</button>
+                <button onclick="Game.Windows.PartyMenu.toggle()" class="text-red-500 px-2 hover:bg-red-900">X</button>
             </div>
             <div class="p-2 text-sm text-gray-400 border-b border-gray-700">
                 Click a unit to select it, then click another unit or an empty slot to swap them.
@@ -238,7 +238,7 @@
         <div class="rpg-window w-1/2 h-2/3 flex flex-col bg-[#0a0a0a]">
             <div class="rpg-header flex justify-between">
                 <span>INVENTORY</span>
-                <button onclick="Game.Views.UI.toggleInventory()" class="text-red-500 px-2 hover:bg-red-900">X</button>
+                <button onclick="Game.Windows.Inventory.toggle()" class="text-red-500 px-2 hover:bg-red-900">X</button>
             </div>
             <div id="inventory-list" class="flex-grow p-4 overflow-y-auto no-scrollbar"></div>
         </div>
@@ -248,7 +248,7 @@
         <div class="rpg-window w-4/5 h-4/5 flex flex-col bg-[#111] relative overflow-hidden">
             <div class="rpg-header flex justify-between items-center">
                 <span class="tracking-widest">CREATURE STATUS</span>
-                <button onclick="document.getElementById('creature-modal').classList.add('hidden'); Game.Views.UI.closeEquipmentPicker();" class="text-red-500 font-bold px-2">X</button>
+                <button onclick="document.getElementById('creature-modal').classList.add('hidden'); Game.Windows.CreatureModal.closeCenterModal();" class="text-red-500 font-bold px-2">X</button>
             </div>
             <div class="flex flex-row h-full p-4 gap-4 relative">
                 <div class="w-2/5 flex flex-col gap-3 border-r border-gray-800 pr-4">
@@ -310,7 +310,7 @@
                     <div class="flex-grow rpg-window bg-black/70 border border-gray-700 p-3 flex flex-col gap-2 overflow-hidden">
                         <div class="flex justify-between items-center">
                             <h3 class="text-gray-300 tracking-wide">EQUIPMENT LIBRARY</h3>
-                            <button id="modal-close-picker" class="hidden text-xs text-gray-400 hover:text-white" onclick="Game.Views.UI.closeEquipmentPicker()">Close</button>
+                            <button id="modal-close-picker" class="hidden text-xs text-gray-400 hover:text-white" onclick="Game.Windows.CreatureModal.closeCenterModal()">Close</button>
                         </div>
                         <div id="equipment-empty-hint" class="text-xs text-gray-500">Tap the equipment slot above to browse what this creature can wear.</div>
                         <div id="equipment-options" class="grid grid-cols-2 gap-2 overflow-y-auto pr-1"></div>
@@ -324,7 +324,7 @@
         <div class="rpg-window w-1/2 h-3/4 flex flex-col bg-[#111]">
             <div class="rpg-header flex justify-between">
                 <span id="event-title">EVENT</span>
-                <button onclick="Game.Views.UI.closeEvent()" class="text-red-500 font-bold px-2">X</button>
+                <button onclick="document.getElementById('event-modal').classList.add('hidden')" class="text-red-500 font-bold px-2">X</button>
             </div>
             <div id="event-content" class="flex-grow p-4 overflow-y-auto no-scrollbar text-sm"></div>
         </div>
