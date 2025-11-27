@@ -197,9 +197,9 @@
                         </button>
                     </div>
                     <div id="explore-controls" class="flex gap-2 w-full h-full">
-                        <button class="rpg-window flex-1 h-full hover:bg-gray-700 text-xs" onclick="Game.Views.UI.toggleParty()">PARTY (P)</button>
-                        <button id="btn-formation" class="rpg-window flex-1 h-full hover:bg-gray-700 text-xs" onclick="Game.Views.UI.toggleFormationMode()">FORMATION</button>
-                        <button id="btn-inventory" class="rpg-window flex-1 h-full hover:bg-gray-700 text-xs" onclick="Game.Views.UI.toggleInventory()">BAG (B)</button>
+                        <button class="rpg-window flex-1 h-full hover:bg-gray-700 text-xs" onclick="window.Game.Windows.PartyMenu.toggle()">PARTY (P)</button>
+                        <button id="btn-formation" class="rpg-window flex-1 h-full hover:bg-gray-700 text-xs" onclick="window.Game.Windows.Party.toggleFormationMode()">FORMATION</button>
+                        <button id="btn-inventory" class="rpg-window flex-1 h-full hover:bg-gray-700 text-xs" onclick="window.Game.Windows.Inventory.toggle()">BAG (B)</button>
                     </div>
                 </div>
             </div>

@@ -2,7 +2,7 @@
 
 # Stillnight Engine Architecture & Refactoring Design Document
 
-**Version:** 1.0
+**Version:** 1.2
 **Author:** Senior Game Engine Architect
 **Date:** 2025-11-26
 **Reference:** RPG Maker MZ Architecture (RMMZ)
@@ -106,7 +106,7 @@ Traits are handled via a `switch` statement inside `handleTrait`.
 
 ## 4. Phased Refactoring Roadmap
 
-### Phase 1: The Object Model (Foundation)
+### Phase 1: The Object Model (Foundation) - Not Started
 *Goal: Encapsulate `GameState` raw JSON into functional Classes.*
 
 1.  **Create `Game_BattlerBase`, `Game_Battler`, `Game_Actor`, `Game_Enemy`.**
@@ -120,7 +120,7 @@ Traits are handled via a `switch` statement inside `handleTrait`.
     *   Move "Generate Floor" logic here.
 4.  **Replace `GameState`:** The global object should instanciate these classes: `window.$gameParty = new Game_Party();`.
 
-### Phase 2: The Manager Layer (Logic Decoupling)
+### Phase 2: The Manager Layer (Logic Decoupling) - Not Started
 *Goal: Remove `Systems` god-object.*
 
 1.  **Implement `BattleManager`.**
@@ -130,7 +130,7 @@ Traits are handled via a `switch` statement inside `handleTrait`.
     *   Implement a proper `.update()` loop that calls `currentScene.update()`.
     *   Handle scene transitions with a "busy" state to prevent input bleed.
 
-### Phase 3: The Window System (UI Abstraction)
+### Phase 3: The Window System (UI Abstraction) - In Progress
 *Goal: Remove `ShellUI` and DOM string building.*
 
 1.  **Create `Window_Base`.**
@@ -141,6 +141,7 @@ Traits are handled via a `switch` statement inside `handleTrait`.
     *   Reads `$gameParty`. Draws items based on data.
 3.  **Refactor `Scene_Explore`.**
     *   Instead of calling `Systems.Explore.render`, it should contain a `Spriteset_Map` and a `Window_HUD`.
+**Note:** The initial refactor is complete, but interactivity is still being restored to the modals.
 
 ### Phase 4: Battle System Integration
 1.  **Create `Spriteset_Battle`.**
@@ -185,7 +186,7 @@ class Game_Battler {
     }
 
     /**
-     * Gets the base parameter value from the data source.
+     * Gets the base parameter value from the a source.
      * @param {number} paramId - The ID of the parameter.
      * @returns {number}
      */

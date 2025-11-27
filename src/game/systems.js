@@ -2,7 +2,6 @@ import { Data } from '../assets/data/data.js';
 import { GameState } from './state.js';
 import { Log } from './log.js';
 import { resolveAssetPath } from './core.js';
-import { UI } from './windows.js';
 
 // ------------------- SYSTEMS DEFINITIONS -------------------
 
@@ -219,7 +218,7 @@ export const Systems = {
         },
         checkTile(code) {
             Systems.Map.resolveTile(code);
-            UI.updateHUD();
+            window.Game.Windows.HUD.refresh();
         },
         render() {
             const canvas = document.getElementById('explore-canvas');
@@ -340,7 +339,7 @@ export const Systems = {
                             GameState.inventory.equipment[s.id] = (GameState.inventory.equipment[s.id] || 0) + 1;
                         }
                         Log.loot(`Bought ${def.name}.`);
-                        UI.updateHUD();
+                        window.Game.Windows.HUD.refresh();
                         btn.disabled = true;
                         btn.innerText = 'SOLD';
                     } else {
@@ -371,7 +370,7 @@ export const Systems = {
             offers.forEach(def => {
                 const row = document.createElement('div');
                 row.className = 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700';
-                row.innerHTML = `<div class="flex items-center gap-2">${UI.spriteMarkup(def, 'h-10 w-10 object-contain')}<div><div class="text-yellow-100">${def.name}</div><div class="text-xs text-gray-500">HP ${def.baseHp}</div></div></div>`;
+                row.innerHTML = `<div class="flex items-center gap-2">${window.Game.Windows.Party.spriteMarkup(def, 'h-10 w-10 object-contain')}<div><div class="text-yellow-100">${def.name}</div><div class="text-xs text-gray-500">HP ${def.baseHp}</div></div></div>`;
                 const btn = document.createElement('button');
                 btn.className = 'text-xs border border-gray-600 px-2 py-1 hover:bg-white hover:text-black';
                 btn.innerText = 'RECRUIT';
@@ -401,7 +400,7 @@ export const Systems = {
                     } else {
                         Log.add(`${unit.name} waits in reserve.`);
                     }
-                    UI.renderParty();
+                    window.Game.Windows.Party.refresh();
                     btn.disabled = true;
                     btn.innerText = 'TAKEN';
                 };
@@ -422,7 +421,7 @@ export const Systems = {
                 u.maxhp = Math.round(def.baseHp * (1 + def.hpGrowth * (u.level - 1)));
                 u.hp = u.maxhp;
             });
-            UI.renderParty();
+            window.Game.Windows.Party.refresh();
             const msg = document.createElement('div');
             msg.className = 'text-center space-y-2';
             msg.innerHTML = `<div class="text-green-500 text-xl">Your party feels rejuvenated.</div><button class="mt-4 border border-gray-600 px-4 py-2 hover:bg-gray-700">Continue</button>`;
@@ -438,7 +437,7 @@ export const Systems = {
                 if (u.hp === 0) Log.battle(`${u.name} was knocked out by the trap!`);
             };
             GameState.party.activeSlots.forEach(u => { if (u) damage(u); });
-            UI.renderParty();
+            window.Game.Windows.Party.refresh();
             const msg = document.createElement('div');
             msg.className = 'text-center space-y-2';
             msg.innerHTML = `<div class="text-red-500 text-xl">A trap harms your party!</div><button class="mt-4 border border-gray-600 px-4 py-2 hover:bg-gray-700">Continue</button>`;
@@ -1212,7 +1211,7 @@ showDamageNumber(uid, val, isCrit = false) {
             setTimeout(() => {
                 Systems.sceneHooks?.onBattleStart?.();
                 GameState.ui.mode = 'BATTLE';
-                UI.switchScene(true);
+                window.Game.Scenes.battle.switchScene(true);
                 Systems.Battle3D.cameraState.angle = -Math.PI / 4;
                 Systems.Battle3D.cameraState.targetAngle = -Math.PI / 4;
                 Systems.Battle3D.setFocus('neutral');
@@ -1256,7 +1255,7 @@ showDamageNumber(uid, val, isCrit = false) {
                 };
                 Systems.Battle3D.setupScene(GameState.battle.allies, GameState.battle.enemies);
                 Log.battle(`Enemies: ${enemies.map(e => e.name).join(', ')}`);
-                UI.showBanner('ENCOUNTER');
+                window.Game.Windows.BattleLog.showBanner('ENCOUNTER');
                 swipe.className = 'swipe-clear';
                 setTimeout(() => {
                     swipe.className = 'swipe-reset';
@@ -1282,7 +1281,7 @@ showDamageNumber(uid, val, isCrit = false) {
             if (GameState.battle.playerTurnRequested) {
                 GameState.battle.phase = 'PLAYER_INPUT';
                 GameState.battle.playerTurnRequested = false;
-                UI.togglePlayerTurn(true);
+                window.Game.Windows.BattleLog.togglePlayerTurn(true);
                 Log.battle('Waiting for orders...');
                 return;
             }
@@ -1308,7 +1307,7 @@ showDamageNumber(uid, val, isCrit = false) {
             }
         },
         resumeAuto() {
-            UI.togglePlayerTurn(false);
+            window.Game.Windows.BattleLog.togglePlayerTurn(false);
             GameState.battle.playerTurnRequested = false;
             const btn = document.getElementById('btn-player-turn');
             btn.classList.remove('border-green-500', 'text-green-500');
@@ -1322,7 +1321,7 @@ showDamageNumber(uid, val, isCrit = false) {
             GameState.party.activeSlots[idx2] = u1;
             if (GameState.party.activeSlots[idx1]) GameState.party.activeSlots[idx1].slotIndex = idx1;
             if (GameState.party.activeSlots[idx2]) GameState.party.activeSlots[idx2].slotIndex = idx2;
-            UI.renderParty();
+            window.Game.Windows.Party.refresh();
             if (GameState.ui.mode === 'BATTLE') {
                 GameState.battle.allies = GameState.party.activeSlots.filter(u => u !== null);
                 Systems.Battle3D.setupScene(GameState.battle.allies, GameState.battle.enemies);
@@ -1330,7 +1329,7 @@ showDamageNumber(uid, val, isCrit = false) {
             Log.add('Formation changed.');
         },
         processNextTurn() {
-            UI.renderParty();
+            window.Game.Windows.Party.refresh();
             if (GameState.battle.turnIndex >= GameState.battle.queue.length) {
                 setTimeout(() => this.nextRound(), 1000);
                 return;
@@ -1386,7 +1385,7 @@ showDamageNumber(uid, val, isCrit = false) {
                 this.processNextTurn();
                 return;
             }
-            UI.showBanner(`${unit.name} used ${action.name}!`);
+            window.Game.Windows.BattleLog.showBanner(`${unit.name} used ${action.name}!`);
             const results = this.applyEffects(action, unit, targets);
 
             if (results.length === 0) {
@@ -1469,7 +1468,7 @@ showDamageNumber(uid, val, isCrit = false) {
                             break;
                     }
                 });
-                UI.renderParty();
+                window.Game.Windows.Party.refresh();
                 if (GameState.battle.allies.every(u => u.hp <= 0) || GameState.battle.enemies.every(u => u.hp <= 0)) {
                     GameState.battle.turnIndex = 999;
                 }
@@ -1483,7 +1482,7 @@ showDamageNumber(uid, val, isCrit = false) {
         end(win) {
             document.getElementById('battle-ui-overlay').innerHTML = '';
             if (win) {
-                UI.showBanner('VICTORY');
+                window.Game.Windows.BattleLog.showBanner('VICTORY');
                 GameState.ui.mode = 'BATTLE_WIN';
                 Systems.sceneHooks?.onBattleEnd?.();
                 Systems.Triggers.fire('onBattleEnd', [...GameState.battle.allies, ...GameState.battle.enemies].filter(u => u && u.hp > 0));
@@ -1519,17 +1518,17 @@ showDamageNumber(uid, val, isCrit = false) {
                         p.hp = Math.min(maxhp, p.hp + heal);
                     }
                 });
-                UI.updateHUD();
-                UI.showModal(`
+                window.Game.Windows.HUD.refresh();
+                window.Game.Windows.BattleLog.showModal(`
                     <div class="text-yellow-500 text-2xl mb-4">VICTORY</div>
                     <div class="text-white">Found ${gold} Gold</div>
                     <div class="text-white">Party +${finalXp} XP</div>
-                    <button class="mt-4 border border-white px-4 py-2 hover:bg-gray-800" onclick="Game.Views.UI.closeModal(); Game.Views.UI.switchScene(false);">CONTINUE</button>
+                    <button class="mt-4 border border-white px-4 py-2 hover:bg-gray-800" onclick="Game.Windows.BattleLog.closeModal(); Game.Scenes.battle.switchScene(false);">CONTINUE</button>
                 `);
             } else {
                 GameState.ui.mode = 'EXPLORE';
                 Systems.Battle3D.setFocus('neutral');
-                UI.showModal(`
+                window.Game.Windows.BattleLog.showModal(`
                     <div class="text-red-600 text-4xl mb-4">DEFEATED</div>
                     <button class="mt-4 border border-red-800 text-red-500 px-4 py-2 hover:bg-red-900/20" onclick="location.reload()">RESTART</button>
                 `);
