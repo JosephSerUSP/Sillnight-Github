@@ -1,5 +1,8 @@
-// Managers for scene flow and input (similar to rmmz_managers.js).
-// Add new managers here (SceneManager, InputManager, etc.) instead of scattering globals.
+// Managers for scene flow and input.
+import { DataManager } from './DataManager.js';
+import { BattleManager } from './managers/BattleManager.js';
+
+export { DataManager, BattleManager };
 
 export class SceneManager {
     constructor() {

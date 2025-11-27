@@ -1,32 +1,54 @@
 // ------------------- GLOBAL GAME STATE -------------------
+// Now using classes. This file primarily exports the global instances.
+// However, the instances themselves are typically attached to window for easy access
+// or exported from here if they were singletons.
+// Since we are attaching to window.$gameParty etc in DataManager, we can expose them here too?
+// Or just keep the structure for now.
+
+// For backward compatibility during refactor, we might want to map GameState to these new objects
+// or just replace usages of GameState.
+
 export const GameState = {
-    // Runtime run-level data.
-    run: {
-        floor: 1,
-        gold: 500
+    // Deprecated structure accessors
+    get run() {
+        return {
+            get floor() { return window.$gameMap ? window.$gameMap.floor : 1; },
+            set floor(v) { if (window.$gameMap) window.$gameMap.floor = v; },
+            get gold() { return window.$gameParty ? window.$gameParty.gold : 0; },
+            set gold(v) {
+                if (window.$gameParty) {
+                    const diff = v - window.$gameParty.gold;
+                    if (diff > 0) window.$gameParty.gainGold(diff);
+                    else window.$gameParty.loseGold(-diff);
+                }
+            }
+        }
     },
-    // Exploration layer state: map, visited tiles and player position.
-    exploration: {
-        map: [],            // 2D array of tile codes
-        visited: [],        // 2D boolean array
-        playerPos: { x: 0, y: 0 }
+    get exploration() {
+        if (!window.$gameMap) return {};
+        return {
+            get map() { return window.$gameMap._data; },
+            get visited() { return window.$gameMap._visited; },
+            get playerPos() { return window.$gameMap.playerPos; },
+            set playerPos(v) { window.$gameMap._playerPos = v; }
+        }
     },
-    // Party and roster definitions. roster holds all owned units; activeSlots references uids from roster.
-    party: {
-        activeSlots: [ null, null, null, null, null, null ] // up to 6 active slots referencing roster entries
+    get party() {
+        if (!window.$gameParty) return {};
+        return {
+            get activeSlots() { return window.$gameParty.activeSlots; }
+        };
     },
-    roster: [],
-    // Inventory holds counts of items and equipment
-    inventory: {
-        items: {},
-        equipment: {}
+    get roster() {
+        return window.$gameParty ? window.$gameParty.roster : [];
     },
-    // Current battle state; becomes non-null during battles.
+    get inventory() {
+        return window.$gameParty ? window.$gameParty.inventory : {};
+    },
+    // Battle is still transient, maybe managed by BattleManager?
     battle: null,
-    // UI state holds mode and formation mode flags.
     ui: {
         mode: 'EXPLORE',
         formationMode: false
     }
 };
-

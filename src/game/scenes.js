@@ -3,6 +3,7 @@
 
 import { GameState } from './state.js';
 import { Scene } from './scene.js';
+import { BattleManager } from './managers.js';
 
 export class Scene_Base extends Scene {
     constructor(systems, windows) {
@@ -41,8 +42,8 @@ export class Scene_Battle extends Scene_Base {
     handleInput(e) {
         if (GameState.ui.mode !== 'BATTLE' && GameState.ui.mode !== 'BATTLE_WIN') return false;
         if (e.code === 'Space') {
-            if (GameState.battle && GameState.battle.phase === 'PLAYER_INPUT') this.systems.Battle.resumeAuto();
-            else this.systems.Battle.requestPlayerTurn();
+            if (GameState.battle && GameState.battle.phase === 'PLAYER_INPUT') BattleManager.resumeAuto();
+            else BattleManager.requestPlayerTurn();
         }
         return true;
     }
