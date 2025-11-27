@@ -1,22 +1,24 @@
 import { Data } from '../assets/data/data.js';
-import { GameState } from './state.js';
 import { Log } from './log.js';
 import { Systems } from './systems.js';
 import { UI } from './windows.js';
-import { populateActiveSlots } from './objects.js';
-import { SceneManager, InputManager } from './managers.js';
+import { SceneManager, InputManager, DataManager } from './managers.js';
 import { Scene_Explore, Scene_Battle } from './scenes.js';
+import { $gameParty, $gameMap } from './globals.js';
 
 // Core game bootstrapper; keeps entrypoint slim while delegating to managers/scenes.
 export const Game = {
     ready: false,
-    GameState,
     Systems,
     data: Data,
     log: Log,
     UI,
     Scenes: {},
     SceneManager: new SceneManager(),
+    ui: {
+        mode: 'EXPLORE',
+        formationMode: false
+    },
     async init() {
         // Link UI buttons to battle turn controls
         UI.bindTurnHandlers({
@@ -24,14 +26,13 @@ export const Game = {
             onResumeTurn: () => Systems.Battle.resumeAuto()
         });
 
+        // Set up initial game state
+        DataManager.setupNewGame();
+
         // Initial map generation and render setup
-        Systems.Map.generateFloor();
         Systems.Explore.init();
         Systems.Battle3D.init();
         await Systems.Effekseer.preload();
-
-        // Starting party
-        populateActiveSlots(Data.party.initial);
 
         // Wire hooks for scene transitions originating from systems
         Systems.sceneHooks.onBattleStart = () => this.SceneManager.changeScene(this.Scenes.battle);
