@@ -1,4 +1,3 @@
-import { getMaxHp, getXpProgress } from '../objects.js';
 import { resolveAssetPath } from '../core.js';
 
 export function spriteMarkup(unit, sizeClasses = 'h-10 w-10 object-contain', extraClasses = '', textClass = 'text-2xl') {
@@ -12,10 +11,10 @@ export function spriteMarkup(unit, sizeClasses = 'h-10 w-10 object-contain', ext
 export function renderCreaturePanel(unit) {
     if (!unit) return '';
 
-    const maxhp = getMaxHp(unit);
+    const maxhp = unit.mhp();
     const hpPct = (unit.hp / maxhp) * 100;
     const hpColor = hpPct < 30 ? 'bg-red-600' : 'bg-green-600';
-    const xpPct = getXpProgress(unit);
+    const xpPct = unit.xpRate();
 
     return `
         <div class="flex justify-between text-xs text-gray-300">

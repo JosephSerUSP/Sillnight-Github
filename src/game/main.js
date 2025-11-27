@@ -1,8 +1,7 @@
 import { Data } from '../assets/data/data.js';
-import { GameState } from './state.js';
+import { $gameParty, $gameMap, $gameSystem } from './globals.js';
 import { Log } from './log.js';
 import { Systems } from './systems.js';
-import { populateActiveSlots } from './objects.js';
 import { SceneManager, InputManager } from './managers.js';
 import { Scene_Explore, Scene_Battle } from './scenes.js';
 import { Window_HUD } from './window/hud.js';
@@ -13,7 +12,6 @@ import { Window_BattleLog } from './window/battle_log.js';
 // Core game bootstrapper; keeps entrypoint slim while delegating to managers/scenes.
 export const Game = {
     ready: false,
-    GameState,
     Systems,
     data: Data,
     log: Log,
@@ -30,13 +28,14 @@ export const Game = {
         this.Windows.BattleLog = new Window_BattleLog();
 
         // Initial map generation and render setup
-        Systems.Map.generateFloor();
+        $gameMap.generateFloor(1);
         Systems.Explore.init();
         Systems.Battle3D.init();
         await Systems.Effekseer.preload();
 
         // Starting party
-        populateActiveSlots(Data.party.initial);
+        $gameParty.populateActiveSlots(Data.party.initial);
+        $gameParty.gold = 500;
 
         // Wire hooks for scene transitions originating from systems
         Systems.sceneHooks.onBattleStart = () => this.SceneManager.changeScene(this.Scenes.battle);
@@ -76,3 +75,6 @@ window.addEventListener('load', async () => {
 
 // Expose Game for inline handlers
 window.Game = Game;
+window.$gameParty = $gameParty;
+window.$gameMap = $gameMap;
+window.$gameSystem = $gameSystem;

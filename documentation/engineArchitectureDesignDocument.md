@@ -106,7 +106,7 @@ Traits are handled via a `switch` statement inside `handleTrait`.
 
 ## 4. Phased Refactoring Roadmap
 
-### Phase 1: The Object Model (Foundation) - Not Started
+### Phase 1: The Object Model (Foundation) - Complete
 *Goal: Encapsulate `GameState` raw JSON into functional Classes.*
 
 1.  **Create `Game_BattlerBase`, `Game_Battler`, `Game_Actor`, `Game_Enemy`.**
@@ -119,6 +119,7 @@ Traits are handled via a `switch` statement inside `handleTrait`.
     *   Encapsulate tile data and player XY coordinates.
     *   Move "Generate Floor" logic here.
 4.  **Replace `GameState`:** The global object should instanciate these classes: `window.$gameParty = new Game_Party();`.
+**Note:** Phase I is complete. The `GameState` object has been replaced with the new classes, and the codebase has been refactored to use them. The `objects.js` and `state.js` files have been deleted.
 
 ### Phase 2: The Manager Layer (Logic Decoupling) - Not Started
 *Goal: Remove `Systems` god-object.*

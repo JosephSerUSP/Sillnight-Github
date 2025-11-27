@@ -1,4 +1,4 @@
-import { GameState } from '../state.js';
+import { $gameParty, $gameSystem } from '../globals.js';
 import { Window_Base } from '../windows.js';
 
 export class Window_HUD extends Window_Base {
@@ -9,8 +9,8 @@ export class Window_HUD extends Window_Base {
     }
 
     refresh() {
-        this._floorEl.innerText = GameState.run.floor;
-        this._goldEl.innerText = GameState.run.gold;
+        this._floorEl.innerText = $gameSystem.ui.floor;
+        this._goldEl.innerText = $gameParty.gold;
         // The superclass refresh() is a no-op, but it's good practice to call it
         super.refresh();
     }

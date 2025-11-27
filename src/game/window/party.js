@@ -1,11 +1,11 @@
-import { GameState } from '../state.js';
+import { $gameParty } from '../globals.js';
 import { Window_Selectable } from '../windows.js';
 import { renderCreaturePanel, spriteMarkup } from './common.js';
 
 export class Window_Party extends Window_Selectable {
     constructor() {
         super(document.getElementById('party-grid'));
-        this.items = GameState.party.activeSlots;
+        this.items = $gameParty.actors;
         this.addHandler('click', this.onClick.bind(this));
     }
 
@@ -14,11 +14,11 @@ export class Window_Party extends Window_Selectable {
     }
 
     toggleFormationMode() {
-        if (GameState.ui.mode === 'BATTLE') return;
-        GameState.ui.formationMode = !GameState.ui.formationMode;
+        if (window.Game.ui.mode === 'BATTLE') return;
+        window.Game.ui.formationMode = !window.Game.ui.formationMode;
         const ind = document.getElementById('turn-indicator');
         const btn = document.getElementById('btn-formation');
-        if (GameState.ui.formationMode) {
+        if (window.Game.ui.formationMode) {
             ind.innerText = 'FORMATION MODE';
             ind.classList.remove('hidden');
             btn.classList.add('bg-yellow-900', 'text-white');
@@ -30,22 +30,22 @@ export class Window_Party extends Window_Selectable {
     }
 
     onClick(index) {
-        if (GameState.battle && GameState.battle.phase === 'PLAYER_INPUT' || GameState.ui.formationMode) {
+        if (window.Game.battle && window.Game.battle.phase === 'PLAYER_INPUT' || window.Game.ui.formationMode) {
             const selectedIndex = this.index;
             if (selectedIndex !== -1 && selectedIndex !== index) {
-                const u1 = GameState.party.activeSlots[selectedIndex];
-                const u2 = GameState.party.activeSlots[index];
-                GameState.party.activeSlots[selectedIndex] = u2;
-                GameState.party.activeSlots[index] = u1;
-                if (GameState.party.activeSlots[selectedIndex]) GameState.party.activeSlots[selectedIndex].slotIndex = selectedIndex;
-                if (GameState.party.activeSlots[index]) GameState.party.activeSlots[index].slotIndex = index;
+                const u1 = $gameParty.actors[selectedIndex];
+                const u2 = $gameParty.actors[index];
+                $gameParty.actors[selectedIndex] = u2;
+                $gameParty.actors[index] = u1;
+                if ($gameParty.actors[selectedIndex]) $gameParty.actors[selectedIndex].slotIndex = selectedIndex;
+                if ($gameParty.actors[index]) $gameParty.actors[index].slotIndex = index;
                 this.refresh();
                 this.deselect();
             } else {
                 this.select(index);
             }
         } else {
-            const unit = GameState.party.activeSlots[index];
+            const unit = $gameParty.actors[index];
             if (unit) {
                 window.Game.Windows.CreatureModal.setUnit(unit);
                 window.Game.Windows.CreatureModal.show();

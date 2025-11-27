@@ -1,7 +1,7 @@
 // Scene controllers (similar to rmmz_scenes.js).
 // Scenes coordinate systems, windows, and input without owning the persistent DOM.
 
-import { GameState } from './state.js';
+import { $gameSystem } from './globals.js';
 import { Scene } from './scene.js';
 
 export class Scene_Base extends Scene {
@@ -16,12 +16,12 @@ export class Scene_Base extends Scene {
 
 export class Scene_Explore extends Scene_Base {
     onEnter() {
-        GameState.ui.mode = 'EXPLORE';
+        $gameSystem.ui.mode = 'EXPLORE';
         this.switchScene(false, () => this.systems.Explore.render());
     }
 
     handleInput(e) {
-        if (GameState.ui.mode !== 'EXPLORE') return false;
+        if ($gameSystem.ui.mode !== 'EXPLORE') return false;
         if (e.key === 'ArrowUp') this.systems.Explore.move(0, -1);
         if (e.key === 'ArrowDown') this.systems.Explore.move(0, 1);
         if (e.key === 'ArrowLeft') this.systems.Explore.move(-1, 0);
@@ -34,14 +34,14 @@ export class Scene_Explore extends Scene_Base {
 
 export class Scene_Battle extends Scene_Base {
     onEnter() {
-        GameState.ui.mode = 'BATTLE';
+        window.Game.ui.mode = 'BATTLE';
         this.switchScene(true);
     }
 
     handleInput(e) {
-        if (GameState.ui.mode !== 'BATTLE' && GameState.ui.mode !== 'BATTLE_WIN') return false;
+        if (window.Game.ui.mode !== 'BATTLE' && window.Game.ui.mode !== 'BATTLE_WIN') return false;
         if (e.code === 'Space') {
-            if (GameState.battle && GameState.battle.phase === 'PLAYER_INPUT') this.systems.Battle.resumeAuto();
+            if ($gameSystem.battle && $gameSystem.battle.phase === 'PLAYER_INPUT') this.systems.Battle.resumeAuto();
             else this.systems.Battle.requestPlayerTurn();
         }
         return true;
