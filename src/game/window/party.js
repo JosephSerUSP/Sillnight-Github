@@ -2,6 +2,9 @@ import { GameState } from '../state.js';
 import { Window_Selectable } from '../windows.js';
 import { renderCreaturePanel, spriteMarkup } from './common.js';
 
+/**
+ * Window showing the active party in the main UI.
+ */
 export class Window_Party extends Window_Selectable {
     constructor() {
         super(document.getElementById('party-grid'));
@@ -9,10 +12,21 @@ export class Window_Party extends Window_Selectable {
         this.addHandler('click', this.onClick.bind(this));
     }
 
+    /**
+     * Generates HTML markup for a unit sprite.
+     * @param {Object} unit - The unit.
+     * @param {string} [sizeClasses] - CSS sizing classes.
+     * @param {string} [extraClasses] - Extra CSS classes.
+     * @param {string} [textClass] - Text fallback class.
+     * @returns {string} HTML string.
+     */
     spriteMarkup(unit, sizeClasses = 'h-10 w-10 object-contain', extraClasses = '', textClass = 'text-2xl') {
         return spriteMarkup(unit, sizeClasses, extraClasses, textClass);
     }
 
+    /**
+     * Toggles formation editing mode.
+     */
     toggleFormationMode() {
         if (GameState.ui.mode === 'BATTLE') return;
         GameState.ui.formationMode = !GameState.ui.formationMode;
@@ -29,6 +43,11 @@ export class Window_Party extends Window_Selectable {
         }
     }
 
+    /**
+     * Handles clicks on party slots.
+     * Swaps units if in formation mode, or opens details otherwise.
+     * @param {number} index - The clicked slot index.
+     */
     onClick(index) {
         if (GameState.battle && GameState.battle.phase === 'PLAYER_INPUT' || GameState.ui.formationMode) {
             const selectedIndex = this.index;
@@ -53,6 +72,9 @@ export class Window_Party extends Window_Selectable {
         }
     }
 
+    /**
+     * Refreshes the party grid display.
+     */
     refresh() {
         this.root.innerHTML = '';
         this.items.forEach((u, i) => {

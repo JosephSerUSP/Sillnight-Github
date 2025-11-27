@@ -1,9 +1,23 @@
+/**
+ * Base class for all game scenes.
+ * Manages access to systems, windows, and handles scene transitions.
+ */
 export class Scene {
+    /**
+     * @param {Object} systems - The game systems.
+     * @param {Object} windows - The game windows.
+     */
     constructor(systems, windows) {
         this.systems = systems;
         this.windows = windows;
     }
 
+    /**
+     * Handles the visual transition between battle and explore scenes.
+     * Manages CSS classes for visibility and a swipe overlay effect.
+     * @param {boolean} toBattle - If true, transitions to the battle scene. If false, transitions to the explore scene.
+     * @param {Function} [onExploreRefresh] - Optional callback to execute when returning to the explore scene.
+     */
     switchScene(toBattle, onExploreRefresh) {
         const swipe = document.getElementById('swipe-overlay');
         swipe.className = 'swipe-down';

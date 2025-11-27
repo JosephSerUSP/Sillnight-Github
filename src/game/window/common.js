@@ -1,6 +1,15 @@
 import { resolveAssetPath } from '../core.js';
 import { Systems } from '../systems.js';
 
+/**
+ * Generates the HTML markup for a unit's sprite.
+ * Handles both Game_Battler instances and raw data objects.
+ * @param {Object} unit - The unit to render.
+ * @param {string} [sizeClasses='h-10 w-10 object-contain'] - CSS classes for sizing.
+ * @param {string} [extraClasses=''] - Additional CSS classes.
+ * @param {string} [textClass='text-2xl'] - CSS class for text fallback.
+ * @returns {string} The HTML string.
+ */
 export function spriteMarkup(unit, sizeClasses = 'h-10 w-10 object-contain', extraClasses = '', textClass = 'text-2xl') {
     // Handle both class instance and raw object
     const name = typeof unit?.name === 'function' ? unit.name() : unit?.name;
@@ -14,6 +23,12 @@ export function spriteMarkup(unit, sizeClasses = 'h-10 w-10 object-contain', ext
     return `<span class="${sizeClasses} ${textClass} ${extraClasses} flex items-center justify-center">${sprite || ''}</span>`;
 }
 
+/**
+ * Renders the status panel for a creature.
+ * Includes name, level, sprite, HP bar, and XP bar.
+ * @param {Object} unit - The unit to render.
+ * @returns {string} The HTML string.
+ */
 export function renderCreaturePanel(unit) {
     if (!unit) return '';
 

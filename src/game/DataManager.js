@@ -3,7 +3,16 @@ import { Game_Party } from './classes/Game_Party.js';
 import { Game_Map } from './classes/Game_Map.js';
 import { Data } from '../assets/data/data.js';
 
+/**
+ * Static class responsible for creating and managing the initial game state.
+ * It handles the creation of global game objects like $gameParty and $gameMap.
+ */
 export class DataManager {
+    /**
+     * Sets up a new game by creating global game objects and populating initial data.
+     * Initializes $gameParty and $gameMap, and sets up the first floor.
+     * @static
+     */
     static setupNewGame() {
         window.$gameParty = new Game_Party();
         window.$gameMap = new Game_Map();
@@ -12,6 +21,12 @@ export class DataManager {
         this.populateInitialParty();
     }
 
+    /**
+     * Populates the player's party with initial creatures based on game data.
+     * Selects a random set of unique creatures from the 'initial' party data pool.
+     * If specific creatures are not defined, it falls back to selecting random species.
+     * @static
+     */
     static populateInitialParty() {
         const setup = Data.party.initial;
         const { creatures, count } = setup;
