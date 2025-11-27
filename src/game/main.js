@@ -10,8 +10,17 @@ import { Window_Party } from './window/party.js';
 import { Window_CreatureModal, Window_Inventory, Window_PartyMenu } from './window/modals.js';
 import { Window_BattleLog } from './window/battle_log.js';
 
-// Core game bootstrapper; keeps entrypoint slim while delegating to managers/scenes.
+/**
+ * Core game bootstrapper; keeps entrypoint slim while delegating to managers/scenes.
+ * This object serves as the central hub for the game application, initializing systems,
+ * managing scenes, and exposing global access points.
+ * @namespace Game
+ */
 export const Game = {
+    /**
+     * Indicates whether the game has fully finished initializing.
+     * @type {boolean}
+     */
     ready: false,
     GameState,
     Systems,
@@ -20,6 +29,14 @@ export const Game = {
     Scenes: {},
     SceneManager: new SceneManager(),
     Windows: {},
+
+    /**
+     * Initializes the game.
+     * Sets up data, creates UI windows, initializes systems (Explore, Battle3D, Effekseer),
+     * wires scene transitions, binds input handlers, and starts the initial scene.
+     * @async
+     * @returns {Promise<void>} A promise that resolves when initialization is complete.
+     */
     async init() {
         // Initialize Data (Create Party, Map, etc.)
         DataManager.setupNewGame();

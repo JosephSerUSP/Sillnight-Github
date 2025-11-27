@@ -1,27 +1,51 @@
 import { Data } from '../../assets/data/data.js';
 
+/**
+ * Manages the map state, including grid data, player position, and visited tiles.
+ */
 export class Game_Map {
     constructor() {
+        /** @type {number} */
         this._mapId = 0;
+        /** @type {number} */
         this._width = 0;
+        /** @type {number} */
         this._height = 0;
+        /** @type {Array<Array<number>>} The map grid data. */
         this._data = [];
+        /** @type {Array<Array<boolean>>} The visited state of tiles. */
         this._visited = [];
+        /** @type {Object} The player's current coordinate {x, y}. */
         this._playerPos = { x: 0, y: 0 };
+        /** @type {number} The current dungeon floor number. */
         this._floor = 1;
     }
 
+    /** @returns {number} The map width. */
     get width() { return this._width; }
+    /** @returns {number} The map height. */
     get height() { return this._height; }
+    /** @returns {Object} The player position {x, y}. */
     get playerPos() { return this._playerPos; }
+    /** @returns {number} The current floor. */
     get floor() { return this._floor; }
+    /** @param {number} v - The new floor number. */
     set floor(v) { this._floor = v; }
 
+    /**
+     * Sets up the map for a specific floor.
+     * Generates a new random layout.
+     * @param {number} [floor=1] - The floor number.
+     */
     setup(floor = 1) {
         this._floor = floor;
         this.generateFloor();
     }
 
+    /**
+     * Generates a new random floor layout based on dungeon configuration.
+     * Populates the map with walls, empty space, enemies, treasure, etc.
+     */
     generateFloor() {
         // Logic moved from Systems.Map.generateFloor
         // We need to access Data.dungeons
@@ -83,22 +107,46 @@ export class Game_Map {
         this._visited = Array(mapCfg.height).fill().map(() => Array(mapCfg.width).fill(false));
     }
 
+    /**
+     * Gets the tile code at the specified coordinates.
+     * @param {number} x - The X coordinate.
+     * @param {number} y - The Y coordinate.
+     * @returns {number} The tile code (1 for wall, 0 for empty, etc.).
+     */
     tileAt(x, y) {
         if (y < 0 || y >= this._height || x < 0 || x >= this._width) return 1;
         return this._data[y][x];
     }
 
+    /**
+     * Sets the tile code at the specified coordinates.
+     * @param {number} x - The X coordinate.
+     * @param {number} y - The Y coordinate.
+     * @param {number} code - The new tile code.
+     */
     setTile(x, y, code) {
          if (y >= 0 && y < this._height && x >= 0 && x < this._width) {
              this._data[y][x] = code;
          }
     }
 
+    /**
+     * Checks if a tile has been visited.
+     * @param {number} x - The X coordinate.
+     * @param {number} y - The Y coordinate.
+     * @returns {boolean} True if visited.
+     */
     isVisited(x, y) {
         if (y < 0 || y >= this._height || x < 0 || x >= this._width) return false;
         return this._visited[y][x];
     }
 
+    /**
+     * Sets the visited status of a tile.
+     * @param {number} x - The X coordinate.
+     * @param {number} y - The Y coordinate.
+     * @param {boolean} [visited=true] - The new status.
+     */
     setVisited(x, y, visited = true) {
         if (y >= 0 && y < this._height && x >= 0 && x < this._width) {
             this._visited[y][x] = visited;

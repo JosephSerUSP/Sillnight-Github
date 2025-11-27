@@ -5,20 +5,44 @@ import { resolveAssetPath } from './core.js';
 
 // ------------------- SYSTEMS DEFINITIONS -------------------
 
+/**
+ * A collection of game systems handling various aspects of gameplay.
+ * @namespace Systems
+ */
 export const Systems = {
+    /**
+     * Hooks for triggering scene transitions.
+     */
     sceneHooks: { onBattleStart: null, onBattleEnd: null },
 
+    /**
+     * The Effekseer particle system wrapper.
+     * Manages initialization, loading, and playing of effects.
+     * @namespace Effekseer
+     */
     Effekseer: {
         context: null,
         initPromise: null,
         cache: {},
         zToYUpMatrix: new THREE.Matrix4().makeRotationX(-Math.PI / 2),
         yToZUpMatrix: new THREE.Matrix4().makeRotationX(Math.PI / 2),
+
+        /**
+         * Converts a coordinate from the game's coordinate system to Effekseer's.
+         * @param {Object} position - The {x, y, z} position.
+         * @returns {Object} The converted position.
+         */
         convertToEffekseerPosition(position = { x: 0, y: 0, z: 0 }) {
             const vec = new THREE.Vector3(position.x, position.y, position.z);
             vec.applyMatrix4(this.zToYUpMatrix);
             return { x: vec.x, y: vec.y, z: vec.z };
         },
+
+        /**
+         * Initializes the Effekseer runtime.
+         * @param {THREE.WebGLRenderer} renderer - The Three.js renderer.
+         * @returns {Promise<Object|null>} A promise resolving to the Effekseer context.
+         */
         init(renderer) {
             if (!window.effekseer || !renderer) return Promise.resolve(null);
             if (this.context) return Promise.resolve(this.context);
@@ -56,12 +80,24 @@ export const Systems = {
 
             return this.initPromise;
         },
+
+        /**
+         * Preloads all effects defined in Data.effects.
+         * @returns {Promise<Array>} A promise that resolves when all effects are loaded.
+         */
         preload() {
             const effectPromises = Object.entries(Data.effects).map(([name, path]) => {
                 return this.loadEffect(name, path);
             });
             return Promise.all(effectPromises);
         },
+
+        /**
+         * Loads a single effect by name and path.
+         * @param {string} name - The name/key of the effect.
+         * @param {string} path - The file path to the effect.
+         * @returns {Promise<Object|null>} A promise resolving to the loaded effect.
+         */
         loadEffect(name, path) {
             if (!path) return Promise.resolve(null);
             const ready = this.initPromise || Promise.resolve(this.context);
@@ -80,6 +116,13 @@ export const Systems = {
                 return p;
             });
         },
+
+        /**
+         * Plays an effect at a specific position.
+         * @param {string} name - The name of the effect to play.
+         * @param {Object} position - The {x, y, z} position to play the effect at.
+         * @returns {Promise<Object|null>} A promise resolving to the playing effect handle.
+         */
         play(name, position) {
             const path = Data.effects?.[name];
             if (!path) return Promise.resolve(null);
@@ -90,6 +133,11 @@ export const Systems = {
                 return this.context.play(effect, effekseerPos.x, effekseerPos.y, effekseerPos.z);
             });
         },
+
+        /**
+         * Updates the Effekseer context for the current frame.
+         * @param {THREE.Camera} camera - The Three.js camera.
+         */
         update(camera) {
             if (!this.context || !camera) return;
             const viewMatrix = new THREE.Matrix4().multiplyMatrices(
@@ -103,7 +151,14 @@ export const Systems = {
         }
     },
 
+    /**
+     * System for managing the dungeon map.
+     * @namespace Map
+     */
     Map: {
+        /**
+         * Generates a new random floor layout.
+         */
         generateFloor() {
             const floor = GameState.run.floor;
             const dungeon = Data.dungeons.default;
@@ -160,11 +215,21 @@ export const Systems = {
             GameState.exploration.visited = Array(mapCfg.height).fill().map(() => Array(mapCfg.width).fill(false));
             Log.add(`Floor ${floor} generated.`);
         },
+        /**
+         * Gets the tile code at a specific coordinate.
+         * @param {number} x - The X coordinate.
+         * @param {number} y - The Y coordinate.
+         * @returns {number} The tile code (1 for wall, 0 for empty, etc.).
+         */
         tileAt(x, y) {
             const map = GameState.exploration.map;
             if (!map[y] || map[y][x] === undefined) return 1;
             return map[y][x];
         },
+        /**
+         * Resolves the effect of stepping on a specific tile code.
+         * @param {number} code - The tile code.
+         */
         resolveTile(code) {
             if (code === 2) { 
                 GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
@@ -197,14 +262,25 @@ export const Systems = {
         }
     },
 
+    /**
+     * System for handling the exploration view and rendering.
+     * @namespace Explore
+     */
     Explore: {
+        /** Initializes the exploration system. */
         init() { this.resize(); },
+        /** Resizes the canvas to match the window dimensions. */
         resize() {
             const canvas = document.getElementById('explore-canvas');
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             this.render();
         },
+        /**
+         * Moves the player in the given direction.
+         * @param {number} dx - The change in X.
+         * @param {number} dy - The change in Y.
+         */
         move(dx, dy) {
             if (GameState.ui.mode !== 'EXPLORE' || GameState.ui.formationMode) return;
             const newX = GameState.exploration.playerPos.x + dx;
@@ -216,10 +292,17 @@ export const Systems = {
                 this.render();
             }
         },
+        /**
+         * Checks the tile the player landed on and triggers its effect.
+         * @param {number} code - The tile code.
+         */
         checkTile(code) {
             Systems.Map.resolveTile(code);
             window.Game.Windows.HUD.refresh();
         },
+        /**
+         * Renders the exploration view (minimap/grid) to the canvas.
+         */
         render() {
             const canvas = document.getElementById('explore-canvas');
             const ctx = canvas.getContext('2d');
@@ -286,7 +369,16 @@ export const Systems = {
         }
     },
 
+    /**
+     * System for handling in-game event modals (Shop, Recruit, etc.).
+     * @namespace Events
+     */
     Events: {
+        /**
+         * Displays an event modal.
+         * @param {string} title - The title of the event.
+         * @param {string|HTMLElement} content - The content to display.
+         */
         show(title, content) {
             const modal = document.getElementById('event-modal');
             const tEl = document.getElementById('event-title');
@@ -297,9 +389,11 @@ export const Systems = {
             else cEl.appendChild(content);
             modal.classList.remove('hidden');
         },
+        /** Closes the event modal. */
         close() {
             document.getElementById('event-modal').classList.add('hidden');
         },
+        /** Triggers the shop event. */
         shop() {
             Log.add('You discover a mysterious merchant.');
             const container = document.createElement('div');
@@ -356,6 +450,7 @@ export const Systems = {
             container.appendChild(leaveBtn);
             this.show('SHOP', container);
         },
+        /** Triggers the recruit event. */
         recruit() {
             Log.add('You encounter a wandering soul.');
             const container = document.createElement('div');
@@ -414,6 +509,7 @@ export const Systems = {
             container.appendChild(leave);
             this.show('RECRUIT', container);
         },
+        /** Triggers the shrine event (heal). */
         shrine() {
             Log.add('You find a glowing shrine.');
             GameState.roster.forEach(u => {
@@ -428,6 +524,7 @@ export const Systems = {
             msg.querySelector('button').onclick = () => { Systems.Events.close(); };
             this.show('SHRINE', msg);
         },
+        /** Triggers the trap event. */
         trap() {
             Log.add('A hidden trap triggers!');
             const damage = (u) => {
@@ -446,6 +543,11 @@ export const Systems = {
         }
     },
 
+    /**
+     * System for rendering the 3D battle scene.
+     * Uses Three.js and Effekseer.
+     * @namespace Battle3D
+     */
     Battle3D: {
         scene: null,
         camera: null,
@@ -458,6 +560,7 @@ export const Systems = {
         cameraState: { angle: -Math.PI / 4, targetAngle: -Math.PI / 4, targetX: 0, targetY: 0 },
         damageLabels: [], // Track damage numbers
 
+        /** Initializes the 3D scene. */
         init() {
             const container = document.getElementById('three-container');
             this.scene = new THREE.Scene();
@@ -488,12 +591,18 @@ export const Systems = {
             
             this.animate();
         },
+        /** Resizes the renderer and camera aspect ratio. */
         resize() {
             if (!this.camera || !this.renderer) return;
             this.camera.aspect = window.innerWidth / window.innerHeight;
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(window.innerWidth, window.innerHeight);
         },
+        /**
+         * Sets up the battle scene with ally and enemy sprites.
+         * @param {Array<Object>} allies - The list of ally units.
+         * @param {Array<Object>} enemies - The list of enemy units.
+         */
         setupScene(allies, enemies) {
             this.group.clear();
             this.sprites = {};
@@ -581,6 +690,10 @@ export const Systems = {
             allies.forEach(u => createSprite(u, false));
             enemies.forEach(u => createSprite(u, true));
         },
+        /**
+         * Moves the camera focus to a specific target type.
+         * @param {string} type - 'ally', 'enemy', 'victory', or default.
+         */
         setFocus(type) {
             const BASE = -Math.PI / 4;
             const SHIFT = Math.PI / 12;
@@ -605,6 +718,9 @@ export const Systems = {
                 this.cameraState.targetY = 0;
             }
         },
+        /**
+         * Main animation loop for the 3D scene.
+         */
         animate() {
             requestAnimationFrame(() => this.animate());
             const cs = this.cameraState;
@@ -626,6 +742,11 @@ export const Systems = {
             // Update damage labels every frame
             this.updateDamageLabels();
         },
+        /**
+         * Projects a 3D object's position to 2D screen coordinates.
+         * @param {THREE.Object3D} obj - The object to project.
+         * @returns {Object} The {x, y} screen coordinates.
+         */
         toScreen(obj) {
             const vec = new THREE.Vector3();
             obj.updateMatrixWorld();
@@ -639,6 +760,10 @@ export const Systems = {
                 y: (-(vec.y * 0.5) + 0.5) * height
             };
         },
+        /**
+         * Resets a sprite's visual state (color, opacity, scale, position).
+         * @param {string} uid - The unique ID of the unit/sprite.
+         */
         resetSprite(uid) {
             const sprite = this.sprites[uid];
             if (sprite) {
@@ -651,6 +776,10 @@ export const Systems = {
                 sprite.position.z = baseZ;
             }
         },
+        /**
+         * Plays a death fade animation for a unit.
+         * @param {string} uid - The unique ID of the unit.
+         */
         playDeathFade(uid) {
             const sprite = this.sprites[uid];
             if (!sprite) return;
@@ -692,6 +821,12 @@ export const Systems = {
         },
         
 // Physics-based Damage Numbers (The "Final Fantasy" Bounce)
+/**
+ * Shows a bouncing damage number above a unit.
+ * @param {string} uid - The unit ID.
+ * @param {number} val - The damage value.
+ * @param {boolean} [isCrit=false] - Whether it was a critical hit.
+ */
 showDamageNumber(uid, val, isCrit = false) {
             if (val === 0) return;
             const sprite = this.sprites[uid];
@@ -750,6 +885,7 @@ showDamageNumber(uid, val, isCrit = false) {
             }
         },
 
+        /** Updates the physics and rendering of active damage labels. */
         updateDamageLabels() {
             if (this.damageLabels.length === 0) return;
 
@@ -807,6 +943,12 @@ showDamageNumber(uid, val, isCrit = false) {
                 }
             }
         },
+        /**
+         * Plays a sequence of animations for a unit.
+         * @param {string} uid - The unit ID.
+         * @param {Array<Object>} steps - The animation steps.
+         * @param {Object} [context={}] - Context containing targets and callbacks.
+         */
         playAnim(uid, steps = [], context = {}) {
             const sprite = this.sprites[uid];
             if (!sprite) { context.onComplete?.(); return; }
@@ -975,7 +1117,16 @@ showDamageNumber(uid, val, isCrit = false) {
         }
     },
 
+    /**
+     * System for handling passive triggers and traits.
+     * @namespace Triggers
+     */
     Triggers: {
+        /**
+         * Fires an event to all units, triggering any relevant traits.
+         * @param {string} eventName - The name of the event (e.g., 'onBattleEnd').
+         * @param {...any} args - Additional arguments to pass to the handler.
+         */
         fire(eventName, ...args) {
             const allUnits = [...(GameState.battle?.allies || []), ...(GameState.battle?.enemies || [])];
             allUnits.forEach(unit => {
@@ -998,6 +1149,13 @@ showDamageNumber(uid, val, isCrit = false) {
                 });
             });
         },
+        /**
+         * Logic to handle a specific trait trigger.
+         * @param {string} eventName - The event name.
+         * @param {Object} trait - The trait definition.
+         * @param {Object} unit - The unit possessing the trait.
+         * @param {...any} args - Additional arguments.
+         */
         handleTrait(eventName, trait, unit, ...args) {
             switch (eventName) {
                 case 'onBattleEnd':
@@ -1055,6 +1213,12 @@ showDamageNumber(uid, val, isCrit = false) {
                     break;
             }
         },
+        /**
+         * Gets adjacent units in the formation.
+         * @param {Object} unit - The reference unit.
+         * @param {Array<Object>} party - The party array.
+         * @returns {Array<Object>} List of adjacent units.
+         */
         getAdjacentUnits(unit, party) {
             const adjacent = [];
             const index = unit.slotIndex;
@@ -1075,10 +1239,23 @@ showDamageNumber(uid, val, isCrit = false) {
         }
     },
 
+    /**
+     * Legacy battle system containing calculation logic.
+     * Most state management has moved to BattleManager.
+     * @namespace Battle
+     */
     Battle: {
         // Refactor Note: This should be moved to BattleManager or Game_Action
         elementStrengths: { G: 'B', B: 'R', R: 'G', W: 'K', K: 'W' },
         elementWeaknesses: { G: 'R', B: 'G', R: 'B', W: 'W', K: 'K' },
+
+        /**
+         * Calculates the effectiveness multiplier of an element against another.
+         * @param {string} actionElement - The element of the action.
+         * @param {string} creatureElement - The element of the creature.
+         * @param {string} role - 'attacker' or 'defender'.
+         * @returns {number} The multiplier (0.75, 1, or 1.25).
+         */
         elementRelation(actionElement, creatureElement, role) {
             if (!actionElement || !creatureElement) return 1;
             const strongAgainst = this.elementStrengths[actionElement];
@@ -1093,11 +1270,26 @@ showDamageNumber(uid, val, isCrit = false) {
             if (weakAgainst === creatureElement || this.elementStrengths[creatureElement] === actionElement) return 0.75;
             return 1;
         },
+        /**
+         * Calculates the total elemental multiplier for a unit.
+         * @param {string} actionElement - The action's element.
+         * @param {Object} unit - The unit.
+         * @param {string} role - 'attacker' or 'defender'.
+         * @returns {number} The cumulative multiplier.
+         */
         elementMultiplier(actionElement, unit, role) {
             if (!actionElement) return 1;
             const elems = unit.elements || [];
             return elems.reduce((mult, e) => mult * this.elementRelation(actionElement, e, role), 1);
         },
+        /**
+         * Calculates the numeric value of an effect.
+         * @param {Object} effect - The effect definition.
+         * @param {Object} action - The action definition.
+         * @param {Object} a - The user (attacker).
+         * @param {Object} b - The target (defender).
+         * @returns {number} The calculated value (damage/heal).
+         */
         calculateEffectValue(effect, action, a, b) {
             if (!effect.formula) return 0;
             let value = 0;
@@ -1134,6 +1326,13 @@ showDamageNumber(uid, val, isCrit = false) {
             }
             return finalValue;
         },
+        /**
+         * Applies effects of an action to targets.
+         * @param {Object} action - The action/skill.
+         * @param {Object} user - The user.
+         * @param {Array<Object>} targets - The targets.
+         * @returns {Array<Object>} Results of the application.
+         */
         applyEffects(action, user, targets) {
             const results = [];
             (action.effects || []).forEach(effect => {
@@ -1147,6 +1346,11 @@ showDamageNumber(uid, val, isCrit = false) {
             });
             return results;
         },
+        /**
+         * Returns a unit object with dynamic stats calculated (traits, equipment).
+         * @param {Object} unit - The raw unit object.
+         * @returns {Object} The unit with computed stats.
+         */
         getUnitWithStats(unit) {
             const unitWithStats = { ...unit };
             if (unit.elements) unitWithStats.elements = [...unit.elements];
@@ -1191,6 +1395,11 @@ showDamageNumber(uid, val, isCrit = false) {
             }
             return unitWithStats;
         },
+        /**
+         * Calculates the maximum HP of a unit.
+         * @param {Object} unit - The unit.
+         * @returns {number} The maximum HP.
+         */
         getMaxHp(unit) {
             // Using the class method if available, otherwise fallback (for enemies using old structure temporarily or robustness)
             if (typeof unit.mhp === 'number') return unit.mhp; // Getter
@@ -1211,6 +1420,10 @@ showDamageNumber(uid, val, isCrit = false) {
             }
             return baseMax + (unit.maxHpBonus || 0);
         },
+        /**
+         * Starts a new encounter.
+         * Delegates to BattleManager.
+         */
         startEncounter() {
             import('./managers.js').then(({ BattleManager }) => {
                 BattleManager.startEncounter();
@@ -1225,6 +1438,11 @@ showDamageNumber(uid, val, isCrit = false) {
         resumeAuto() {
              // Deprecated
         },
+        /**
+         * Swaps the positions of two units in the active party.
+         * @param {number} idx1 - Index of the first unit.
+         * @param {number} idx2 - Index of the second unit.
+         */
         swapUnits(idx1, idx2) {
             const u1 = GameState.party.activeSlots[idx1];
             const u2 = GameState.party.activeSlots[idx2];

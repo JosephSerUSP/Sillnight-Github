@@ -5,7 +5,14 @@ import { renderCreaturePanel, spriteMarkup } from './common.js';
 import { Systems } from '../systems.js';
 import { Log } from '../log.js';
 
+/**
+ * Window for displaying creature details and managing equipment.
+ */
 export class Window_CreatureModal extends Window_Selectable {
+    /**
+     * Initializes the Creature Modal.
+     * Sets up the equipment slot click handler.
+     */
     constructor() {
         super(document.getElementById('creature-modal'));
         this._unit = null;
@@ -18,11 +25,18 @@ export class Window_CreatureModal extends Window_Selectable {
         });
     }
 
+    /**
+     * Sets the unit to display in the modal.
+     * @param {Object} unit - The unit to display.
+     */
     setUnit(unit) {
         this._unit = unit;
         this.refresh();
     }
 
+    /**
+     * Toggles the visibility of the modal.
+     */
     toggle() {
         if (this.root.classList.contains('hidden')) {
             this.show();
@@ -31,6 +45,10 @@ export class Window_CreatureModal extends Window_Selectable {
         }
     }
 
+    /**
+     * Opens the equipment selection modal.
+     * @param {string|null} id - Pre-selected equipment ID (optional).
+     */
     startEquipFlow(id) {
         const box = document.getElementById('center-modal');
         box.classList.remove('hidden');
@@ -70,11 +88,19 @@ export class Window_CreatureModal extends Window_Selectable {
         box.appendChild(card);
     }
 
+    /**
+     * Closes the center equipment modal.
+     */
     closeCenterModal() {
         document.getElementById('center-modal').classList.add('hidden');
         document.getElementById('center-modal').innerHTML = '';
     }
 
+    /**
+     * Equips an item from the inventory to a target unit.
+     * @param {Object} target - The unit to equip.
+     * @param {string} equipmentId - The equipment ID.
+     */
     equipFromInventory(target, equipmentId) {
         const count = GameState.inventory.equipment[equipmentId] || 0;
         if (count <= 0) return;
@@ -93,6 +119,12 @@ export class Window_CreatureModal extends Window_Selectable {
         this.refresh();
     }
 
+    /**
+     * Transfers equipment from one unit to another.
+     * @param {Object} target - The receiving unit.
+     * @param {Object} owner - The current owner of the equipment.
+     * @param {string} equipmentId - The equipment ID.
+     */
     transferEquipment(target, owner, equipmentId) {
         const previous = target.equipmentId;
         if (previous === equipmentId && owner.uid === target.uid) return;
@@ -112,6 +144,10 @@ export class Window_CreatureModal extends Window_Selectable {
         this.refresh();
     }
 
+    /**
+     * Unequips the item from a unit.
+     * @param {Object} unit - The unit to unequip.
+     */
     unequipUnit(unit) {
         if (!unit.equipmentId) return;
         const previous = unit.equipmentId;
@@ -124,6 +160,10 @@ export class Window_CreatureModal extends Window_Selectable {
         this.refresh();
     }
 
+    /**
+     * Recalculates HP after equipment changes to ensure validity.
+     * @param {Object} unit - The unit to update.
+     */
     recomputeHp(unit) {
         // If class, it handles HP updates, but we need to ensure max HP is capped?
         // Game_BattlerBase handles clamping in refresh().
@@ -137,6 +177,9 @@ export class Window_CreatureModal extends Window_Selectable {
         }
     }
 
+    /**
+     * Updates the modal content with the current unit's details.
+     */
     refresh() {
         if (!this._unit) return;
         const unit = this._unit;
@@ -191,11 +234,20 @@ export class Window_CreatureModal extends Window_Selectable {
     }
 }
 
+/**
+ * Window for displaying the party's inventory.
+ */
 export class Window_Inventory extends Window_Selectable {
+    /**
+     * Initializes the Inventory window.
+     */
     constructor() {
         super(document.getElementById('inventory-modal'));
     }
 
+    /**
+     * Toggles visibility.
+     */
     toggle() {
         if (this.root.classList.contains('hidden')) {
             this.show();
@@ -204,6 +256,9 @@ export class Window_Inventory extends Window_Selectable {
         }
     }
 
+    /**
+     * Refresh the inventory list.
+     */
     refresh() {
         const list = this.root.querySelector('#inventory-list');
         list.innerHTML = '';
@@ -252,7 +307,14 @@ export class Window_Inventory extends Window_Selectable {
     }
 }
 
+/**
+ * Window for managing party formation and reserves.
+ */
 export class Window_PartyMenu extends Window_Selectable {
+    /**
+     * Initializes the Party Menu window.
+     * Sets up click handlers for party slots.
+     */
     constructor() {
         super(document.getElementById('party-modal'));
         this.root.querySelector('#party-menu-container').addEventListener('click', (e) => {
@@ -263,6 +325,9 @@ export class Window_PartyMenu extends Window_Selectable {
         });
     }
 
+    /**
+     * Toggles visibility.
+     */
     toggle() {
         if (this.root.classList.contains('hidden')) {
             this.show();
@@ -271,6 +336,10 @@ export class Window_PartyMenu extends Window_Selectable {
         }
     }
 
+    /**
+     * Handles clicks on party slots for swapping members.
+     * @param {HTMLElement} element - The clicked slot element.
+     */
     onPartySlotClick(element) {
         const selected = this.root.querySelector('.party-menu-slot.selected');
 
@@ -323,6 +392,9 @@ export class Window_PartyMenu extends Window_Selectable {
         }
     }
 
+    /**
+     * Updates the party menu grid.
+     */
     refresh() {
         const container = this.root.querySelector('#party-menu-container');
         container.innerHTML = '';

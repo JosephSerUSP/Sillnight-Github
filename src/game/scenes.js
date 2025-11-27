@@ -5,22 +5,57 @@ import { GameState } from './state.js';
 import { Scene } from './scene.js';
 import { BattleManager } from './managers.js';
 
+/**
+ * Base class for all scene types.
+ * Extends the basic Scene class with lifecycle methods.
+ */
 export class Scene_Base extends Scene {
+    /**
+     * @param {Object} systems - The game systems.
+     * @param {Object} windows - The game windows.
+     */
     constructor(systems, windows) {
         super(systems, windows);
     }
+    /**
+     * Called when the scene is entered.
+     */
     onEnter() {}
+    /**
+     * Called when the scene is exited.
+     */
     onExit() {}
-    update() {}
-    handleInput() { return false; }
+    /**
+     * Updates the scene.
+     * @param {number} [delta] - Time delta.
+     */
+    update(delta) {}
+    /**
+     * Handles keyboard input.
+     * @param {KeyboardEvent} e - The key event.
+     * @returns {boolean} True if the input was handled.
+     */
+    handleInput(e) { return false; }
 }
 
+/**
+ * The scene controlling the exploration gameplay loop.
+ * Handles movement, interaction with the map, and transitions to menus.
+ */
 export class Scene_Explore extends Scene_Base {
+    /**
+     * Sets the UI mode to EXPLORE and switches the visual scene.
+     */
     onEnter() {
         GameState.ui.mode = 'EXPLORE';
         this.switchScene(false, () => this.systems.Explore.render());
     }
 
+    /**
+     * Handles exploration-specific inputs like movement and menu toggles.
+     * @param {KeyboardEvent} e - The key event.
+     * @returns {boolean} True if input was handled.
+     */
     handleInput(e) {
         if (GameState.ui.mode !== 'EXPLORE') return false;
         if (e.key === 'ArrowUp') this.systems.Explore.move(0, -1);
@@ -33,12 +68,24 @@ export class Scene_Explore extends Scene_Base {
     }
 }
 
+/**
+ * The scene controlling the battle gameplay loop.
+ * Handles the turn-based combat interactions.
+ */
 export class Scene_Battle extends Scene_Base {
+    /**
+     * Sets the UI mode to BATTLE and switches the visual scene.
+     */
     onEnter() {
         GameState.ui.mode = 'BATTLE';
         this.switchScene(true);
     }
 
+    /**
+     * Handles battle-specific inputs, primarily the spacebar for turn progression.
+     * @param {KeyboardEvent} e - The key event.
+     * @returns {boolean} True if input was handled.
+     */
     handleInput(e) {
         if (GameState.ui.mode !== 'BATTLE' && GameState.ui.mode !== 'BATTLE_WIN') return false;
         if (e.code === 'Space') {

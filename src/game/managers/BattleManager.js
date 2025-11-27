@@ -4,19 +4,39 @@ import { Log } from '../log.js';
 import { Systems } from '../systems.js';
 import { Game_Enemy } from '../classes/Game_Enemy.js';
 
+/**
+ * Manages the flow and state of battle.
+ * Handles encounter setup, turn processing, and victory/defeat conditions.
+ * @namespace BattleManager
+ */
 export const BattleManager = {
+    /** @type {Array<Object>} List of ally battlers. */
     allies: [],
+    /** @type {Array<Object>} List of enemy battlers. */
     enemies: [],
+    /** @type {Array<Object>} Turn order queue. */
     queue: [],
+    /** @type {number} Current turn index within the round. */
     turnIndex: 0,
+    /** @type {number} Current round number. */
     roundCount: 0,
+    /** @type {boolean} Flag indicating if the player has requested a manual turn. */
     playerTurnRequested: false,
+    /** @type {string} Current battle phase (INIT, ROUND_START, PLAYER_INPUT, etc.). */
     phase: 'INIT',
 
+    /**
+     * Initializes the BattleManager.
+     */
     init() {
         // Any static init if needed
     },
 
+    /**
+     * Sets up the battle state with specific units.
+     * @param {Array<Object>} allies - The ally units.
+     * @param {Array<Object>} enemies - The enemy units.
+     */
     setup(allies, enemies) {
         this.allies = allies;
         this.enemies = enemies;
@@ -38,6 +58,9 @@ export const BattleManager = {
         };
     },
 
+    /**
+     * Generates a random encounter based on the current floor and starts it.
+     */
     startEncounter() {
          const swipe = document.getElementById('swipe-overlay');
             swipe.className = 'swipe-down';
@@ -85,6 +108,10 @@ export const BattleManager = {
             }, 600);
     },
 
+    /**
+     * Proceeds to the next round of combat.
+     * Re-calculates turn order and checks win/loss conditions.
+     */
     nextRound() {
         this.roundCount++;
         this.phase = 'ROUND_START';
@@ -134,6 +161,10 @@ export const BattleManager = {
         this.processNextTurn();
     },
 
+    /**
+     * Processes the next turn in the queue.
+     * Executes AI actions or waits for animations.
+     */
     processNextTurn() {
          window.Game.Windows.Party.refresh();
             if (this.turnIndex >= this.queue.length) {
@@ -300,6 +331,9 @@ export const BattleManager = {
             });
     },
 
+    /**
+     * Flags a request for manual player input at the next opportunity.
+     */
     requestPlayerTurn() {
          if (GameState.ui.mode === 'BATTLE') {
             this.playerTurnRequested = true;
@@ -313,6 +347,9 @@ export const BattleManager = {
         }
     },
 
+    /**
+     * Resumes automatic battle processing.
+     */
     resumeAuto() {
         window.Game.Windows.BattleLog.togglePlayerTurn(false);
         this.playerTurnRequested = false;
@@ -325,6 +362,10 @@ export const BattleManager = {
         this.processNextTurn();
     },
 
+    /**
+     * Ends the battle and displays the result.
+     * @param {boolean} win - True if the player won.
+     */
     end(win) {
          document.getElementById('battle-ui-overlay').innerHTML = '';
             if (win) {
