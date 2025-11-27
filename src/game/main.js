@@ -1,9 +1,7 @@
 import { Data } from '../assets/data/data.js';
-import { GameState } from './state.js';
 import { Log } from './log.js';
 import { Systems } from './systems.js';
-import { populateActiveSlots } from './objects.js';
-import { SceneManager, InputManager } from './managers.js';
+import { SceneManager, InputManager, DataManager } from './managers.js';
 import { Scene_Explore, Scene_Battle } from './scenes.js';
 import { Window_HUD } from './window/hud.js';
 import { Window_Party } from './window/party.js';
@@ -13,7 +11,10 @@ import { Window_BattleLog } from './window/battle_log.js';
 // Core game bootstrapper; keeps entrypoint slim while delegating to managers/scenes.
 export const Game = {
     ready: false,
-    GameState,
+    ui: {
+        mode: 'EXPLORE',
+        formationMode: false
+    },
     Systems,
     data: Data,
     log: Log,
@@ -29,14 +30,17 @@ export const Game = {
         this.Windows.PartyMenu = new Window_PartyMenu();
         this.Windows.BattleLog = new Window_BattleLog();
 
+        // DataManager will handle the setup of game objects
+        DataManager.setupNewGame();
+
+        // Render shell UI
+        this.Windows.Party.refresh();
+        this.Windows.HUD.refresh();
+
         // Initial map generation and render setup
-        Systems.Map.generateFloor();
         Systems.Explore.init();
         Systems.Battle3D.init();
         await Systems.Effekseer.preload();
-
-        // Starting party
-        populateActiveSlots(Data.party.initial);
 
         // Wire hooks for scene transitions originating from systems
         Systems.sceneHooks.onBattleStart = () => this.SceneManager.changeScene(this.Scenes.battle);
@@ -48,9 +52,6 @@ export const Game = {
             onResume: () => Systems.Battle.resumeAuto()
         });
 
-        // Render shell UI
-        this.Windows.Party.refresh();
-        this.Windows.HUD.refresh();
         Log.add('Welcome to Stillnight.');
 
         // Scenes and input
@@ -72,6 +73,12 @@ window.addEventListener('resize', () => {
 
 window.addEventListener('load', async () => {
     await Game.init();
+
+    // Bind modal close buttons
+    document.querySelector('#party-modal .rpg-header button').addEventListener('click', () => Game.Windows.PartyMenu.toggle());
+    document.querySelector('#inventory-modal .rpg-header button').addEventListener('click', () => Game.Windows.Inventory.toggle());
+    document.querySelector('#creature-modal .rpg-header button').addEventListener('click', () => Game.Windows.CreatureModal.hide());
+    document.querySelector('#event-modal .rpg-header button').addEventListener('click', () => Game.Systems.Events.close());
 });
 
 // Expose Game for inline handlers

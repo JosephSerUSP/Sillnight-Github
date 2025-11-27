@@ -8,6 +8,7 @@ export class Window_BattleLog extends Window_Base {
         this._turnIndicator = document.getElementById('turn-indicator');
         this._playerTurnButton = document.getElementById('btn-player-turn');
         this._centerModal = document.getElementById('center-modal');
+        this._handlers = {};
     }
 
     showBanner(text) {
@@ -17,17 +18,20 @@ export class Window_BattleLog extends Window_Base {
     }
 
     togglePlayerTurn(active, handlers) {
+        if (handlers) {
+            this._handlers = handlers;
+        }
         if (active) {
             this._turnIndicator.innerText = 'PLAYER INPUT PHASE';
             this._turnIndicator.classList.remove('hidden');
             this._playerTurnButton.innerText = 'RESUME (SPACE)';
             this._playerTurnButton.classList.add('bg-yellow-900', 'text-white');
-            this._playerTurnButton.onclick = handlers.onResume;
+            this._playerTurnButton.onclick = this._handlers.onResume;
         } else {
             this._turnIndicator.classList.add('hidden');
             this._playerTurnButton.classList.remove('bg-yellow-900', 'text-white');
             this._playerTurnButton.innerText = 'STOP ROUND (SPACE)';
-            this._playerTurnButton.onclick = handlers.onRequest;
+            this._playerTurnButton.onclick = this._handlers.onRequest;
         }
     }
 

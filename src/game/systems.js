@@ -1,7 +1,10 @@
 import { Data } from '../assets/data/data.js';
-import { GameState } from './state.js';
+import { $gameParty, $gameMap, $gameBattle } from './globals.js';
+import { Game } from './main.js';
 import { Log } from './log.js';
 import { resolveAssetPath } from './core.js';
+import { Game_Actor } from './classes/Game_Actor.js';
+import { Game_Enemy } from './classes/Game_Enemy.js';
 
 // ------------------- SYSTEMS DEFINITIONS -------------------
 
@@ -104,94 +107,39 @@ export const Systems = {
     },
 
     Map: {
-        generateFloor() {
-            const floor = GameState.run.floor;
-            const dungeon = Data.dungeons.default;
-            const mapCfg = dungeon.map;
-
-            const map = Array(mapCfg.height).fill().map(() => Array(mapCfg.width).fill(1));
-            let x = Math.floor(mapCfg.width / 2);
-            let y = Math.floor(mapCfg.height / 2);
-            GameState.exploration.playerPos = { x, y };
-            
-            for (let i = 0; i < mapCfg.carveSteps; i++) {
-                map[y][x] = 0;
-                const dir = Math.floor(Math.random() * 4);
-                if (dir === 0 && y > 1) y--;
-                else if (dir === 1 && y < mapCfg.height - 2) y++;
-                else if (dir === 2 && x > 1) x--;
-                else if (dir === 3 && x < mapCfg.width - 2) x++;
-            }
-            
-            const emptyTiles = [];
-            for (let ry = 0; ry < mapCfg.height; ry++) {
-                for (let rx = 0; rx < mapCfg.width; rx++) {
-                    if (map[ry][rx] === 0 && (rx !== GameState.exploration.playerPos.x || ry !== GameState.exploration.playerPos.y)) {
-                        emptyTiles.push({ x: rx, y: ry });
-                    }
-                }
-            }
-            
-            const place = (code, count) => {
-                for (let i = 0; i < count; i++) {
-                    if (emptyTiles.length === 0) break;
-                    const idx = Math.floor(Math.random() * emptyTiles.length);
-                    const tile = emptyTiles.splice(idx, 1)[0];
-                    map[tile.y][tile.x] = code;
-                }
-            };
-            
-            const getCount = (def) => {
-                if (typeof def === 'number') return def;
-                const { base = 0, perFloor = 0, min = 0, max = Infinity, round = 'round' } = def;
-                const count = base + perFloor * floor;
-                const rounded = Math[round](count);
-                return Math.max(min, Math.min(max, rounded));
-            };
-            place(2, getCount(mapCfg.tileCounts.enemies));
-            place(3, getCount(mapCfg.tileCounts.stairs));
-            place(4, getCount(mapCfg.tileCounts.treasure));
-            place(5, getCount(mapCfg.tileCounts.shops));
-            place(6, getCount(mapCfg.tileCounts.recruits));
-            place(7, getCount(mapCfg.tileCounts.shrines));
-            place(8, getCount(mapCfg.tileCounts.traps));
-
-            GameState.exploration.map = map;
-            GameState.exploration.visited = Array(mapCfg.height).fill().map(() => Array(mapCfg.width).fill(false));
-            Log.add(`Floor ${floor} generated.`);
-        },
         tileAt(x, y) {
-            const map = GameState.exploration.map;
+            const map = $gameMap.map();
             if (!map[y] || map[y][x] === undefined) return 1;
             return map[y][x];
         },
         resolveTile(code) {
+            const playerPos = $gameMap.playerPos();
             if (code === 2) { 
-                GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
+                $gameMap.map()[playerPos.y][playerPos.x] = 0;
                 Systems.Battle.startEncounter();
             } else if (code === 3) { 
-                GameState.run.floor++;
+                $gameMap._floor++;
                 Log.add('Descended...');
-                Systems.Map.generateFloor();
+                $gameMap.generateFloor();
             } else if (code === 4) { 
                 const treasure = Data.events.treasure;
                 const amt = treasure.gold.base
                     + Math.floor(Math.random() * treasure.gold.random)
-                    + treasure.gold.perFloor * GameState.run.floor;
-                GameState.run.gold += amt;
-                GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
+                    + treasure.gold.perFloor * $gameMap.floor();
+                $gameParty.gainGold(amt);
+                $gameMap.map()[playerPos.y][playerPos.x] = 0;
                 Log.loot(`Found ${amt} Gold!`);
             } else if (code === 5) { 
-                GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
+                $gameMap.map()[playerPos.y][playerPos.x] = 0;
                 Systems.Events.shop();
             } else if (code === 6) { 
-                GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
+                $gameMap.map()[playerPos.y][playerPos.x] = 0;
                 Systems.Events.recruit();
             } else if (code === 7) { 
-                GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
+                $gameMap.map()[playerPos.y][playerPos.x] = 0;
                 Systems.Events.shrine();
             } else if (code === 8) { 
-                GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
+                $gameMap.map()[playerPos.y][playerPos.x] = 0;
                 Systems.Events.trap();
             }
         }
@@ -206,12 +154,12 @@ export const Systems = {
             this.render();
         },
         move(dx, dy) {
-            if (GameState.ui.mode !== 'EXPLORE' || GameState.ui.formationMode) return;
-            const newX = GameState.exploration.playerPos.x + dx;
-            const newY = GameState.exploration.playerPos.y + dy;
+            if (Game.ui.mode !== 'EXPLORE' || Game.ui.formationMode) return;
+            const newX = $gameMap.playerPos().x + dx;
+            const newY = $gameMap.playerPos().y + dy;
             const tile = Systems.Map.tileAt(newX, newY);
             if (tile !== 1) {
-                GameState.exploration.playerPos = { x: newX, y: newY };
+                $gameMap.setPlayerPos(newX, newY);
                 this.checkTile(tile);
                 this.render();
             }
@@ -229,18 +177,18 @@ export const Systems = {
             ctx.fillStyle = '#050505';
             ctx.fillRect(0, 0, w, h);
             
-            const offsetX = (w / 2) - (GameState.exploration.playerPos.x * mapCfg.tileSize);
-            const offsetY = (h / 2) - (GameState.exploration.playerPos.y * mapCfg.tileSize);
+            const offsetX = (w / 2) - ($gameMap.playerPos().x * mapCfg.tileSize);
+            const offsetY = (h / 2) - ($gameMap.playerPos().y * mapCfg.tileSize);
             ctx.save();
             ctx.translate(offsetX, offsetY);
             
             for (let y = 0; y < mapCfg.height; y++) {
                 for (let x = 0; x < mapCfg.width; x++) {
-                    const dist = Math.hypot(x - GameState.exploration.playerPos.x, y - GameState.exploration.playerPos.y);
-                    if (dist < mapCfg.viewDistance) GameState.exploration.visited[y][x] = true;
-                    if (!GameState.exploration.visited[y][x]) continue;
+                    const dist = Math.hypot(x - $gameMap.playerPos().x, y - $gameMap.playerPos().y);
+                    if (dist < mapCfg.viewDistance) $gameMap.setVisited(x, y);
+                    if (!$gameMap.visited()[y][x]) continue;
                     
-                    const tile = GameState.exploration.map[y][x];
+                    const tile = $gameMap.map()[y][x];
                     const px = x * mapCfg.tileSize;
                     const py = y * mapCfg.tileSize;
                     
@@ -274,8 +222,8 @@ export const Systems = {
                     }
                 }
             }
-            const playerX = GameState.exploration.playerPos.x * mapCfg.tileSize;
-            const playerY = GameState.exploration.playerPos.y * mapCfg.tileSize;
+            const playerX = $gameMap.playerPos().x * mapCfg.tileSize;
+            const playerY = $gameMap.playerPos().y * mapCfg.tileSize;
             ctx.font = '36px serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -331,12 +279,12 @@ export const Systems = {
                 btn.className = 'text-xs border border-gray-600 px-2 py-1 hover:bg-white hover:text-black';
                 btn.innerText = 'BUY';
                 btn.onclick = () => {
-                    if (GameState.run.gold >= price) {
-                        GameState.run.gold -= price;
+                    if ($gameParty._gold >= price) {
+                        $gameParty._gold -= price;
                         if (s.type === 'item') {
-                            GameState.inventory.items[s.id] = (GameState.inventory.items[s.id] || 0) + 1;
+                            $gameParty._items[s.id] = ($gameParty._items[s.id] || 0) + 1;
                         } else {
-                            GameState.inventory.equipment[s.id] = (GameState.inventory.equipment[s.id] || 0) + 1;
+                            $gameParty._equipment[s.id] = ($gameParty._equipment[s.id] || 0) + 1;
                         }
                         Log.loot(`Bought ${def.name}.`);
                         window.Game.Windows.HUD.refresh();
@@ -375,30 +323,13 @@ export const Systems = {
                 btn.className = 'text-xs border border-gray-600 px-2 py-1 hover:bg-white hover:text-black';
                 btn.innerText = 'RECRUIT';
                 btn.onclick = () => {
-                    const empty = GameState.party.activeSlots.findIndex(u => u === null);
-                    const unit = {
-                        uid: 'n' + Date.now() + '_' + Math.random().toString(16).slice(2),
-                        speciesId: def.id,
-                        name: def.name,
-                        sprite: def.sprite,
-                        spriteAsset: def.spriteAsset,
-                        level: GameState.run.floor,
-                        maxhp: Math.round(def.baseHp * (1 + def.hpGrowth * (GameState.run.floor - 1))),
-                        hp: Math.round(def.baseHp * (1 + def.hpGrowth * (GameState.run.floor - 1))),
-                        exp: 0,
-                        temperament: def.temperament,
-                        elements: def.elements ? [...def.elements] : [],
-                        acts: def.acts,
-                        equipmentId: null,
-                        slotIndex: -1
-                    };
-                    GameState.roster.push(unit);
-                    if (empty !== -1) {
-                        unit.slotIndex = empty;
-                        GameState.party.activeSlots[empty] = unit;
-                        Log.add(`${unit.name} joins your party.`);
+                    const actor = new Game_Actor(def.id, $gameMap.floor());
+                    $gameParty._roster.push(actor);
+                    if ($gameParty.actors().length < 6) {
+                        $gameParty._actors.push(actor);
+                        Log.add(`${actor.name()} joins your party.`);
                     } else {
-                        Log.add(`${unit.name} waits in reserve.`);
+                        Log.add(`${actor.name()} waits in reserve.`);
                     }
                     window.Game.Windows.Party.refresh();
                     btn.disabled = true;
@@ -416,10 +347,8 @@ export const Systems = {
         },
         shrine() {
             Log.add('You find a glowing shrine.');
-            GameState.roster.forEach(u => {
-                const def = Data.creatures[u.speciesId];
-                u.maxhp = Math.round(def.baseHp * (1 + def.hpGrowth * (u.level - 1)));
-                u.hp = u.maxhp;
+            $gameParty._roster.forEach(actor => {
+                actor._hp = actor.mhp();
             });
             window.Game.Windows.Party.refresh();
             const msg = document.createElement('div');
@@ -430,13 +359,11 @@ export const Systems = {
         },
         trap() {
             Log.add('A hidden trap triggers!');
-            const damage = (u) => {
-                const maxhp = Systems.Battle.getMaxHp(u);
-                const dmg = Math.ceil(maxhp * 0.2);
-                u.hp = Math.max(0, u.hp - dmg);
-                if (u.hp === 0) Log.battle(`${u.name} was knocked out by the trap!`);
-            };
-            GameState.party.activeSlots.forEach(u => { if (u) damage(u); });
+            $gameParty.actors().forEach(actor => {
+                const dmg = Math.ceil(actor.mhp() * 0.2);
+                actor.setHp(Math.max(0, actor.hp() - dmg));
+                if (actor.hp() === 0) Log.battle(`${actor.name()} was knocked out by the trap!`);
+            });
             window.Game.Windows.Party.refresh();
             const msg = document.createElement('div');
             msg.className = 'text-center space-y-2';
@@ -536,6 +463,7 @@ export const Systems = {
                 const pos = getPos(isEnemy, unit.slotIndex);
                 const addSpriteToScene = (texture) => {
                     if (!texture) {
+                        console.warn(`Sprite asset missing for creature: ${unit.name()}. Falling back to default.`);
                         const canvas = document.createElement('canvas');
                         canvas.width = 128; canvas.height = 128;
                         const cx = canvas.getContext('2d');
@@ -608,7 +536,7 @@ export const Systems = {
         animate() {
             requestAnimationFrame(() => this.animate());
             const cs = this.cameraState;
-            if (GameState.ui.mode === 'BATTLE_WIN') {
+            if (Game.ui.mode === 'BATTLE_WIN') {
                 cs.angle += 0.005;
             } else {
                 cs.angle += (cs.targetAngle - cs.angle) * 0.05;
@@ -977,9 +905,9 @@ showDamageNumber(uid, val, isCrit = false) {
 
     Triggers: {
         fire(eventName, ...args) {
-            const allUnits = [...(GameState.battle?.allies || []), ...(GameState.battle?.enemies || [])];
+            const allUnits = [...($gameBattle?.allies || []), ...($gameBattle?.enemies || [])];
             allUnits.forEach(unit => {
-                if(unit.hp <= 0) return;
+                if(unit.hp() <= 0) return;
                 const unitWithStats = Systems.Battle.getUnitWithStats(unit);
                 const traits = [];
                 const species = Data.creatures[unit.speciesId];
@@ -1004,27 +932,27 @@ showDamageNumber(uid, val, isCrit = false) {
                     if(unit.evadeBonus) unit.evadeBonus = 0;
                     if (trait.type === 'post_battle_heal') {
                         const healAmount = Math.floor(Math.pow(Math.random(), 2) * unit.level) + 1;
-                        unit.hp = Math.min(Systems.Battle.getMaxHp(unit), unit.hp + healAmount);
-                        Log.add(`${unit.name} was healed by Soothing Breeze.`);
+                        unit.setHp(Math.min(unit.mhp(), unit.hp() + healAmount));
+                        Log.add(`${unit.name()} was healed by Soothing Breeze.`);
                     } else if (trait.type === 'post_battle_leech') {
                         const party = args[0];
                         const adjacent = this.getAdjacentUnits(unit, party);
                         let totalDamage = 0;
                         adjacent.forEach(target => {
                             const damage = parseInt(trait.formula) || 0;
-                            target.hp = Math.max(0, target.hp - damage);
+                            target.setHp(Math.max(0, target.hp() - damage));
                             totalDamage += damage;
-                            Log.add(`${unit.name} leeched ${damage} HP from ${target.name}.`);
+                            Log.add(`${unit.name()} leeched ${damage} HP from ${target.name()}.`);
                         });
                         const leechHeal = Math.floor(totalDamage / 2);
-                        unit.hp = Math.min(Systems.Battle.getMaxHp(unit), unit.hp + leechHeal);
-                        Log.add(`${unit.name} recovered ${leechHeal} HP.`);
+                        unit.setHp(Math.min(unit.mhp(), unit.hp() + leechHeal));
+                        Log.add(`${unit.name()} recovered ${leechHeal} HP.`);
                     }
                     break;
                 case 'onTurnStart':
                     if (trait.type === 'turn_heal') {
                         const healAmount = parseInt(trait.formula) || 0;
-                        unit.hp = Math.min(Systems.Battle.getMaxHp(unit), unit.hp + healAmount);
+                        unit.setHp(Math.min(unit.mhp(), unit.hp() + healAmount));
                     }
                     break;
                 case 'onUnitDeath':
@@ -1033,9 +961,9 @@ showDamageNumber(uid, val, isCrit = false) {
                         if (deadUnit.uid === unit.uid) {
                             const skill = Data.skills[trait.skill.toLowerCase()];
                             if (skill) {
-                                const enemies = GameState.battle.enemies.filter(e => e.hp > 0);
+                                const enemies = $gameBattle.enemies.filter(e => e.hp() > 0);
                                 Systems.Battle.applyEffects(skill, unit, enemies);
-                                Log.battle(`${unit.name} casts ${skill.name} upon death!`);
+                                Log.battle(`${unit.name()} casts ${skill.name} upon death!`);
                             }
                         }
                     }
@@ -1048,7 +976,7 @@ showDamageNumber(uid, val, isCrit = false) {
                             if(!unit.evadeBonus) unit.evadeBonus = 0;
                             if(unit.evadeBonus < maxBonus){
                                 unit.evadeBonus += 1;
-                                Log.battle(`${unit.name} gained +1 bonus from evading!`);
+                                Log.battle(`${unit.name()} gained +1 bonus from evading!`);
                             }
                         }
                     }
@@ -1127,7 +1055,7 @@ showDamageNumber(uid, val, isCrit = false) {
                 Log.battle('> Critical Hit!');
             }
 
-            if (effect.type === 'hp_damage' && b.status?.includes('guarding')) {
+            if (effect.type === 'hp_damage' && b.status()?.includes('guarding')) {
                 finalValue = Math.floor(finalValue / 2);
                 Log.battle('> Guarding!');
             }
@@ -1149,7 +1077,7 @@ showDamageNumber(uid, val, isCrit = false) {
         getUnitWithStats(unit) {
             const unitWithStats = { ...unit };
             if (unit.elements) unitWithStats.elements = [...unit.elements];
-            if (unit.status) unitWithStats.status = [...unit.status];
+            if (unit.status()) unitWithStats.status = [...unit.status()];
 
             unitWithStats.power_bonus = 0;
             unitWithStats.speed_bonus = 0;
@@ -1210,14 +1138,14 @@ showDamageNumber(uid, val, isCrit = false) {
             swipe.className = 'swipe-down';
             setTimeout(() => {
                 Systems.sceneHooks?.onBattleStart?.();
-                GameState.ui.mode = 'BATTLE';
+                Game.ui.mode = 'BATTLE';
                 window.Game.Scenes.battle.switchScene(true);
                 Systems.Battle3D.cameraState.angle = -Math.PI / 4;
                 Systems.Battle3D.cameraState.targetAngle = -Math.PI / 4;
                 Systems.Battle3D.setFocus('neutral');
                 Systems.Battle3D.resize();
-                const allies = GameState.party.activeSlots.filter(u => u !== null).map(u => u);
-                const floor = GameState.run.floor;
+                const allies = $gameParty.actors();
+                const floor = $gameMap.floor();
                 const dungeon = Data.dungeons.default;
                 const enc = dungeon.encounters;
                 const pool = enc.pools.find(p => floor >= p.floors[0] && floor <= p.floors[1]);
@@ -1226,35 +1154,11 @@ showDamageNumber(uid, val, isCrit = false) {
                 const enemies = [];
                 for (let i = 0; i < enemyCount; i++) {
                     const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
-                    const def = Data.creatures[type];
-                    const mult = 1 + (floor * 0.1);
-                    enemies.push({
-                        uid: `e${i}_${Date.now()}`,
-                        speciesId: type,
-                        name: def.name,
-                        sprite: def.sprite,
-                        spriteAsset: def.spriteAsset,
-                        level: GameState.run.floor,
-                        hp: Math.floor(def.baseHp * mult),
-                        maxhp: Math.floor(def.baseHp * mult),
-                        temperament: def.temperament,
-                        elements: def.elements ? [...def.elements] : [],
-                        acts: def.acts,
-                        slotIndex: i,
-                        status: []
-                    });
+                    enemies.push(new Game_Enemy(type, floor));
                 }
-                GameState.battle = {
-                    allies: allies,
-                    enemies: enemies,
-                    queue: [],
-                    turnIndex: 0,
-                    roundCount: 0,
-                    playerTurnRequested: false,
-                    phase: 'INIT'
-                };
-                Systems.Battle3D.setupScene(GameState.battle.allies, GameState.battle.enemies);
-                Log.battle(`Enemies: ${enemies.map(e => e.name).join(', ')}`);
+                $gameBattle.setup(allies, enemies);
+                Systems.Battle3D.setupScene($gameBattle.allies, $gameBattle.enemies);
+                Log.battle(`Enemies: ${enemies.map(e => e.name()).join(', ')}`);
                 window.Game.Windows.BattleLog.showBanner('ENCOUNTER');
                 swipe.className = 'swipe-clear';
                 setTimeout(() => {
@@ -1264,42 +1168,45 @@ showDamageNumber(uid, val, isCrit = false) {
             }, 600);
         },
         nextRound() {
-            if (!GameState.battle) return;
-            GameState.battle.roundCount++;
-            GameState.battle.phase = 'ROUND_START';
+            if (!$gameBattle) return;
+            $gameBattle.roundCount++;
+            $gameBattle.phase = 'ROUND_START';
             Systems.Battle3D.setFocus('neutral');
-            if (GameState.battle.allies.every(u => u.hp <= 0)) return this.end(false);
-            if (GameState.battle.enemies.every(u => u.hp <= 0)) return this.end(true);
+            if ($gameBattle.allies.every(u => u.hp() <= 0)) return this.end(false);
+            if ($gameBattle.enemies.every(u => u.hp() <= 0)) return this.end(true);
 
-            [...GameState.battle.allies, ...GameState.battle.enemies].forEach(u => {
-                if (u.status) {
-                    u.status = u.status.filter(s => s !== 'guarding');
+            [...$gameBattle.allies, ...$gameBattle.enemies].forEach(u => {
+                if (u.status()) {
+                    u._states = u.status().filter(s => s !== 'guarding');
                 }
             });
 
-            Log.battle(`--- Round ${GameState.battle.roundCount} ---`);
-            if (GameState.battle.playerTurnRequested) {
-                GameState.battle.phase = 'PLAYER_INPUT';
-                GameState.battle.playerTurnRequested = false;
+            Log.battle(`--- Round ${$gameBattle.roundCount} ---`);
+            if ($gameBattle.playerTurnRequested) {
+                $gameBattle.phase = 'PLAYER_INPUT';
+                $gameBattle.playerTurnRequested = false;
                 window.Game.Windows.BattleLog.togglePlayerTurn(true);
                 Log.battle('Waiting for orders...');
                 return;
             }
-            const allUnits = [...GameState.battle.allies, ...GameState.battle.enemies]
-                .filter(u => u.hp > 0)
-                .map(u => {
-                    const unitWithStats = this.getUnitWithStats(u);
-                    return { ...u, speed: unitWithStats.speed_bonus };
-                });
+            const allUnits = [...$gameBattle.allies, ...$gameBattle.enemies]
+                .filter(u => u.hp() > 0);
 
-            allUnits.sort((a, b) => b.speed - a.speed || Math.random() - 0.5);
-            GameState.battle.queue = allUnits;
-            GameState.battle.turnIndex = 0;
+            allUnits.forEach(u => {
+                const unitWithStats = this.getUnitWithStats(u);
+                u.turnSpeed = unitWithStats.speed_bonus;
+            });
+
+            allUnits.sort((a, b) => b.turnSpeed - a.turnSpeed || Math.random() - 0.5);
+            allUnits.forEach(u => delete u.turnSpeed);
+
+            $gameBattle.queue = allUnits;
+            $gameBattle.turnIndex = 0;
             this.processNextTurn();
         },
         requestPlayerTurn() {
-            if (GameState.ui.mode === 'BATTLE') {
-                GameState.battle.playerTurnRequested = true;
+            if (Game.ui.mode === 'BATTLE') {
+                $gameBattle.playerTurnRequested = true;
                 Log.add('Interrupt queued.');
                 const btn = document.getElementById('btn-player-turn');
                 btn.classList.add('border-green-500', 'text-green-500');
@@ -1308,47 +1215,48 @@ showDamageNumber(uid, val, isCrit = false) {
         },
         resumeAuto() {
             window.Game.Windows.BattleLog.togglePlayerTurn(false);
-            GameState.battle.playerTurnRequested = false;
+            $gameBattle.playerTurnRequested = false;
             const btn = document.getElementById('btn-player-turn');
             btn.classList.remove('border-green-500', 'text-green-500');
             btn.innerText = 'STOP ROUND (SPACE)';
             this.processNextTurn();
         },
         swapUnits(idx1, idx2) {
-            const u1 = GameState.party.activeSlots[idx1];
-            const u2 = GameState.party.activeSlots[idx2];
-            GameState.party.activeSlots[idx1] = u2;
-            GameState.party.activeSlots[idx2] = u1;
-            if (GameState.party.activeSlots[idx1]) GameState.party.activeSlots[idx1].slotIndex = idx1;
-            if (GameState.party.activeSlots[idx2]) GameState.party.activeSlots[idx2].slotIndex = idx2;
+            const actors = $gameParty.actors();
+            const u1 = actors[idx1];
+            const u2 = actors[idx2];
+            actors[idx1] = u2;
+            actors[idx2] = u1;
             window.Game.Windows.Party.refresh();
-            if (GameState.ui.mode === 'BATTLE') {
-                GameState.battle.allies = GameState.party.activeSlots.filter(u => u !== null);
-                Systems.Battle3D.setupScene(GameState.battle.allies, GameState.battle.enemies);
+            if (Game.ui.mode === 'BATTLE') {
+                $gameBattle.allies = $gameParty.actors();
+                Systems.Battle3D.setupScene($gameBattle.allies, $gameBattle.enemies);
             }
             Log.add('Formation changed.');
         },
         processNextTurn() {
             window.Game.Windows.Party.refresh();
-            if (GameState.battle.turnIndex >= GameState.battle.queue.length) {
+            if ($gameBattle.turnIndex >= $gameBattle.queue.length) {
                 setTimeout(() => this.nextRound(), 1000);
                 return;
             }
-            const unit = GameState.battle.queue[GameState.battle.turnIndex++];
-            if (unit.hp <= 0) {
+            const unit = $gameBattle.queue[$gameBattle.turnIndex++];
+            if (unit.hp() <= 0) {
                 this.processNextTurn();
                 return;
             }
             Systems.Triggers.fire('onTurnStart', unit);
-            const isAlly = GameState.battle.allies.some(a => a.uid === unit.uid);
+            const isAlly = $gameBattle.allies.some(a => a.uid === unit.uid);
             Systems.Battle3D.setFocus(isAlly ? 'ally' : 'enemy');
-            const enemies = isAlly ? GameState.battle.enemies : GameState.battle.allies;
-            const friends = isAlly ? GameState.battle.allies : GameState.battle.enemies;
-            const possibleActs = [...unit.acts[0], ...(unit.acts[1] || [])];
+            const enemies = isAlly ? $gameBattle.enemies : $gameBattle.allies;
+            const friends = isAlly ? $gameBattle.allies : $gameBattle.enemies;
+            const possibleActs = (unit.acts && unit.acts[0])
+                ? [...unit.acts[0], ...(unit.acts[1] || [])]
+                : ['attack'];
             let chosen = null;
             if (unit.temperament === 'kind') {
-                const hurt = friends.filter(f => f.hp < f.maxhp).sort((a, b) => a.hp - b.hp)[0];
-                if (hurt && hurt.hp < hurt.maxhp * 0.6) {
+                const hurt = friends.filter(f => f.hp() < f.mhp()).sort((a, b) => a.hp() - b.hp())[0];
+                if (hurt && hurt.hp() < hurt.mhp() * 0.6) {
                     for (const a of possibleActs) {
                         const skill = Data.skills[a.toLowerCase()];
                         if (skill && skill.category === 'heal') { chosen = a; break; }
@@ -1369,8 +1277,8 @@ showDamageNumber(uid, val, isCrit = false) {
             else action = Data.skills['attack'];
 
             let targets = [];
-            const validEnemies = enemies.filter(u => u.hp > 0);
-            const validFriends = friends.filter(u => u.hp > 0);
+            const validEnemies = enemies.filter(u => u.hp() > 0);
+            const validFriends = friends.filter(u => u.hp() > 0);
             if (action.target === 'self') targets = [unit];
             else if (action.target === 'ally-single') targets = [validFriends.sort((a, b) => a.hp - b.hp)[0]];
             else if (action.target === 'enemy-all') targets = validEnemies;
@@ -1385,11 +1293,11 @@ showDamageNumber(uid, val, isCrit = false) {
                 this.processNextTurn();
                 return;
             }
-            window.Game.Windows.BattleLog.showBanner(`${unit.name} used ${action.name}!`);
+            window.Game.Windows.BattleLog.showBanner(`${unit.name()} used ${action.name}!`);
             const results = this.applyEffects(action, unit, targets);
 
             if (results.length === 0) {
-                Log.battle(`> ${unit.name} used ${action.name}!`);
+                Log.battle(`> ${unit.name()} used ${action.name}!`);
             }
 
             const script = Data.actionScripts[action.script] || Data.actionScripts.attack || [];
@@ -1399,78 +1307,77 @@ showDamageNumber(uid, val, isCrit = false) {
                     switch (effect.type) {
                         case 'hp_damage':
                             let dealtDamage = value;
-                            let newHp = target.hp - dealtDamage;
+                            let newHp = target.hp() - dealtDamage;
                             const defenderWithStats = Systems.Battle.getUnitWithStats(target);
                             if (newHp <= 0) {
                                 if (Math.random() < (defenderWithStats.survive_ko_chance || 0)) {
                                     newHp = 1;
-                                    dealtDamage = target.hp > 0 ? target.hp - 1 : 0;
-                                    Log.battle(`> ${target.name} survives with 1 HP!`);
+                                    dealtDamage = target.hp() > 0 ? target.hp() - 1 : 0;
+                                    Log.battle(`> ${target.name()} survives with 1 HP!`);
                                 }
                             }
-                            target.hp = Math.max(0, newHp);
+                            target.setHp(Math.max(0, newHp));
                             if (dealtDamage > 0) {
-                                Log.battle(`> ${unit.name} hits ${target.name} for ${dealtDamage}.`);
+                                Log.battle(`> ${unit.name()} hits ${target.name()} for ${dealtDamage}.`);
                                 Systems.Battle3D.showDamageNumber(target.uid, -dealtDamage);
                                 Systems.Battle3D.playAnim(target.uid, [{type: 'feedback', bind: 'self', shake: 0.8, opacity: 0.7, color: 0xffffff}]);
                             }
-                            if (target.hp <= 0) {
-                                Log.battle(`> ${target.name} was defeated!`);
+                            if (target.hp() <= 0) {
+                                Log.battle(`> ${target.name()} was defeated!`);
                                 Systems.Battle3D.playDeathFade(target.uid);
                                 Systems.Triggers.fire('onUnitDeath', target);
                                 if (Math.random() < (defenderWithStats.revive_on_ko_chance || 0)) {
                                     const revivePercent = defenderWithStats.revive_on_ko_percent || 0.5;
-                                    const revivedHp = Math.floor(Systems.Battle.getMaxHp(target) * revivePercent);
-                                    target.hp = revivedHp;
-                                    Log.battle(`> ${target.name} was revived with ${revivedHp} HP!`);
+                                    const revivedHp = Math.floor(target.mhp() * revivePercent);
+                                    target.setHp(revivedHp);
+                                    Log.battle(`> ${target.name()} was revived with ${revivedHp} HP!`);
                                     const revivedTs = Systems.Battle3D.sprites[target.uid];
                                     if (revivedTs) revivedTs.visible = true;
                                 }
                             }
                             break;
                         case 'hp_heal':
-                            const maxhp = Systems.Battle.getMaxHp(target);
-                            target.hp = Math.min(maxhp, target.hp + value);
-                            Log.battle(`> ${target.name} healed for ${value}.`);
+                            const maxhp = target.mhp();
+                            target.setHp(Math.min(maxhp, target.hp() + value));
+                            Log.battle(`> ${target.name()} healed for ${value}.`);
                             Systems.Battle3D.showDamageNumber(target.uid, value);
                             Systems.Battle3D.playAnim(target.uid, [{type: 'feedback', bind: 'self', opacity: 0.5, color: 0x00ff00}]);
                             break;
                         case 'hp_heal_ratio':
-                            const maxHpRatio = Systems.Battle.getMaxHp(target);
+                            const maxHpRatio = target.mhp();
                             const healAmount = Math.floor(maxHpRatio * parseFloat(effect.formula));
-                            target.hp = Math.min(maxHpRatio, target.hp + healAmount);
-                            Log.battle(`> ${target.name} healed for ${healAmount}.`);
+                            target.setHp(Math.min(maxHpRatio, target.hp() + healAmount));
+                            Log.battle(`> ${target.name()} healed for ${healAmount}.`);
                             Systems.Battle3D.showDamageNumber(target.uid, healAmount);
                             break;
                         case 'revive':
-                            if (target.hp <= 0) {
-                                const revivedHp = Math.floor(Systems.Battle.getMaxHp(target) * parseFloat(effect.formula));
-                                target.hp = revivedHp;
-                                Log.battle(`> ${target.name} was revived with ${revivedHp} HP.`);
+                            if (target.hp() <= 0) {
+                                const revivedHp = Math.floor(target.mhp() * parseFloat(effect.formula));
+                                target.setHp(revivedHp);
+                                Log.battle(`> ${target.name()} was revived with ${revivedHp} HP.`);
                                 const ts = Systems.Battle3D.sprites[target.uid];
                                 if (ts) ts.visible = true;
                             }
                             break;
                         case 'increase_max_hp':
                             const bonus = parseInt(effect.formula);
-                            target.maxHpBonus = (target.maxHpBonus || 0) + bonus;
-                            target.hp += bonus;
-                            Log.battle(`> ${target.name}'s Max HP increased by ${bonus}.`);
+                            target.setMaxHp(target.mhp() + bonus);
+                            target.setHp(target.hp() + bonus);
+                            Log.battle(`> ${target.name()}'s Max HP increased by ${bonus}.`);
                             break;
                         case 'add_status':
                             if (Math.random() < (effect.chance || 1)) {
-                                if (!target.status) target.status = [];
-                                if (!target.status.includes(effect.status)) {
-                                    target.status.push(effect.status);
+                                if (!target.status().includes(effect.status)) {
+                                    target.addStatus(effect.status);
+                                    Log.battle(`> ${target.name()} is now ${effect.status}.`);
                                 }
-                                Log.battle(`> ${target.name} is now ${effect.status}.`);
                             }
                             break;
                     }
                 });
                 window.Game.Windows.Party.refresh();
-                if (GameState.battle.allies.every(u => u.hp <= 0) || GameState.battle.enemies.every(u => u.hp <= 0)) {
-                    GameState.battle.turnIndex = 999;
+                if ($gameBattle.allies.every(u => u.hp() <= 0) || $gameBattle.enemies.every(u => u.hp() <= 0)) {
+                    $gameBattle.turnIndex = 999;
                 }
             };
             Systems.Battle3D.playAnim(unit.uid, script, {
@@ -1480,59 +1387,57 @@ showDamageNumber(uid, val, isCrit = false) {
             });
         },
         end(win) {
+            if ($gameBattle.isEnding) return;
+            $gameBattle.isEnding = true;
+
+            window.Game.Windows.BattleLog.closeModal();
             document.getElementById('battle-ui-overlay').innerHTML = '';
             if (win) {
                 window.Game.Windows.BattleLog.showBanner('VICTORY');
-                GameState.ui.mode = 'BATTLE_WIN';
-                Systems.sceneHooks?.onBattleEnd?.();
-                Systems.Triggers.fire('onBattleEnd', [...GameState.battle.allies, ...GameState.battle.enemies].filter(u => u && u.hp > 0));
+                Game.ui.mode = 'BATTLE_WIN';
+                Systems.Triggers.fire('onBattleEnd', [...$gameBattle.allies, ...$gameBattle.enemies].filter(u => u && u.hp() > 0));
                 Systems.Battle3D.setFocus('victory');
-                const gold = GameState.battle.enemies.length * Data.config.baseGoldPerEnemy * GameState.run.floor;
-                const baseXp = GameState.battle.enemies.length * Data.config.baseXpPerEnemy * GameState.run.floor;
-                GameState.run.gold += gold;
+
+                const gold = $gameBattle.enemies.length * Data.config.baseGoldPerEnemy * $gameMap.floor();
+                const baseXp = $gameBattle.enemies.length * Data.config.baseXpPerEnemy * $gameMap.floor();
+                $gameParty.gainGold(gold);
+
                 let finalXp = baseXp;
-                GameState.party.activeSlots.forEach(p => {
+                $gameParty.actors().forEach(p => {
                     if (p) {
                         const unitWithStats = this.getUnitWithStats(p);
                         finalXp = Math.round(baseXp * (1 + (unitWithStats.xp_bonus_percent || 0)));
-                        p.exp = (p.exp || 0) + finalXp;
-                        const def = Data.creatures[p.speciesId];
-                        let levelCost = def.xpCurve * p.level;
-                        let levelUpOccurred = false;
-                        while (p.exp >= levelCost) {
-                            p.exp -= levelCost;
-                            p.level++;
-                            const newMax = Math.round(def.baseHp * (1 + def.hpGrowth * (p.level - 1)));
-                            p.maxhp = newMax;
-                            p.hp = newMax;
-                            levelCost = def.xpCurve * p.level;
-                            levelUpOccurred = true;
-                        }
-                        if (levelUpOccurred) Log.add(`${p.name} Lv UP -> ${p.level}!`);
+                        p.gainExp(finalXp);
                     }
                 });
-                GameState.party.activeSlots.forEach(p => {
+
+                $gameParty.actors().forEach(p => {
                     if (p) {
-                        const maxhp = Systems.Battle.getMaxHp(p);
-                        const heal = Math.floor(maxhp * 0.25);
-                        p.hp = Math.min(maxhp, p.hp + heal);
+                        p.gainHp(Math.floor(p.mhp() * 0.25));
                     }
                 });
+
                 window.Game.Windows.HUD.refresh();
                 window.Game.Windows.BattleLog.showModal(`
                     <div class="text-yellow-500 text-2xl mb-4">VICTORY</div>
                     <div class="text-white">Found ${gold} Gold</div>
                     <div class="text-white">Party +${finalXp} XP</div>
-                    <button class="mt-4 border border-white px-4 py-2 hover:bg-gray-800" onclick="Game.Windows.BattleLog.closeModal(); Game.Scenes.battle.switchScene(false);">CONTINUE</button>
+                    <button class="mt-4 border border-white px-4 py-2 hover:bg-gray-800" onclick="Game.Systems.Battle.exitVictory()">CONTINUE</button>
                 `);
             } else {
-                GameState.ui.mode = 'EXPLORE';
+                Game.ui.mode = 'EXPLORE';
                 Systems.Battle3D.setFocus('neutral');
                 window.Game.Windows.BattleLog.showModal(`
                     <div class="text-red-600 text-4xl mb-4">DEFEATED</div>
                     <button class="mt-4 border border-red-800 text-red-500 px-4 py-2 hover:bg-red-900/20" onclick="location.reload()">RESTART</button>
                 `);
             }
+        },
+
+        exitVictory() {
+            window.Game.Windows.BattleLog.closeModal();
+            Systems.sceneHooks?.onBattleEnd?.();
+            $gameBattle.end();
         }
     },
 };

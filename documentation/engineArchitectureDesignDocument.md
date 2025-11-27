@@ -106,19 +106,18 @@ Traits are handled via a `switch` statement inside `handleTrait`.
 
 ## 4. Phased Refactoring Roadmap
 
-### Phase 1: The Object Model (Foundation) - Not Started
+### Phase 1: The Object Model (Foundation) - In Progress
 *Goal: Encapsulate `GameState` raw JSON into functional Classes.*
 
-1.  **Create `Game_BattlerBase`, `Game_Battler`, `Game_Actor`, `Game_Enemy`.**
-    *   Move `getMaxHp`, `applyHealing` from `objects.js` into these classes.
-    *   Implement `addState`, `removeState`, `isStateAffected`.
-2.  **Create `Game_Party`.**
-    *   Encapsulate `activeSlots`, `inventory`, and `gold`.
-    *   Add methods: `gainGold()`, `gainItem()`, `swapOrder()`.
-3.  **Create `Game_Map`.**
-    *   Encapsulate tile data and player XY coordinates.
-    *   Move "Generate Floor" logic here.
-4.  **Replace `GameState`:** The global object should instanciate these classes: `window.$gameParty = new Game_Party();`.
+**Status: In Progress.**
+
+**Summary of Implementation:**
+*   **Created Core Classes:** All foundational classes (`Game_BattlerBase`, `Game_Battler`, `Game_Actor`, `Game_Enemy`, `Game_Party`, `Game_Map`) were created and placed in `src/game/classes/`.
+*   **Encapsulation:** Logic and data formerly in `objects.js` and `state.js` were moved into these new classes. Getters and setters (e.g., `actor.hp()`, `actor.setHp()`) were implemented to protect internal state.
+*   **Global Instances:** A new file, `src/game/globals.js`, was created to instantiate and export global instances of the core classes (e.g., `$gameParty`, `$gameMap`), making them accessible throughout the engine.
+*   **Data Manager:** A `DataManager` class was created in `src/game/managers.js` to handle the setup and initialization of the new game objects, cleanly separating object creation from data hydration.
+*   **System-wide Refactor:** The entire codebase, including `systems.js`, `windows.js`, and `main.js`, was updated to use the new class instances and their methods instead of the old `GameState` object.
+*   **Cleanup:** The legacy `state.js` and `objects.js` files were deleted.
 
 ### Phase 2: The Manager Layer (Logic Decoupling) - Not Started
 *Goal: Remove `Systems` god-object.*
@@ -130,7 +129,7 @@ Traits are handled via a `switch` statement inside `handleTrait`.
     *   Implement a proper `.update()` loop that calls `currentScene.update()`.
     *   Handle scene transitions with a "busy" state to prevent input bleed.
 
-### Phase 3: The Window System (UI Abstraction) - In Progress
+### Phase 3: The Window System (UI Abstraction) - Not Started
 *Goal: Remove `ShellUI` and DOM string building.*
 
 1.  **Create `Window_Base`.**
