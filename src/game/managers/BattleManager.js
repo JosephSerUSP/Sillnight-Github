@@ -118,11 +118,12 @@ export const BattleManager = {
         }
 
         const allUnits = [...this.allies, ...this.enemies]
-            .filter(u => u.hp > 0)
-            .map(u => {
-                const unitWithStats = Systems.Battle.getUnitWithStats(u);
-                return { ...u, speed: unitWithStats.speed_bonus };
-            });
+            .filter(u => u.hp > 0);
+
+        allUnits.forEach(u => {
+            const unitWithStats = Systems.Battle.getUnitWithStats(u);
+            u.speed = unitWithStats.speed_bonus;
+        });
 
         allUnits.sort((a, b) => b.speed - a.speed || Math.random() - 0.5);
         this.queue = allUnits;
