@@ -2,11 +2,11 @@
 // Scenes coordinate systems, windows, and input without owning the persistent DOM.
 
 import { GameState } from './state.js';
+import { Scene } from './scene.js';
 
-export class Scene_Base {
-    constructor(systems, ui) {
-        this.systems = systems;
-        this.ui = ui;
+export class Scene_Base extends Scene {
+    constructor(systems, windows) {
+        super(systems, windows);
     }
     onEnter() {}
     onExit() {}
@@ -17,7 +17,7 @@ export class Scene_Base {
 export class Scene_Explore extends Scene_Base {
     onEnter() {
         GameState.ui.mode = 'EXPLORE';
-        this.ui.switchScene(false, () => this.systems.Explore.render());
+        this.switchScene(false, () => this.systems.Explore.render());
     }
 
     handleInput(e) {
@@ -26,8 +26,8 @@ export class Scene_Explore extends Scene_Base {
         if (e.key === 'ArrowDown') this.systems.Explore.move(0, 1);
         if (e.key === 'ArrowLeft') this.systems.Explore.move(-1, 0);
         if (e.key === 'ArrowRight') this.systems.Explore.move(1, 0);
-        if (e.key === 'p' || e.key === 'P') this.ui.toggleParty();
-        if (e.key === 'b' || e.key === 'B') this.ui.toggleInventory();
+        if (e.key === 'p' || e.key === 'P') this.windows.PartyMenu.toggle();
+        if (e.key === 'b' || e.key === 'B') this.windows.Inventory.toggle();
         return true;
     }
 }
@@ -35,7 +35,7 @@ export class Scene_Explore extends Scene_Base {
 export class Scene_Battle extends Scene_Base {
     onEnter() {
         GameState.ui.mode = 'BATTLE';
-        this.ui.switchScene(true);
+        this.switchScene(true);
     }
 
     handleInput(e) {
