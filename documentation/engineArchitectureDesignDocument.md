@@ -106,7 +106,7 @@ Traits are handled via a `switch` statement inside `handleTrait`.
 
 ## 4. Phased Refactoring Roadmap
 
-### Phase 1: The Object Model (Foundation) - Not Started
+### Phase 1: The Object Model (Foundation) - Complete
 *Goal: Encapsulate `GameState` raw JSON into functional Classes.*
 
 1.  **Create `Game_BattlerBase`, `Game_Battler`, `Game_Actor`, `Game_Enemy`.**

@@ -1,5 +1,15 @@
 // Managers for scene flow and input (similar to rmmz_managers.js).
 // Add new managers here (SceneManager, InputManager, etc.) instead of scattering globals.
+import { initializeGlobals, $gameParty, $gameMap } from './globals.js';
+import { Data } from '../assets/data/data.js';
+
+export class DataManager {
+    static setupNewGame() {
+        initializeGlobals();
+        $gameParty.setupStartingMembers();
+        $gameMap.generateFloor();
+    }
+}
 
 export class SceneManager {
     constructor() {
