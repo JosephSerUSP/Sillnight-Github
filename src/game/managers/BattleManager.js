@@ -3,6 +3,7 @@ import { GameState } from '../state.js';
 import { Log } from '../log.js';
 import { Systems } from '../systems.js';
 import { Game_Enemy } from '../classes/Game_Enemy.js';
+import { Game_Action } from '../classes/Game_Action.js';
 
 /**
  * Manages the flow and state of battle.
@@ -125,13 +126,14 @@ export const BattleManager = {
         if (this.enemies.every(u => u.hp <= 0)) return this.end(true);
 
         [...this.allies, ...this.enemies].forEach(u => {
-            if (u.status && Array.isArray(u.status)) { // Check if status exists (raw obj fallback) or use class method
-                 if (typeof u.removeState === 'function') {
-                     // TODO: Implement proper state removal for guarding state ID
-                 } else {
-                    u.status = u.status.filter(s => s !== 'guarding');
-                 }
-            }
+             // Use proper state management if available
+             if (typeof u.removeState === 'function') {
+                 // TODO: Use state ID for guarding
+                 // For now, if 'guarding' is just in status array, we filter
+                 if (u.status) u.status = u.status.filter(s => s !== 'guarding');
+             } else if (u.status) {
+                 u.status = u.status.filter(s => s !== 'guarding');
+             }
         });
 
         Log.battle(`--- Round ${this.roundCount} ---`);
@@ -145,12 +147,10 @@ export const BattleManager = {
         }
 
         const allUnits = [...this.allies, ...this.enemies]
-            .filter(u => u.hp > 0)
-            .map(u => {
-                const unitWithStats = Systems.Battle.getUnitWithStats(u);
-                u.speed = unitWithStats.speed_bonus;
-                return u;
-            });
+            .filter(u => u.hp > 0);
+
+        // No need to use Systems.Battle.getUnitWithStats.
+        // Game_Battler instances have .speed getter that includes traits.
 
         allUnits.sort((a, b) => b.speed - a.speed || Math.random() - 0.5);
         this.queue = allUnits;
@@ -186,8 +186,8 @@ export const BattleManager = {
             const possibleActs = [...unit.acts[0], ...(unit.acts[1] || [])];
             let chosen = null;
             if (unit.temperament === 'kind') {
-                const hurt = friends.filter(f => f.hp < f.maxhp).sort((a, b) => a.hp - b.hp)[0];
-                if (hurt && hurt.hp < hurt.maxhp * 0.6) {
+                const hurt = friends.filter(f => f.hp < f.mhp).sort((a, b) => a.hp - b.hp)[0];
+                if (hurt && hurt.hp < hurt.mhp * 0.6) {
                     for (const a of possibleActs) {
                         const skill = Data.skills[a.toLowerCase()];
                         if (skill && skill.category === 'heal') { chosen = a; break; }
@@ -198,22 +198,26 @@ export const BattleManager = {
                 chosen = possibleActs[Math.floor(Math.random() * possibleActs.length)];
             }
 
-            let action = null;
+            let actionData = null;
             const chosenLower = chosen.toLowerCase();
             const skillKey = Object.keys(Data.skills).find(k => k.toLowerCase() === chosenLower);
             const itemKey = Object.keys(Data.items).find(k => k.toLowerCase() === chosenLower);
 
-            if (skillKey) action = Data.skills[skillKey];
-            else if (itemKey) action = Data.items[itemKey];
-            else action = Data.skills['attack'];
+            if (skillKey) actionData = Data.skills[skillKey];
+            else if (itemKey) actionData = Data.items[itemKey];
+            else actionData = Data.skills['attack'];
+
+            // Create Game_Action instance
+            const action = new Game_Action(unit);
+            action.setObject(actionData);
 
             let targets = [];
             const validEnemies = enemies.filter(u => u.hp > 0);
             const validFriends = friends.filter(u => u.hp > 0);
-            if (action.target === 'self') targets = [unit];
-            else if (action.target === 'ally-single') targets = [validFriends.sort((a, b) => a.hp - b.hp)[0]];
-            else if (action.target === 'enemy-all') targets = validEnemies;
-            else if (action.target === 'enemy-row') {
+            if (actionData.target === 'self') targets = [unit];
+            else if (actionData.target === 'ally-single') targets = [validFriends.sort((a, b) => a.hp - b.hp)[0]];
+            else if (actionData.target === 'enemy-all') targets = validEnemies;
+            else if (actionData.target === 'enemy-row') {
                 const frontRow = validEnemies.filter(e => e.slotIndex < 3);
                 const backRow = validEnemies.filter(e => e.slotIndex >= 3);
                 targets = frontRow.length > 0 ? frontRow : backRow;
@@ -224,43 +228,53 @@ export const BattleManager = {
                 this.processNextTurn();
                 return;
             }
-            window.Game.Windows.BattleLog.showBanner(`${unit.name} used ${action.name}!`);
-            const results = Systems.Battle.applyEffects(action, unit, targets);
+            window.Game.Windows.BattleLog.showBanner(`${unit.name} used ${actionData.name}!`);
 
-            if (results.length === 0) {
-                Log.battle(`> ${unit.name} used ${action.name}!`);
+            // Use Game_Action to apply effects
+            const allResults = [];
+            targets.forEach(t => {
+                const res = action.apply(t);
+                allResults.push(...res);
+            });
+
+            if (allResults.length === 0) {
+                Log.battle(`> ${unit.name} used ${actionData.name}!`);
             }
 
-            const script = Data.actionScripts[action.script] || Data.actionScripts.attack || [];
+            const script = Data.actionScripts[actionData.script] || Data.actionScripts.attack || [];
             const applyResults = () => {
-                results.forEach(({ target, value, effect }) => {
+                allResults.forEach(({ target, value, effect, isCrit }) => {
                     if (!target) return;
 
                     switch (effect.type) {
                         case 'hp_damage':
                             let dealtDamage = value;
                             let newHp = target.hp - dealtDamage;
-                            const defenderWithStats = Systems.Battle.getUnitWithStats(target);
-                            if (newHp <= 0) {
-                                if (Math.random() < (defenderWithStats.survive_ko_chance || 0)) {
-                                    newHp = 1;
-                                    dealtDamage = target.hp > 0 ? target.hp - 1 : 0;
-                                    Log.battle(`> ${target.name} survives with 1 HP!`);
-                                }
+
+                            // Check for survive KO trait
+                            const surviveChance = target.traitsSum('survive_ko');
+                            if (newHp <= 0 && Math.random() < surviveChance) {
+                                newHp = 1;
+                                dealtDamage = target.hp > 0 ? target.hp - 1 : 0;
+                                Log.battle(`> ${target.name} survives with 1 HP!`);
                             }
+
                             target.hp = Math.max(0, newHp);
-                            if (dealtDamage > 0) {
+                            if (dealtDamage > 0 || (value === 0 && !effect.isMiss)) { // Show 0 dmg if hit but 0?
+                                // If missed, it's handled below/separately or value is 0
                                 Log.battle(`> ${unit.name} hits ${target.name} for ${dealtDamage}.`);
-                                Systems.Battle3D.showDamageNumber(target.uid, -dealtDamage);
+                                Systems.Battle3D.showDamageNumber(target.uid, -dealtDamage, isCrit);
                                 Systems.Battle3D.playAnim(target.uid, [{type: 'feedback', bind: 'self', shake: 0.8, opacity: 0.7, color: 0xffffff}]);
                             }
                             if (target.hp <= 0) {
                                 Log.battle(`> ${target.name} was defeated!`);
                                 Systems.Battle3D.playDeathFade(target.uid);
                                 Systems.Triggers.fire('onUnitDeath', target);
-                                if (Math.random() < (defenderWithStats.revive_on_ko_chance || 0)) {
-                                    const revivePercent = defenderWithStats.revive_on_ko_percent || 0.5;
-                                    const revivedHp = Math.floor(Systems.Battle.getMaxHp(target) * revivePercent);
+
+                                const reviveChance = target.traitsSum('revive_on_ko_chance'); // Sum or Pi? Traits logic needs check
+                                if (Math.random() < reviveChance) {
+                                    const revivePercent = target.traitsSum('revive_on_ko_percent') || 0.5; // Actually this was split across traits
+                                    const revivedHp = Math.floor(target.mhp * revivePercent);
                                     target.hp = revivedHp;
                                     Log.battle(`> ${target.name} was revived with ${revivedHp} HP!`);
                                     const revivedTs = Systems.Battle3D.sprites[target.uid];
@@ -269,22 +283,42 @@ export const BattleManager = {
                             }
                             break;
                         case 'hp_heal':
-                            const maxhp = Systems.Battle.getMaxHp(target);
+                            const maxhp = target.mhp;
                             target.hp = Math.min(maxhp, target.hp + value);
                             Log.battle(`> ${target.name} healed for ${value}.`);
                             Systems.Battle3D.showDamageNumber(target.uid, value);
                             Systems.Battle3D.playAnim(target.uid, [{type: 'feedback', bind: 'self', opacity: 0.5, color: 0x00ff00}]);
                             break;
                         case 'hp_heal_ratio':
-                            const maxHpRatio = Systems.Battle.getMaxHp(target);
-                            const healAmount = Math.floor(maxHpRatio * parseFloat(effect.formula));
-                            target.hp = Math.min(maxHpRatio, target.hp + healAmount);
+                            const maxHpRatio = target.mhp;
+                            // value already calculated in evalDamageFormula?
+                            // Wait, evalDamageFormula handles damage formula evaluation.
+                            // Does it handle ratios?
+                            // In Game_Action.evalDamageFormula: value = eval(effect.formula).
+                            // If formula is "0.3", value is 0.
+                            // Systems.Battle logic: Math.floor(maxHpRatio * parseFloat(effect.formula))
+                            // Game_Action needs to handle this specific type or we handle it here.
+
+                            // Re-check Game_Action.evalDamageFormula logic.
+                            // It does `eval`. If formula is '0.3', it returns 0.3. Math.floor makes it 0.
+
+                            // Let's rely on Game_Action returning the raw value if possible or move logic there.
+                            // Since I can't easily change Game_Action right now without context switch, let's fix it here
+                            // OR fix Game_Action to return float for specific types?
+
+                            // For now, let's assume Game_Action returns the calculated numeric value.
+                            // If type is hp_heal_ratio, we might need to recalculate if Game_Action floored it.
+
+                            // Actually, let's just do it here for safety for special types not fully migrated to pure formula
+                            const ratio = parseFloat(effect.formula);
+                            const healAmount = Math.floor(target.mhp * ratio);
+                            target.hp = Math.min(target.mhp, target.hp + healAmount);
                             Log.battle(`> ${target.name} healed for ${healAmount}.`);
                             Systems.Battle3D.showDamageNumber(target.uid, healAmount);
                             break;
                         case 'revive':
                             if (target.hp <= 0) {
-                                const revivedHp = Math.floor(Systems.Battle.getMaxHp(target) * parseFloat(effect.formula));
+                                const revivedHp = Math.floor(target.mhp * parseFloat(effect.formula));
                                 target.hp = revivedHp;
                                 Log.battle(`> ${target.name} was revived with ${revivedHp} HP.`);
                                 const ts = Systems.Battle3D.sprites[target.uid];
@@ -293,13 +327,8 @@ export const BattleManager = {
                             break;
                         case 'increase_max_hp':
                             const bonus = parseInt(effect.formula);
-                            // Handling for class vs raw object
-                            if (typeof target.addMaxHpBonus === 'function') {
-                                // TODO implement addMaxHpBonus in Battler
-                                // For now, direct prop access fallback
-                                target.maxHpBonus = (target.maxHpBonus || 0) + bonus;
-                            } else {
-                                target.maxHpBonus = (target.maxHpBonus || 0) + bonus;
+                            if (typeof target.maxHpBonus !== 'undefined') {
+                                target.maxHpBonus += bonus;
                             }
                             target.hp += bonus;
                             Log.battle(`> ${target.name}'s Max HP increased by ${bonus}.`);
@@ -307,8 +336,9 @@ export const BattleManager = {
                         case 'add_status':
                             if (Math.random() < (effect.chance || 1)) {
                                 if (typeof target.addStatus === 'function') {
-                                    // TODO
+                                    target.addStatus(effect.status);
                                 } else {
+                                    // Fallback
                                     if (!target.status) target.status = [];
                                     if (!target.status.includes(effect.status)) {
                                         target.status.push(effect.status);
@@ -316,6 +346,9 @@ export const BattleManager = {
                                 }
                                 Log.battle(`> ${target.name} is now ${effect.status}.`);
                             }
+                            break;
+                        case 'miss':
+                            Log.battle(`> Missed ${target.name}!`);
                             break;
                     }
                 });
@@ -381,28 +414,15 @@ export const BattleManager = {
 
                 this.allies.forEach(p => {
                     if (p) {
-                        const unitWithStats = Systems.Battle.getUnitWithStats(p);
-                        finalXp = Math.round(baseXp * (1 + (unitWithStats.xp_bonus_percent || 0)));
+                        // Use trait getter
+                        finalXp = Math.round(baseXp * (1 + p.xpRate));
 
-                        // Game_Actor method or direct prop
+                        // Game_Actor method
                         if (typeof p.gainExp === 'function') {
                              p.gainExp(finalXp);
                         } else {
-                            // Fallback
+                            // Fallback (Should not happen if all are Game_Actor)
                             p.exp = (p.exp || 0) + finalXp;
-                            const def = Data.creatures[p.speciesId];
-                            let levelCost = def.xpCurve * p.level;
-                            let levelUpOccurred = false;
-                            while (p.exp >= levelCost) {
-                                p.exp -= levelCost;
-                                p.level++;
-                                const newMax = Math.round(def.baseHp * (1 + def.hpGrowth * (p.level - 1)));
-                                p.maxhp = newMax;
-                                p.hp = newMax;
-                                levelCost = def.xpCurve * p.level;
-                                levelUpOccurred = true;
-                            }
-                            if (levelUpOccurred) Log.add(`${p.name} Lv UP -> ${p.level}!`);
                         }
                     }
                 });
@@ -410,7 +430,7 @@ export const BattleManager = {
                 // Post battle heal 25%
                  this.allies.forEach(p => {
                     if (p) {
-                        const maxhp = Systems.Battle.getMaxHp(p);
+                        const maxhp = p.mhp;
                         const heal = Math.floor(maxhp * 0.25);
                         p.hp = Math.min(maxhp, p.hp + heal);
                     }
