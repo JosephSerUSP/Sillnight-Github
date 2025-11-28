@@ -32,10 +32,46 @@ export class Game_Battler extends Game_BattlerBase {
 
     /**
      * @returns {number} Current speed (for turn order).
+     * Calculates base speed bonus from traits plus the transient speed value.
      */
-    get speed() { return this._speed; }
+    get speed() {
+        return this._speed + this.traitsSum('speed_bonus');
+    }
+
     /** @param {number} value - The new speed value. */
     set speed(value) { this._speed = value; }
+
+    // --- Derived Stats (Traits) ---
+
+    /** @returns {number} Critical Hit Rate (0-1). Base 5% + traits. */
+    get cri() {
+        return (Data.config.baseCritChance || 0.05) + this.traitsSum('crit_bonus_percent');
+    }
+
+    /** @returns {number} Evasion Rate (0-1). */
+    get eva() {
+        return this.traitsSum('evade_chance'); // Assuming 'evade_chance' trait type exists or will exist
+    }
+
+    /** @returns {number} Hit Rate (0-1). */
+    get hit() {
+        return 1.0 + this.traitsSum('hit_bonus');
+    }
+
+    /** @returns {number} Attack Power Bonus (Additive). */
+    get power() {
+        return this.traitsSum('power_bonus');
+    }
+
+    /** @returns {number} XP Bonus Percent. */
+    get xpRate() {
+        return this.traitsSum('xp_bonus_percent');
+    }
+
+    /** @returns {Array<string>} List of element changes/affinities. */
+    get elementTraits() {
+        return this.traitsSet('element_change').map(t => t.element);
+    }
 
     /**
      * Called at the start of a turn.
@@ -74,18 +110,6 @@ export class Game_Battler extends Game_BattlerBase {
      */
     removeBattleStates() {
         // Remove states that should expire at battle end
-    }
-
-    // Trait Helpers
-    /**
-     * Calculates the elemental rate.
-     * @param {number} elementId - The element ID.
-     * @returns {number} The multiplier (default 1).
-     */
-    elementRate(elementId) {
-        // return this.traitsPi(Game_Battler.TRAIT_ELEMENT_RATE, elementId);
-        // For now, simple implementation based on existing logic
-        return 1;
     }
 
     // Actions

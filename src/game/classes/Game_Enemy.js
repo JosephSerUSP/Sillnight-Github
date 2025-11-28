@@ -42,6 +42,25 @@ export class Game_Enemy extends Game_Battler {
     }
 
     /**
+     * returns the objects that provide traits.
+     * @returns {Array<Object>}
+     */
+    traitObjects() {
+        const objects = super.traitObjects();
+        const species = Data.creatures[this._speciesId];
+        if (species) {
+            objects.push(species);
+            if (species.passives) {
+                species.passives.forEach(pId => {
+                    const passive = Data.passives[pId];
+                    if (passive) objects.push(passive);
+                });
+            }
+        }
+        return objects;
+    }
+
+    /**
      * Fully recovers HP and MP, and clears states.
      */
     recoverAll() {
@@ -81,5 +100,11 @@ export class Game_Enemy extends Game_Battler {
     /** @returns {string} The temperament. */
     get temperament() { return Data.creatures[this._speciesId].temperament; }
     /** @returns {Array} Elemental affinities. */
-    get elements() { return Data.creatures[this._speciesId].elements || []; }
+    get elements() {
+        // Start with innate elements
+        const innate = Data.creatures[this._speciesId].elements || [];
+        // Check for element overrides from traits
+        const traitElements = this.elementTraits;
+        return traitElements.length > 0 ? traitElements : innate;
+    }
 }
