@@ -73,6 +73,48 @@ export class Game_Enemy extends Game_Battler {
         return 0;
     }
 
+    /**
+     * Collects all trait objects from species (enemies have no equips usually).
+     * @returns {Array<Object>}
+     */
+    traits() {
+        const traits = [];
+        // Species Traits (Passives)
+        const def = Data.creatures[this._speciesId];
+        if (def && def.passives) {
+            def.passives.forEach(pid => {
+                const p = Data.passives[pid];
+                if (p && p.traits) traits.push(...p.traits);
+            });
+        }
+        return traits;
+    }
+
+    /**
+     * Gets the additive bonus for a parameter.
+     * @param {number} paramId - The parameter ID.
+     * @returns {number} The additive bonus.
+     */
+    paramPlus(paramId) {
+        let plus = super.paramPlus(paramId);
+
+        // Legacy "power_bonus" was flat, mapping to atk (2)
+        if (paramId === 2) { // Atk
+            this.traits().forEach(t => {
+                if (t.type === 'power_bonus') plus += (parseInt(t.formula) || 0);
+            });
+        }
+
+        // Legacy "speed_bonus" mapped to agi (6)
+        if (paramId === 6) { // Agi
+            this.traits().forEach(t => {
+                if (t.type === 'speed_bonus') plus += (parseInt(t.formula) || 0);
+            });
+        }
+
+        return plus;
+    }
+
     // Compatibility
     /** @returns {number} The nominal level. */
     get level() { return this._level; }

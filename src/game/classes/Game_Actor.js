@@ -78,58 +78,63 @@ export class Game_Actor extends Game_Battler {
         if (paramId === 0) {
             return Math.round(def.baseHp * (1 + def.hpGrowth * (this._level - 1)));
         }
-        // Add other params if they exist in data
+        // TODO: Map other params if they exist in data.js creatures
         return 0;
     }
 
     /**
-     * Calculates the multiplicative rate for a parameter based on traits (equipment, passives).
-     * @param {number} paramId - The parameter ID.
-     * @returns {number} The multiplier (default 1.0).
+     * Collects all trait objects from species and equipment.
+     * @returns {Array<Object>}
      */
-    paramRate(paramId) {
-        let rate = super.paramRate(paramId);
-        // Equipment traits
-        if (this._equipmentId) {
-            const eq = Data.equipment[this._equipmentId];
-            if (eq && eq.traits) {
-                eq.traits.forEach(trait => {
-                    // Mapping paramId to trait types for now
-                    if (paramId === 0 && trait.type === 'hp_bonus_percent') {
-                         rate *= (1 + parseFloat(trait.formula));
-                    }
-                    // Add other param traits
-                });
-            }
-        }
-        // Passive traits
+    traits() {
+        const traits = [];
+
+        // Species Traits (Passives)
         const def = Data.creatures[this._speciesId];
         if (def && def.passives) {
-             def.passives.forEach(pid => {
-                 const p = Data.passives[pid];
-                 if (p && p.traits) {
-                     p.traits.forEach(trait => {
-                        if (paramId === 0 && trait.type === 'hp_bonus_percent') {
-                            rate *= (1 + parseFloat(trait.formula));
-                        }
-                     });
-                 }
-             });
+            def.passives.forEach(pid => {
+                const p = Data.passives[pid];
+                if (p && p.traits) traits.push(...p.traits);
+            });
         }
-        return rate;
+
+        // Equipment Traits
+        if (this._equipmentId) {
+            const eq = Data.equipment[this._equipmentId];
+            if (eq && eq.traits) traits.push(...eq.traits);
+        }
+
+        return traits;
     }
 
     /**
-     * Calculates the additive bonus for a parameter.
+     * Gets the additive bonus for a parameter.
      * @param {number} paramId - The parameter ID.
      * @returns {number} The additive bonus.
      */
     paramPlus(paramId) {
         let plus = super.paramPlus(paramId);
+
+        // 0: mhp
         if (paramId === 0) {
             // maxHpBonus logic from duplicated systems/objects
              plus += (this._maxHpBonus || 0);
         }
+
+        // Legacy "power_bonus" was flat, mapping to atk (2)
+        if (paramId === 2) { // Atk
+            this.traits().forEach(t => {
+                if (t.type === 'power_bonus') plus += (parseInt(t.formula) || 0);
+            });
+        }
+
+        // Legacy "speed_bonus" mapped to agi (6)
+        if (paramId === 6) { // Agi
+            this.traits().forEach(t => {
+                if (t.type === 'speed_bonus') plus += (parseInt(t.formula) || 0);
+            });
+        }
+
         return plus;
     }
 
@@ -171,13 +176,6 @@ export class Game_Actor extends Game_Battler {
      */
     expForLevel(level) {
         if (level <= 1) return 0;
-        // Cumulative XP required to reach 'level'
-        // Using formula: 100 * (level-1)^1.1
-        // This matches common.js getXpForNextLevel logic where:
-        // getXpForNextLevel(1) = 100 (Threshold for L2)
-        // getXpForNextLevel(2) = 214 (Threshold for L3)
-        // So expForLevel(2) should be 100.
-        // expForLevel(3) should be 214.
         return Math.round(100 * Math.pow(level - 1, 1.1));
     }
 

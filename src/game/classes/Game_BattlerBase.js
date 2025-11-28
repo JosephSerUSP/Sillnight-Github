@@ -64,7 +64,12 @@ export class Game_BattlerBase {
      */
     get mmp() { return this.param(1); }
 
-    // Other parameter getters can be added as needed: atk, def, etc.
+    get atk() { return this.param(2); }
+    get def() { return this.param(3); }
+    get mat() { return this.param(4); }
+    get mdf() { return this.param(5); }
+    get agi() { return this.param(6); }
+    get luk() { return this.param(7); }
 
     /**
      * Checks if the battler is alive.
@@ -84,7 +89,7 @@ export class Game_BattlerBase {
 
     /**
      * Checks if a specific state is active.
-     * @param {number} stateId - The state ID.
+     * @param {number|string} stateId - The state ID.
      * @returns {boolean} True if affected.
      */
     isStateAffected(stateId) {
@@ -93,7 +98,7 @@ export class Game_BattlerBase {
 
     /**
      * Adds a state to the battler.
-     * @param {number} stateId - The state ID.
+     * @param {number|string} stateId - The state ID.
      */
     addState(stateId) {
         if (this.isStateAddable(stateId)) {
@@ -107,7 +112,7 @@ export class Game_BattlerBase {
 
     /**
      * Removes a state from the battler.
-     * @param {number} stateId - The state ID.
+     * @param {number|string} stateId - The state ID.
      */
     removeState(stateId) {
         if (this.isStateAffected(stateId)) {
@@ -118,7 +123,7 @@ export class Game_BattlerBase {
 
     /**
      * Checks if a state can be added (resistances).
-     * @param {number} stateId - The state ID.
+     * @param {number|string} stateId - The state ID.
      * @returns {boolean} True if addable.
      */
     isStateAddable(stateId) {
@@ -167,7 +172,20 @@ export class Game_BattlerBase {
      * @param {number} paramId - The parameter ID.
      * @returns {number} The multiplier.
      */
-    paramRate(paramId) { return 1; } // Trait multipliers
+    paramRate(paramId) {
+        // Example Mapping paramId to trait types
+        // 0=hp_bonus_percent, 2=power_bonus (though power_bonus was +flat in systems.js, let's standardize)
+        // For strict refactor parity, we need to support legacy traits first.
+        let rate = 1;
+        const traits = this.traits();
+        traits.forEach(trait => {
+            if (paramId === 0 && trait.type === 'hp_bonus_percent') {
+                rate *= (1 + (parseFloat(trait.formula) || 0));
+            }
+            // Add other param traits
+        });
+        return rate;
+    }
 
     /**
      * Gets the multiplier from buffs/debuffs.
@@ -185,12 +203,12 @@ export class Game_BattlerBase {
     }
 
     /**
-     * Gets all traits with a specific code.
-     * @param {number|string} code - The trait code.
+     * Gets all traits with a specific code or type.
+     * @param {number|string} code - The trait code/type.
      * @returns {Array<Object>} Filtered traits.
      */
     traitsSet(code) {
-        return this.traits().filter(trait => trait.code === code);
+        return this.traits().filter(trait => trait.code === code || trait.type === code);
     }
 
     /**
