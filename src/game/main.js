@@ -82,12 +82,28 @@ export const Game = {
     }
 };
 
+function scaleGameContainer() {
+    const container = document.getElementById('game-container');
+    if (!container) return;
+
+    const targetWidth = 960;
+    const targetHeight = 540;
+
+    const scaleX = window.innerWidth / targetWidth;
+    const scaleY = window.innerHeight / targetHeight;
+    const scale = Math.min(scaleX, scaleY);
+
+    container.style.transform = `scale(${scale})`;
+}
+
 window.addEventListener('resize', () => {
+    scaleGameContainer();
     Systems.Explore.resize();
     Systems.Battle3D.resize();
 });
 
 window.addEventListener('load', async () => {
+    scaleGameContainer();
     await Game.init();
 });
 

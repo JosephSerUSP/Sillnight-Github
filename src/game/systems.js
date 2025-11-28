@@ -295,17 +295,15 @@ export const Systems = {
             this.scene.background = new THREE.Color(0x050510);
             this.scene.fog = new THREE.FogExp2(0x051015, 0.05);
 
-            const containerW = container.clientWidth;
-            const containerH = container.clientHeight;
-
-            // PS1 Style Resolution
-            const targetH = 240;
-            const aspect = containerW / containerH;
-            const targetW = Math.floor(targetH * aspect);
+            // Fixed PS1 Style Resolution (480x270)
+            const targetW = 480;
+            const targetH = 270;
+            const aspect = targetW / targetH;
 
             this.camera = new THREE.PerspectiveCamera(50, aspect, 0.1, 100);
 
             this.renderer = new THREE.WebGLRenderer({ antialias: false });
+            this.renderer.setPixelRatio(1); // Force 1:1 pixel ratio
             this.renderer.setSize(targetW, targetH, false);
             this.renderer.domElement.id = 'explore-canvas-3d';
 
@@ -474,13 +472,11 @@ export const Systems = {
         /** Resizes the canvas to match the window dimensions. */
         resize() {
             if(!this.renderer || !this.camera) return;
-            const container = document.getElementById('explore-container');
-            const w = container.clientWidth || window.innerWidth;
-            const h = container.clientHeight || window.innerHeight;
-
-            const targetH = 240;
-            const aspect = w / h;
-            const targetW = Math.floor(targetH * aspect);
+            // Resolution is fixed, so we just ensure the renderer stays at fixed size.
+            // Aspect ratio is fixed 16:9 (480x270)
+            const targetW = 480;
+            const targetH = 270;
+            const aspect = targetW / targetH;
 
             this.camera.aspect = aspect;
             this.camera.updateProjectionMatrix();
@@ -800,16 +796,16 @@ export const Systems = {
             this.scene = new THREE.Scene();
             this.scene.background = new THREE.Color(0x0a0a0a);
             
-            const w = window.innerWidth;
-            const h = window.innerHeight;
-            const targetH = 240;
-            const aspect = w / h;
-            const targetW = Math.floor(targetH * aspect);
+            // Fixed Resolution 480x270
+            const targetW = 480;
+            const targetH = 270;
+            const aspect = targetW / targetH;
 
             this.camera = new THREE.PerspectiveCamera(28, aspect, 0.1, 1000);
             this.camera.up.set(0, 0, 1);
             
             this.renderer = new THREE.WebGLRenderer({ alpha: false, antialias: false });
+            this.renderer.setPixelRatio(1); // Force 1:1 pixel ratio for consistency
             this.renderer.setSize(targetW, targetH, false);
             this.renderer.domElement.style.width = '100%';
             this.renderer.domElement.style.height = '100%';
@@ -837,12 +833,10 @@ export const Systems = {
         /** Resizes the renderer and camera aspect ratio. */
         resize() {
             if (!this.camera || !this.renderer) return;
-            const w = window.innerWidth;
-            const h = window.innerHeight;
-
-            const targetH = 240;
-            const aspect = w / h;
-            const targetW = Math.floor(targetH * aspect);
+            // Fixed Resolution 480x270
+            const targetW = 480;
+            const targetH = 270;
+            const aspect = targetW / targetH;
 
             this.camera.aspect = aspect;
             this.camera.updateProjectionMatrix();
@@ -1003,8 +997,11 @@ export const Systems = {
             this.camera.updateMatrixWorld();
             vec.setFromMatrixPosition(obj.matrixWorld);
             vec.project(this.camera);
-            const width = this.renderer.domElement.width;
-            const height = this.renderer.domElement.height;
+
+            // Map 0..1 coordinates to the UI container size (960x540)
+            const width = 960;
+            const height = 540;
+
             return {
                 x: (vec.x * 0.5 + 0.5) * width,
                 y: (-(vec.y * 0.5) + 0.5) * height
