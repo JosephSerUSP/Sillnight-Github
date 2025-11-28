@@ -194,5 +194,17 @@
             element: 'R',
             script: 'feast',
             effects: [{ type: 'hp_heal', formula: '5 + 1.5 * a.level' }]
-        }
+        },
+
+        // --- CAMPAIGN SKILLS ---
+        stabilize: { id: 'stabilize', name: 'Stabilize', element: 'W', script: 'attack', effects: [{ type: 'hp_damage', formula: '5 + 2 * a.level' }] },
+        fractureStrike: { id: 'fractureStrike', name: 'Fracture Strike', element: 'K', script: 'attack', effects: [{ type: 'hp_damage', formula: '10 + 3 * a.level' }, { type: 'self_damage', formula: '5' }] },
+        crystalShield: { id: 'crystalShield', name: 'Crystal Shield', category: 'effect', target: 'ally-all', script: 'cure', effects: [{ type: 'add_status', status: 'guarding', chance: 1 }] },
+        voidGaze: { id: 'voidGaze', name: 'Void Gaze', category: 'effect', target: 'enemy-single', script: 'curse', effects: [{ type: 'debuff', stat: 'def', amount: 5 }] },
+        mend: { id: 'mend', name: 'Mend', category: 'heal', target: 'ally-single', script: 'cure', effects: [{ type: 'hp_heal', formula: '10 + 3 * a.level' }] },
+        cleave: { id: 'cleave', name: 'Cleave', target: 'enemy-row', script: 'attackRow', effects: [{ type: 'hp_damage', formula: '5 + 1.8 * a.level' }] },
+        pierce: { id: 'pierce', name: 'Pierce', script: 'attack', effects: [{ type: 'hp_damage', formula: '5 + 2 * a.level' }] }, // Ignores def logic implied
+        aetherBeam: { id: 'aetherBeam', name: 'Aether Beam', element: 'W', script: 'ray', effects: [{ type: 'hp_damage', formula: '8 + 2 * a.level' }] },
+        timeWarp: { id: 'timeWarp', name: 'Time Warp', category: 'effect', target: 'ally-single', script: 'flash', effects: [{ type: 'add_status', status: 'haste', chance: 1 }] },
+        realityBreak: { id: 'realityBreak', name: 'Reality Break', target: 'enemy-all', element: 'K', script: 'apocalypse', effects: [{ type: 'hp_damage', formula: '20 + 4 * a.level' }] }
     };

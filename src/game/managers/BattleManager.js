@@ -62,8 +62,32 @@ export const BattleManager = {
      * Generates a random encounter based on the current floor and starts it.
      */
     startEncounter() {
-         const swipe = document.getElementById('swipe-overlay');
+        const floor = GameState.run.floor;
+        const dungeon = Data.dungeons.default;
+        const enc = dungeon.encounters;
+        const pool = enc.pools.find(p => floor >= p.floors[0] && floor <= p.floors[1]);
+        const enemyTypes = pool ? pool.enemies : [];
+        const enemyCount = Math.floor(Math.random() * (enc.count.max - enc.count.min + 1)) + enc.count.min;
+        const enemyIds = [];
+        for (let i = 0; i < enemyCount; i++) {
+             enemyIds.push(enemyTypes[Math.floor(Math.random() * enemyTypes.length)]);
+        }
+        this.startFixedEncounter(enemyIds);
+    },
+
+    /**
+     * Starts a battle with a specific set of enemies.
+     * @param {Array<string>} enemyIds - List of enemy IDs to spawn.
+     * @returns {Promise<boolean>} Resolves to true if player won, false if lost.
+     */
+    startFixedEncounter(enemyIds) {
+        return new Promise((resolve) => {
+            const swipe = document.getElementById('swipe-overlay');
             swipe.className = 'swipe-down';
+
+            // Store the resolver in the manager so we can call it in end()
+            this._battleResolver = resolve;
+
             setTimeout(() => {
                 Systems.sceneHooks?.onBattleStart?.();
                 GameState.ui.mode = 'BATTLE';
@@ -74,25 +98,16 @@ export const BattleManager = {
                 Systems.Battle3D.resize();
 
                 const allies = GameState.party.activeSlots.filter(u => u !== null);
-
                 const floor = GameState.run.floor;
-                const dungeon = Data.dungeons.default;
-                const enc = dungeon.encounters;
-                const pool = enc.pools.find(p => floor >= p.floors[0] && floor <= p.floors[1]);
-                const enemyTypes = pool ? pool.enemies : [];
-                const enemyCount = Math.floor(Math.random() * (enc.count.max - enc.count.min + 1)) + enc.count.min;
                 const enemies = [];
 
-                for (let i = 0; i < enemyCount; i++) {
-                    const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+                enemyIds.forEach((type, i) => {
                     const mult = 1 + (floor * 0.1);
-
                     const enemy = new Game_Enemy(type, 0, 0, mult);
                     enemy.slotIndex = i;
-                    // Ensure full heal after scaling
                     enemy.recoverAll();
                     enemies.push(enemy);
-                }
+                });
 
                 this.setup(allies, enemies);
 
@@ -106,6 +121,7 @@ export const BattleManager = {
                     setTimeout(() => this.nextRound(), 1500);
                 }, 600);
             }, 600);
+        });
     },
 
     /**
@@ -367,6 +383,10 @@ export const BattleManager = {
      * @param {boolean} win - True if the player won.
      */
     end(win) {
+        if (this._battleResolver) {
+            this._battleResolver(win);
+            this._battleResolver = null;
+        }
          document.getElementById('battle-ui-overlay').innerHTML = '';
             if (win) {
                 window.Game.Windows.BattleLog.showBanner('VICTORY');

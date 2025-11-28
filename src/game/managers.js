@@ -1,8 +1,9 @@
 // Managers for scene flow and input.
 import { DataManager } from './DataManager.js';
 import { BattleManager } from './managers/BattleManager.js';
+import { CampaignManager } from './managers/CampaignManager.js';
 
-export { DataManager, BattleManager };
+export { DataManager, BattleManager, CampaignManager };
 
 /**
  * Manages the transitions and updates of game scenes.

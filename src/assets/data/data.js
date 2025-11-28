@@ -6,6 +6,7 @@ import { Items } from './items.js';
 import { Party } from './party.js';
 import { Skills } from './skills.js';
 import { Passives } from './passives.js';
+import { Campaign } from './campaign.js';
 
 // ------------------- DATA DEFINITIONS -------------------
 export const Data = {
@@ -175,5 +176,6 @@ export const Data = {
     items: Items,
     party: Party,
     skills: Skills,
-    passives: Passives
+    passives: Passives,
+    campaign: Campaign
 };

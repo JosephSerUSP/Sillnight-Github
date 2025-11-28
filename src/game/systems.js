@@ -237,9 +237,12 @@ export const Systems = {
                 GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
                 Systems.Battle.startEncounter();
             } else if (code === 3) { 
-                GameState.run.floor++;
-                Log.add('Descended...');
-                Systems.Map.generateFloor();
+                window.Game.CampaignManager.checkTrigger('endFloor').then(() => {
+                    GameState.run.floor++;
+                    Log.add('Descended...');
+                    Systems.Map.generateFloor();
+                    window.Game.CampaignManager.checkTrigger('startFloor');
+                });
             } else if (code === 4) { 
                 const treasure = Data.events.treasure;
                 const amt = treasure.gold.base

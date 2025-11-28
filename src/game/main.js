@@ -3,7 +3,7 @@ import { GameState } from './state.js';
 import { DataManager } from './DataManager.js';
 import { Log } from './log.js';
 import { Systems } from './systems.js';
-import { SceneManager, InputManager, BattleManager } from './managers.js';
+import { SceneManager, InputManager, BattleManager, CampaignManager } from './managers.js';
 import { Scene_Explore, Scene_Battle } from './scenes.js';
 import { Window_HUD } from './window/hud.js';
 import { Window_Party } from './window/party.js';
@@ -28,6 +28,7 @@ export const Game = {
     log: Log,
     Scenes: {},
     SceneManager: new SceneManager(),
+    CampaignManager: new CampaignManager(),
     Windows: {},
 
     /**
@@ -55,6 +56,9 @@ export const Game = {
         Systems.Battle3D.init();
         await Systems.Effekseer.preload();
 
+        // Initialize Campaign
+        this.CampaignManager.init();
+
         // Wire hooks for scene transitions originating from systems
         Systems.sceneHooks.onBattleStart = () => this.SceneManager.changeScene(this.Scenes.battle);
         Systems.sceneHooks.onBattleEnd = () => this.SceneManager.changeScene(this.Scenes.explore);
@@ -69,6 +73,11 @@ export const Game = {
         this.Windows.Party.refresh();
         this.Windows.HUD.refresh();
         Log.add('Welcome to Stillnight.');
+
+        // Check for opening event
+        setTimeout(() => {
+             this.CampaignManager.checkTrigger('startFloor');
+        }, 1000);
 
         // Scenes and input
         this.Scenes.explore = new Scene_Explore(Systems, this.Windows);
