@@ -379,5 +379,83 @@ export const Creatures = {
             ['attackRow', 'anvil'],
             ['feast', 'anvil']
         ]
+    },
+
+    // --- CAMPAIGN ENEMIES ---
+
+    // Zone 1
+    rat: {
+        id: 'rat', name: 'Giant Rat', description: 'A common pest, but unusually large and aggressive.',
+        sprite: '🐀', spriteAsset: 'assets/images/creatures/Rat.png',
+        baseHp: 10, hpGrowth: 0.1, xpCurve: 5, baseXp: 1, cost: 50,
+        temperament: 'selfish', race: 'Beast', elements: [], passives: [],
+        acts: [['attack']]
+    },
+    slime: {
+        id: 'slime', name: 'Green Slime', description: 'A mindless blob of acidic jelly.',
+        sprite: '🟢', spriteAsset: 'assets/images/creatures/Slime.png',
+        baseHp: 15, hpGrowth: 0.15, xpCurve: 6, baseXp: 2, cost: 60,
+        temperament: 'free', race: 'Amorphous', elements: ['G'], passives: [],
+        acts: [['attack'], ['wait', 'attack']]
+    },
+    stoneConstruct: {
+        id: 'stoneConstruct', name: 'Stone Construct', description: 'A primitive guardian made of animated rubble.',
+        sprite: '🗿', spriteAsset: 'assets/images/creatures/StoneConstruct.png',
+        baseHp: 25, hpGrowth: 0.18, xpCurve: 8, baseXp: 3, cost: 80,
+        temperament: 'free', race: 'Construct', elements: ['R'], passives: [],
+        acts: [['wait', 'attack'], ['attack']]
+    },
+    mossySentinel: {
+        id: 'mossySentinel', name: 'Moss-Covered Sentinel', description: 'A relic of the past, reactivated by the Spire.',
+        sprite: '🤖', spriteAsset: 'assets/images/creatures/MossySentinel.png',
+        baseHp: 150, hpGrowth: 0.2, xpCurve: 50, baseXp: 50, cost: 1000,
+        temperament: 'ruthless', race: 'Construct', elements: [], passives: ['highVitality'],
+        acts: [['attackRow'], ['attack']]
+    },
+
+    // Zone 2
+    crystallineGolem: {
+        id: 'crystallineGolem', name: 'Crystalline Golem', description: 'A golem infused with unstable aether crystals.',
+        sprite: '🔷', spriteAsset: 'assets/images/creatures/CrystalGolem.png',
+        baseHp: 60, hpGrowth: 0.22, xpCurve: 18, baseXp: 6, cost: 300,
+        temperament: 'ruthless', race: 'Construct', elements: ['W', 'R'], passives: ['highVitality'],
+        acts: [['attack'], ['wait', 'attackRow']]
+    },
+    crystalWisp: {
+        id: 'crystalWisp', name: 'Crystal Wisp', description: 'Floating light encased in crystal.',
+        sprite: '✨', spriteAsset: 'assets/images/creatures/Wisp.png',
+        baseHp: 20, hpGrowth: 0.1, xpCurve: 15, baseXp: 5, cost: 150,
+        temperament: 'free', race: 'Elemental', elements: ['W', 'B'], passives: [],
+        acts: [['ray']]
+    },
+    prismGuardian: {
+        id: 'prismGuardian', name: 'Prism Guardian', description: 'Protector of the Geode Layer.',
+        sprite: '💎', spriteAsset: 'assets/images/creatures/PrismGuardian.png',
+        baseHp: 300, hpGrowth: 0.25, xpCurve: 100, baseXp: 100, cost: 2000,
+        temperament: 'ruthless', race: 'Construct', elements: ['W'], passives: [],
+        acts: [['ray', 'cure'], ['thunder']]
+    },
+
+    // Zone 3
+    voidLeech: {
+        id: 'voidLeech', name: 'Void Leech', description: 'It feeds on existence itself.',
+        sprite: '🐛', spriteAsset: 'assets/images/creatures/VoidLeech.png',
+        baseHp: 40, hpGrowth: 0.2, xpCurve: 25, baseXp: 10, cost: 250,
+        temperament: 'selfish', race: 'Eldritch', elements: ['K'], passives: ['devilLeech'],
+        acts: [['attack'], ['curse']]
+    },
+    shadowShade: {
+        id: 'shadowShade', name: 'Shadow Shade', description: 'A shadow without a caster.',
+        sprite: '👥', spriteAsset: 'assets/images/creatures/Shade.png',
+        baseHp: 35, hpGrowth: 0.18, xpCurve: 22, baseXp: 9, cost: 200,
+        temperament: 'free', race: 'Undead', elements: ['K'], passives: [],
+        acts: [['attack'], ['wait', 'attack']]
+    },
+    avatarUnbound: {
+        id: 'avatarUnbound', name: 'Avatar of the Unbound', description: 'The physical manifestation of the fracture.',
+        sprite: '🌌', spriteAsset: 'assets/images/creatures/Avatar.png',
+        baseHp: 1000, hpGrowth: 0.5, xpCurve: 500, baseXp: 500, cost: 9999,
+        temperament: 'ruthless', race: 'Eldritch', elements: ['K', 'R', 'B'], passives: ['exploder'],
+        acts: [['apocalypse'], ['hellfire'], ['cosmicRay']]
     }
 };

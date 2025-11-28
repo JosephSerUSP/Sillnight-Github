@@ -2,6 +2,7 @@ import { Data } from '../assets/data/data.js';
 import { GameState } from './state.js';
 import { Log } from './log.js';
 import { resolveAssetPath } from './core.js';
+import { CampaignManager } from './managers/CampaignManager.js';
 
 // ------------------- HELPER CLASSES -------------------
 
@@ -60,6 +61,11 @@ class ParticleSystem {
  * @namespace Systems
  */
 export const Systems = {
+    /**
+     * The campaign manager instance.
+     */
+    Campaign: new CampaignManager(),
+
     /**
      * Hooks for triggering scene transitions.
      */
@@ -213,6 +219,7 @@ export const Systems = {
             if (window.$gameMap) {
                 window.$gameMap.generateFloor();
                 Log.add(`Floor ${window.$gameMap.floor} generated.`);
+                Systems.Campaign.checkTrigger('startFloor');
             }
             if(Systems.Explore.initialized) Systems.Explore.rebuildLevel();
         },

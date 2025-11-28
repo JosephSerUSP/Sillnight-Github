@@ -194,5 +194,17 @@
             element: 'R',
             script: 'feast',
             effects: [{ type: 'hp_heal', formula: '5 + 1.5 * a.level' }]
-        }
+        },
+
+        // --- Campaign Skills ---
+        stabilize: { id: 'stabilize', name: 'Stabilize', target: 'enemy-single', element: 'G', script: 'attack', effects: [{ type: 'hp_damage', formula: '5 + 2 * a.level' }] },
+        fractureStrike: { id: 'fractureStrike', name: 'Fracture Strike', target: 'enemy-single', element: 'K', script: 'attack', effects: [{ type: 'hp_damage', formula: '10 + 3 * a.level' }, { type: 'hp_damage_self', formula: 'a.maxhp * 0.1' }] },
+        crystalShield: { id: 'crystalShield', name: 'Crystal Shield', target: 'ally-single', category: 'effect', script: 'flash', effects: [{ type: 'add_status', status: 'guarding', chance: 1 }] },
+        voidGaze: { id: 'voidGaze', name: 'Void Gaze', target: 'enemy-single', element: 'K', script: 'flash', effects: [{ type: 'add_status', status: 'vulnerable', chance: 0.8 }] },
+        mend: { id: 'mend', name: 'Mend', target: 'ally-single', category: 'heal', element: 'W', script: 'cure', effects: [{ type: 'hp_heal', formula: '3 + 2 * a.level' }] },
+        cleave: { id: 'cleave', name: 'Cleave', target: 'enemy-row', script: 'attackRow', effects: [{ type: 'hp_damage', formula: '4 + 1.5 * a.level' }] },
+        pierce: { id: 'pierce', name: 'Pierce', target: 'enemy-single', script: 'attack', effects: [{ type: 'hp_damage', formula: '6 + 2.2 * a.level' }] }, // Ignores defense logic not implemented yet but placeholder
+        aetherBeam: { id: 'aetherBeam', name: 'Aether Beam', target: 'enemy-single', element: 'B', script: 'ray', effects: [{ type: 'hp_damage', formula: '7 + 2.5 * a.level' }] },
+        timeWarp: { id: 'timeWarp', name: 'Time Warp', target: 'self', category: 'effect', script: 'flash', effects: [{ type: 'add_speed', formula: '5' }] },
+        realityBreak: { id: 'realityBreak', name: 'Reality Break', target: 'enemy-all', element: 'K', script: 'apocalypse', effects: [{ type: 'hp_damage', formula: '12 + 3 * a.level' }] }
     };

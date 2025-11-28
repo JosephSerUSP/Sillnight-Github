@@ -51,6 +51,7 @@ export const Game = {
 
         // Initial map generation (already done in setupNewGame, but need to render)
         // Systems.Map.generateFloor(); // Moved to DataManager
+        Systems.Campaign.init();
         Systems.Explore.init();
         Systems.Battle3D.init();
         await Systems.Effekseer.preload();

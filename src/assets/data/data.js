@@ -6,9 +6,11 @@ import { Items } from './items.js';
 import { Party } from './party.js';
 import { Skills } from './skills.js';
 import { Passives } from './passives.js';
+import { Campaign } from './campaign.js';
 
 // ------------------- DATA DEFINITIONS -------------------
 export const Data = {
+    campaign: Campaign,
     // Configuration constants controlling core parameters.
     config: {
         baseGoldPerEnemy: 20,
