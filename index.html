@@ -151,17 +151,14 @@
 <!-- GAME CONTAINER -->
 <div id="game-container" class="relative w-screen h-screen bg-black overflow-hidden">
 
-    <!-- EXPLORATION LAYER -->
-    <div id="explore-layer" class="absolute inset-0 active-scene">
-        <canvas id="explore-canvas"></canvas>
-    </div>
-
     <!-- BATTLE LAYER -->
     <div id="battle-layer" class="absolute inset-0 hidden-scene">
-        <div id="three-container" class="w-full h-full"></div>
         <!-- 3D UI Overlay (Damage numbers) -->
         <div id="battle-ui-overlay" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
     </div>
+
+    <!-- MAIN 3D CONTAINER (Shared for Explore and Battle) -->
+    <div id="three-container" class="absolute inset-0 z-0"></div>
 
     <!-- GLOBAL UI -->
     <div id="ui-layer" class="absolute inset-0 pointer-events-none p-4 z-10">

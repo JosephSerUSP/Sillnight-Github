@@ -27,13 +27,15 @@ export class Scene {
             const ctrls = document.getElementById('battle-controls');
             const eCtrls = document.getElementById('explore-controls');
             if (toBattle) {
-                elExp.classList.remove('active-scene'); elExp.classList.add('hidden-scene');
-                elBat.classList.remove('hidden-scene'); elBat.classList.add('active-scene');
-                ctrls.classList.remove('hidden'); eCtrls.classList.add('hidden');
+                if (elExp) { elExp.classList.remove('active-scene'); elExp.classList.add('hidden-scene'); }
+                if (elBat) { elBat.classList.remove('hidden-scene'); elBat.classList.add('active-scene'); }
+                if (ctrls) ctrls.classList.remove('hidden');
+                if (eCtrls) eCtrls.classList.add('hidden');
             } else {
-                elBat.classList.add('hidden-scene'); elBat.classList.remove('active-scene');
-                elExp.classList.remove('hidden-scene'); elExp.classList.add('active-scene');
-                ctrls.classList.add('hidden'); eCtrls.classList.remove('hidden');
+                if (elBat) { elBat.classList.add('hidden-scene'); elBat.classList.remove('active-scene'); }
+                if (elExp) { elExp.classList.remove('hidden-scene'); elExp.classList.add('active-scene'); }
+                if (ctrls) ctrls.classList.add('hidden');
+                if (eCtrls) eCtrls.classList.remove('hidden');
                 if (onExploreRefresh) onExploreRefresh();
             }
             swipe.className = 'swipe-clear';

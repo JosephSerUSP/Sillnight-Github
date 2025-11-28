@@ -2,6 +2,7 @@ import { Data } from '../assets/data/data.js';
 import { GameState } from './state.js';
 import { Log } from './log.js';
 import { resolveAssetPath } from './core.js';
+import { Map3D } from './systems/map3d.js';
 
 // ------------------- SYSTEMS DEFINITIONS -------------------
 
@@ -10,6 +11,8 @@ import { resolveAssetPath } from './core.js';
  * @namespace Systems
  */
 export const Systems = {
+    Map3D,
+
     /**
      * Hooks for triggering scene transitions.
      */
@@ -214,6 +217,9 @@ export const Systems = {
             GameState.exploration.map = map;
             GameState.exploration.visited = Array(mapCfg.height).fill().map(() => Array(mapCfg.width).fill(false));
             Log.add(`Floor ${floor} generated.`);
+
+            // Build the 3D representation
+            if (Systems.Map3D) Systems.Map3D.buildLevel();
         },
         /**
          * Gets the tile code at a specific coordinate.
@@ -268,13 +274,17 @@ export const Systems = {
      */
     Explore: {
         /** Initializes the exploration system. */
-        init() { this.resize(); },
-        /** Resizes the canvas to match the window dimensions. */
+        init() {
+            if (Systems.Map3D) {
+                Systems.Map3D.init();
+                Systems.Map3D.buildLevel();
+            }
+            this.resize();
+            this.animate();
+        },
+        /** Resizes the canvas/renderer to match the window dimensions. */
         resize() {
-            const canvas = document.getElementById('explore-canvas');
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            this.render();
+            if (Systems.Map3D) Systems.Map3D.resize();
         },
         /**
          * Moves the player in the given direction.
@@ -289,7 +299,6 @@ export const Systems = {
             if (tile !== 1) {
                 GameState.exploration.playerPos = { x: newX, y: newY };
                 this.checkTile(tile);
-                this.render();
             }
         },
         /**
@@ -301,71 +310,20 @@ export const Systems = {
             window.Game.Windows.HUD.refresh();
         },
         /**
-         * Renders the exploration view (minimap/grid) to the canvas.
+         * Animation loop for the explore system (3D Map).
+         */
+        animate() {
+            if (GameState.ui.mode === 'EXPLORE') {
+                if (Systems.Map3D) Systems.Map3D.update();
+            }
+            requestAnimationFrame(() => this.animate());
+        },
+        /**
+         * Renders the exploration view.
+         * (Deprecated: 2D Canvas rendering removed in favor of Map3D)
          */
         render() {
-            const canvas = document.getElementById('explore-canvas');
-            const ctx = canvas.getContext('2d');
-            const mapCfg = Data.dungeons.default.map;
-            const w = canvas.width;
-            const h = canvas.height;
-            ctx.fillStyle = '#050505';
-            ctx.fillRect(0, 0, w, h);
-            
-            const offsetX = (w / 2) - (GameState.exploration.playerPos.x * mapCfg.tileSize);
-            const offsetY = (h / 2) - (GameState.exploration.playerPos.y * mapCfg.tileSize);
-            ctx.save();
-            ctx.translate(offsetX, offsetY);
-            
-            for (let y = 0; y < mapCfg.height; y++) {
-                for (let x = 0; x < mapCfg.width; x++) {
-                    const dist = Math.hypot(x - GameState.exploration.playerPos.x, y - GameState.exploration.playerPos.y);
-                    if (dist < mapCfg.viewDistance) GameState.exploration.visited[y][x] = true;
-                    if (!GameState.exploration.visited[y][x]) continue;
-                    
-                    const tile = GameState.exploration.map[y][x];
-                    const px = x * mapCfg.tileSize;
-                    const py = y * mapCfg.tileSize;
-                    
-                    if (tile === 1) {
-                        ctx.fillStyle = '#333';
-                        ctx.fillRect(px, py, mapCfg.tileSize, mapCfg.tileSize);
-                        ctx.strokeStyle = '#111';
-                        ctx.strokeRect(px, py, mapCfg.tileSize, mapCfg.tileSize);
-                    } else {
-                        ctx.fillStyle = '#1a1a1a';
-                        ctx.fillRect(px, py, mapCfg.tileSize, mapCfg.tileSize);
-                        ctx.strokeStyle = '#222';
-                        ctx.strokeRect(px, py, mapCfg.tileSize, mapCfg.tileSize);
-                        
-                        ctx.font = '32px serif';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        const cx = px + mapCfg.tileSize / 2;
-                        const cy = py + mapCfg.tileSize / 2;
-                        if (tile === 2) ctx.fillText('👹', cx, cy);
-                        else if (tile === 3) ctx.fillText('🪜', cx, cy);
-                        else if (tile === 4) ctx.fillText('💰', cx, cy);
-                        else if (tile === 5) ctx.fillText('🛒', cx, cy);
-                        else if (tile === 6) ctx.fillText('🤝', cx, cy);
-                        else if (tile === 7) ctx.fillText('⛪', cx, cy);
-                        else if (tile === 8) ctx.fillText('☠️', cx, cy);
-                    }
-                    if (dist >= mapCfg.viewDistance) {
-                        ctx.fillStyle = 'rgba(0,0,0,0.7)';
-                        ctx.fillRect(px, py, mapCfg.tileSize, mapCfg.tileSize);
-                    }
-                }
-            }
-            const playerX = GameState.exploration.playerPos.x * mapCfg.tileSize;
-            const playerY = GameState.exploration.playerPos.y * mapCfg.tileSize;
-            ctx.font = '36px serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.shadowColor = '#d4af37';
-            ctx.shadowBlur = 15;
-            ctx.fillText('🧙‍♂️', playerX + mapCfg.tileSize / 2, playerY + mapCfg.tileSize / 2);
-            ctx.restore();
+           // No-op: handled by animate loop + Map3D
         }
     },
 
@@ -723,6 +681,9 @@ export const Systems = {
          */
         animate() {
             requestAnimationFrame(() => this.animate());
+
+            if (GameState.ui.mode !== 'BATTLE' && GameState.ui.mode !== 'BATTLE_WIN') return;
+
             const cs = this.cameraState;
             if (GameState.ui.mode === 'BATTLE_WIN') {
                 cs.angle += 0.005;
