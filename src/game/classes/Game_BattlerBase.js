@@ -64,8 +64,6 @@ export class Game_BattlerBase {
      */
     get mmp() { return this.param(1); }
 
-    // Other parameter getters can be added as needed: atk, def, etc.
-
     /**
      * Checks if the battler is alive.
      * @returns {boolean} True if HP > 0.
@@ -101,7 +99,6 @@ export class Game_BattlerBase {
                 this._states.push(stateId);
                 this.refresh();
             }
-            // Reset state turn counters if implemented
         }
     }
 
@@ -122,7 +119,6 @@ export class Game_BattlerBase {
      * @returns {boolean} True if addable.
      */
     isStateAddable(stateId) {
-        // Implement resistance checks here
         return true;
     }
 
@@ -167,49 +163,61 @@ export class Game_BattlerBase {
      * @param {number} paramId - The parameter ID.
      * @returns {number} The multiplier.
      */
-    paramRate(paramId) { return 1; } // Trait multipliers
+    paramRate(paramId) { return 1; }
 
     /**
      * Gets the multiplier from buffs/debuffs.
      * @param {number} paramId - The parameter ID.
      * @returns {number} The buff multiplier.
      */
-    paramBuffRate(paramId) { return 1; } // Buff/Debuff multipliers
+    paramBuffRate(paramId) { return 1; }
 
     /**
-     * Trait handling
-     * @returns {Array<Object>} The list of traits.
+     * Returns the list of objects containing traits.
+     * To be overridden by subclasses.
+     * @returns {Array<Object>} List of trait-bearing objects.
      */
-    traits() {
+    traitObjects() {
         return [];
     }
 
     /**
-     * Gets all traits with a specific code.
-     * @param {number|string} code - The trait code.
+     * Aggregates all traits from trait objects.
+     * @returns {Array<Object>} The combined list of traits.
+     */
+    traits() {
+        return this.traitObjects().reduce((r, obj) => {
+            if (obj && obj.traits) {
+                return r.concat(obj.traits);
+            }
+            return r;
+        }, []);
+    }
+
+    /**
+     * Gets all traits with a specific type/code.
+     * @param {string} type - The trait type code.
      * @returns {Array<Object>} Filtered traits.
      */
-    traitsSet(code) {
-        return this.traits().filter(trait => trait.code === code);
+    traitsSet(type) {
+        return this.traits().filter(trait => trait.type === type);
     }
 
     /**
-     * Calculates the multiplicative value of all traits with a specific code.
-     * @param {number|string} code - The trait code.
-     * @param {number} [id] - Optional ID.
+     * Calculates the multiplicative value of all traits with a specific type.
+     * @param {string} type - The trait type code.
      * @returns {number} The product of all values.
      */
-    traitsPi(code, id) {
-        return this.traitsSet(code).reduce((r, trait) => r * (trait.value !== undefined ? trait.value : 1), 1);
+    traitsPi(type) {
+        return this.traitsSet(type).reduce((r, trait) => r * (trait.formula !== undefined ? parseFloat(trait.formula) : 1), 1);
     }
 
     /**
-     * Calculates the additive sum of all traits with a specific code.
-     * @param {number|string} code - The trait code.
-     * @param {number} [id] - Optional ID.
+     * Calculates the additive sum of all traits with a specific type.
+     * @param {string} type - The trait type code.
      * @returns {number} The sum of all values.
      */
-    traitsSum(code, id) {
-        return this.traitsSet(code).reduce((r, trait) => r + (trait.value !== undefined ? trait.value : 0), 0);
+    traitsSum(type) {
+        return this.traitsSet(type).reduce((r, trait) => r + (trait.formula !== undefined ? parseFloat(trait.formula) : 0), 0);
     }
 }

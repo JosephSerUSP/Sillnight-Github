@@ -1378,19 +1378,29 @@ showDamageNumber(uid, val, isCrit = false) {
             const allUnits = [...(GameState.battle?.allies || []), ...(GameState.battle?.enemies || [])];
             allUnits.forEach(unit => {
                 if(unit.hp <= 0) return;
-                const unitWithStats = Systems.Battle.getUnitWithStats(unit);
-                const traits = [];
-                const species = Data.creatures[unit.speciesId];
-                if (species && species.passives) {
-                    species.passives.forEach(passiveId => {
-                        const passive = Data.passives[passiveId];
-                        if (passive) traits.push(...passive.traits);
-                    });
+
+                // Using new trait system access
+                // If unit has traitObjects method (Game_Battler), use traits()
+                // Otherwise fall back to manual gathering (if any legacy objects remain, though all should be Game_Battler now)
+
+                let traits = [];
+                if (typeof unit.traits === 'function') {
+                    traits = unit.traits();
+                } else {
+                     // Fallback for safety during transition
+                    const species = Data.creatures[unit.speciesId];
+                    if (species && species.passives) {
+                        species.passives.forEach(passiveId => {
+                            const passive = Data.passives[passiveId];
+                            if (passive) traits.push(...passive.traits);
+                        });
+                    }
+                    if (unit.equipmentId) {
+                        const equipment = Data.equipment[unit.equipmentId];
+                        if (equipment) traits.push(...equipment.traits);
+                    }
                 }
-                if (unit.equipmentId) {
-                    const equipment = Data.equipment[unit.equipmentId];
-                    if (equipment) traits.push(...equipment.traits);
-                }
+
                 traits.forEach(trait => {
                     this.handleTrait(eventName, trait, unit, ...args);
                 });
@@ -1408,8 +1418,13 @@ showDamageNumber(uid, val, isCrit = false) {
                 case 'onBattleEnd':
                     if(unit.evadeBonus) unit.evadeBonus = 0;
                     if (trait.type === 'post_battle_heal') {
-                        const healAmount = Math.floor(Math.pow(Math.random(), 2) * unit.level) + 1;
-                        unit.hp = Math.min(Systems.Battle.getMaxHp(unit), unit.hp + healAmount);
+                        // Formula evaluation
+                        // trait.formula might be 'level'
+                        let amount = 0;
+                        if (trait.formula === 'level') amount = Math.floor(Math.pow(Math.random(), 2) * unit.level) + 1;
+                        else amount = parseInt(trait.formula) || 0;
+
+                        unit.hp = Math.min(unit.mhp, unit.hp + amount);
                         Log.add(`${unit.name} was healed by Soothing Breeze.`);
                     } else if (trait.type === 'post_battle_leech') {
                         const party = args[0];
@@ -1422,14 +1437,14 @@ showDamageNumber(uid, val, isCrit = false) {
                             Log.add(`${unit.name} leeched ${damage} HP from ${target.name}.`);
                         });
                         const leechHeal = Math.floor(totalDamage / 2);
-                        unit.hp = Math.min(Systems.Battle.getMaxHp(unit), unit.hp + leechHeal);
+                        unit.hp = Math.min(unit.mhp, unit.hp + leechHeal);
                         Log.add(`${unit.name} recovered ${leechHeal} HP.`);
                     }
                     break;
                 case 'onTurnStart':
                     if (trait.type === 'turn_heal') {
                         const healAmount = parseInt(trait.formula) || 0;
-                        unit.hp = Math.min(Systems.Battle.getMaxHp(unit), unit.hp + healAmount);
+                        unit.hp = Math.min(unit.mhp, unit.hp + healAmount);
                     }
                     break;
                 case 'onUnitDeath':
@@ -1438,9 +1453,25 @@ showDamageNumber(uid, val, isCrit = false) {
                         if (deadUnit.uid === unit.uid) {
                             const skill = Data.skills[trait.skill.toLowerCase()];
                             if (skill) {
+                                // Import BattleManager dynamically or assume global access?
+                                // BattleManager is imported in systems.js? No, it's circular.
+                                // But BattleManager logic for applyEffects is now in Game_Action.
+                                // We can instantiate Game_Action here.
+
+                                // Since we need to apply effects to enemies...
                                 const enemies = GameState.battle.enemies.filter(e => e.hp > 0);
-                                Systems.Battle.applyEffects(skill, unit, enemies);
-                                Log.battle(`${unit.name} casts ${skill.name} upon death!`);
+                                import('./classes/Game_Action.js').then(({ Game_Action }) => {
+                                     const action = new Game_Action(unit);
+                                     action.setObject(skill);
+                                     enemies.forEach(target => {
+                                         // apply returns results but we just want to log?
+                                         // Or we need visual feedback?
+                                         // Ideally we queue this action in BattleManager but that's complex.
+                                         // For now, silent application or log.
+                                         action.apply(target);
+                                     });
+                                     Log.battle(`${unit.name} casts ${skill.name} upon death!`);
+                                });
                             }
                         }
                     }
@@ -1492,181 +1523,12 @@ showDamageNumber(uid, val, isCrit = false) {
      * @namespace Battle
      */
     Battle: {
-        // Refactor Note: This should be moved to BattleManager or Game_Action
+        // Refactor Note: This has been moved to Game_Action.
+        // We keep this object only for methods not yet fully migrated or for backward compat if any.
+        // elementStrengths/Weaknesses might be used by UI?
         elementStrengths: { G: 'B', B: 'R', R: 'G', W: 'K', K: 'W' },
         elementWeaknesses: { G: 'R', B: 'G', R: 'B', W: 'W', K: 'K' },
 
-        /**
-         * Calculates the effectiveness multiplier of an element against another.
-         * @param {string} actionElement - The element of the action.
-         * @param {string} creatureElement - The element of the creature.
-         * @param {string} role - 'attacker' or 'defender'.
-         * @returns {number} The multiplier (0.75, 1, or 1.25).
-         */
-        elementRelation(actionElement, creatureElement, role) {
-            if (!actionElement || !creatureElement) return 1;
-            const strongAgainst = this.elementStrengths[actionElement];
-            const weakAgainst = this.elementWeaknesses[actionElement];
-            if (role === 'attacker') {
-                if (creatureElement === actionElement) return 1.25;
-                if (this.elementStrengths[creatureElement] === actionElement) return 0.75;
-                return 1;
-            }
-            if (creatureElement === actionElement && (creatureElement === 'W' || creatureElement === 'K')) return 0.75;
-            if (strongAgainst === creatureElement) return 1.25;
-            if (weakAgainst === creatureElement || this.elementStrengths[creatureElement] === actionElement) return 0.75;
-            return 1;
-        },
-        /**
-         * Calculates the total elemental multiplier for a unit.
-         * @param {string} actionElement - The action's element.
-         * @param {Object} unit - The unit.
-         * @param {string} role - 'attacker' or 'defender'.
-         * @returns {number} The cumulative multiplier.
-         */
-        elementMultiplier(actionElement, unit, role) {
-            if (!actionElement) return 1;
-            const elems = unit.elements || [];
-            return elems.reduce((mult, e) => mult * this.elementRelation(actionElement, e, role), 1);
-        },
-        /**
-         * Calculates the numeric value of an effect.
-         * @param {Object} effect - The effect definition.
-         * @param {Object} action - The action definition.
-         * @param {Object} a - The user (attacker).
-         * @param {Object} b - The target (defender).
-         * @returns {number} The calculated value (damage/heal).
-         */
-        calculateEffectValue(effect, action, a, b) {
-            if (!effect.formula) return 0;
-            let value = 0;
-            try {
-                value = Math.floor(eval(effect.formula));
-            } catch (e) {
-                console.error('Error evaluating formula:', effect.formula, e);
-                return 0;
-            }
-            const element = action.element;
-            const attackerWithStats = this.getUnitWithStats(a);
-            const attackMult = this.elementMultiplier(element, attackerWithStats, 'attacker');
-            const defenderWithStats = this.getUnitWithStats(b);
-            const defenseMult = this.elementMultiplier(element, defenderWithStats, 'defender');
-
-            const baseDamage = value + attackerWithStats.power_bonus;
-            let finalValue = Math.floor(baseDamage * attackMult * defenseMult);
-
-            const evadeChance = (defenderWithStats.evade_chance || 0);
-            if (Math.random() < evadeChance) {
-                Systems.Triggers.fire('onUnitEvade', b);
-                return 0;
-            }
-
-            const critChance = (Data.config.baseCritChance || 0.05) + (attackerWithStats.crit_bonus_percent || 0);
-            if (Math.random() < critChance) {
-                finalValue = Math.floor(finalValue * (Data.config.baseCritMultiplier || 1.5));
-                Log.battle('> Critical Hit!');
-            }
-
-            if (effect.type === 'hp_damage' && b.status?.includes('guarding')) {
-                finalValue = Math.floor(finalValue / 2);
-                Log.battle('> Guarding!');
-            }
-            return finalValue;
-        },
-        /**
-         * Applies effects of an action to targets.
-         * @param {Object} action - The action/skill.
-         * @param {Object} user - The user.
-         * @param {Array<Object>} targets - The targets.
-         * @returns {Array<Object>} Results of the application.
-         */
-        applyEffects(action, user, targets) {
-            const results = [];
-            (action.effects || []).forEach(effect => {
-                targets.forEach(target => {
-                    let value = 0;
-                    if (effect.type !== 'add_status') {
-                        value = this.calculateEffectValue(effect, action, user, target);
-                    }
-                    results.push({ target, value, effect });
-                });
-            });
-            return results;
-        },
-        /**
-         * Returns a unit object with dynamic stats calculated (traits, equipment).
-         * @param {Object} unit - The raw unit object.
-         * @returns {Object} The unit with computed stats.
-         */
-        getUnitWithStats(unit) {
-            const unitWithStats = { ...unit };
-            if (unit.elements) unitWithStats.elements = [...unit.elements];
-            if (unit.status) unitWithStats.status = [...unit.status];
-
-            unitWithStats.power_bonus = 0;
-            unitWithStats.speed_bonus = 0;
-            unitWithStats.crit_bonus_percent = 0;
-            unitWithStats.survive_ko_chance = 0;
-            unitWithStats.revive_on_ko_chance = 0;
-            unitWithStats.revive_on_ko_percent = 0;
-            unitWithStats.xp_bonus_percent = 0;
-
-            const processTraits = (traits) => {
-              traits.forEach(trait => {
-                switch (trait.type) {
-                    case 'hp_bonus_percent': break;
-                    case 'power_bonus': unitWithStats.power_bonus += parseInt(trait.formula) || 0; break;
-                    case 'speed_bonus': unitWithStats.speed_bonus += parseInt(trait.formula) || 0; break;
-                    case 'element_change': unitWithStats.elements = [trait.element]; break;
-                    case 'crit_bonus_percent': unitWithStats.crit_bonus_percent += parseFloat(trait.formula) || 0; break;
-                    case 'survive_ko': unitWithStats.survive_ko_chance += parseFloat(trait.formula) || 0; break;
-                    case 'revive_on_ko':
-                        unitWithStats.revive_on_ko_chance += parseFloat(trait.chance) || 0;
-                        unitWithStats.revive_on_ko_percent += parseFloat(trait.formula) || 0;
-                        break;
-                    case 'xp_bonus_percent': unitWithStats.xp_bonus_percent += parseFloat(trait.formula) || 0; break;
-                }
-              });
-            }
-
-            if (unit.equipmentId) {
-                const equipment = Data.equipment[unit.equipmentId];
-                if (equipment) processTraits(equipment.traits);
-            }
-            const species = Data.creatures[unit.speciesId];
-            if (species && species.passives) {
-                species.passives.forEach(passiveId => {
-                    const passive = Data.passives[passiveId];
-                    if (passive) processTraits(passive.traits);
-                });
-            }
-            return unitWithStats;
-        },
-        /**
-         * Calculates the maximum HP of a unit.
-         * @param {Object} unit - The unit.
-         * @returns {number} The maximum HP.
-         */
-        getMaxHp(unit) {
-            // Using the class method if available, otherwise fallback (for enemies using old structure temporarily or robustness)
-            if (typeof unit.mhp === 'number') return unit.mhp; // Getter
-            if (typeof unit.mhp === 'function') return unit.mhp(); // Method
-
-            // Fallback for raw objects (e.g. enemies created in startEncounter until refactored)
-            const def = Data.creatures[unit.speciesId];
-            let baseMax = Math.round(def.baseHp * (1 + def.hpGrowth * (unit.level - 1)));
-            if (unit.equipmentId) {
-                const eq = Data.equipment[unit.equipmentId];
-                if (eq) {
-                    eq.traits.forEach(trait => {
-                        if (trait.type === 'hp_bonus_percent') {
-                            baseMax = Math.round(baseMax * (1 + parseFloat(trait.formula)));
-                        }
-                    });
-                }
-            }
-            return baseMax + (unit.maxHpBonus || 0);
-        },
         /**
          * Starts a new encounter.
          * Delegates to BattleManager.
@@ -1676,15 +1538,7 @@ showDamageNumber(uid, val, isCrit = false) {
                 BattleManager.startEncounter();
             });
         },
-        nextRound() {
-            // Deprecated, use BattleManager
-        },
-        requestPlayerTurn() {
-             // Deprecated
-        },
-        resumeAuto() {
-             // Deprecated
-        },
+
         /**
          * Swaps the positions of two units in the active party.
          * @param {number} idx1 - Index of the first unit.
@@ -1704,11 +1558,16 @@ showDamageNumber(uid, val, isCrit = false) {
             }
             Log.add('Formation changed.');
         },
-        processNextTurn() {
-             // Deprecated
-        },
-        end(win) {
-             // Deprecated
+
+        // Deprecated Methods
+        // elementRelation, elementMultiplier, calculateEffectValue, applyEffects, getUnitWithStats, getMaxHp
+        // These are now handled by Game_Action and Game_Battler
+
+        getMaxHp(unit) {
+            // Fallback just in case
+             if (typeof unit.mhp === 'number') return unit.mhp;
+             if (typeof unit.mhp === 'function') return unit.mhp();
+             return 1;
         }
     },
 };

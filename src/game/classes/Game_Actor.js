@@ -22,6 +22,8 @@ export class Game_Actor extends Game_Battler {
         this._equipmentId = null;
         /** @type {string} */
         this._uid = `u_${speciesId}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+        /** @type {number} Extra MaxHP bonus from consumption */
+        this._maxHpBonus = 0;
 
         this.setup(speciesId, level);
     }
@@ -39,6 +41,11 @@ export class Game_Actor extends Game_Battler {
     /** @param {string|null} id - The new equipment ID. */
     set equipmentId(id) { this._equipmentId = id; this.refresh(); }
 
+    /** @returns {number} */
+    get maxHpBonus() { return this._maxHpBonus; }
+    /** @param {number} val */
+    set maxHpBonus(val) { this._maxHpBonus = val; this.refresh(); }
+
     /**
      * Sets up the actor with the given species and level.
      * Calculates initial EXP and fully recovers HP/MP.
@@ -52,6 +59,32 @@ export class Game_Actor extends Game_Battler {
         const def = Data.creatures[speciesId];
         this._name = def.name;
         this.recoverAll();
+    }
+
+    /**
+     * returns the objects that provide traits.
+     * @returns {Array<Object>}
+     */
+    traitObjects() {
+        const objects = super.traitObjects();
+        // 1. Species Data
+        const species = Data.creatures[this._speciesId];
+        if (species) {
+            objects.push(species);
+            // 2. Species Passives
+            if (species.passives) {
+                species.passives.forEach(pId => {
+                    const passive = Data.passives[pId];
+                    if (passive) objects.push(passive);
+                });
+            }
+        }
+        // 3. Equipment
+        if (this._equipmentId) {
+            const equip = Data.equipment[this._equipmentId];
+            if (equip) objects.push(equip);
+        }
+        return objects;
     }
 
     /** @returns {string} The name of the actor. */
@@ -89,32 +122,9 @@ export class Game_Actor extends Game_Battler {
      */
     paramRate(paramId) {
         let rate = super.paramRate(paramId);
-        // Equipment traits
-        if (this._equipmentId) {
-            const eq = Data.equipment[this._equipmentId];
-            if (eq && eq.traits) {
-                eq.traits.forEach(trait => {
-                    // Mapping paramId to trait types for now
-                    if (paramId === 0 && trait.type === 'hp_bonus_percent') {
-                         rate *= (1 + parseFloat(trait.formula));
-                    }
-                    // Add other param traits
-                });
-            }
-        }
-        // Passive traits
-        const def = Data.creatures[this._speciesId];
-        if (def && def.passives) {
-             def.passives.forEach(pid => {
-                 const p = Data.passives[pid];
-                 if (p && p.traits) {
-                     p.traits.forEach(trait => {
-                        if (paramId === 0 && trait.type === 'hp_bonus_percent') {
-                            rate *= (1 + parseFloat(trait.formula));
-                        }
-                     });
-                 }
-             });
+        // Map paramId to trait types
+        if (paramId === 0) { // Max HP
+             rate *= (1 + this.traitsSum('hp_bonus_percent'));
         }
         return rate;
     }
@@ -127,8 +137,7 @@ export class Game_Actor extends Game_Battler {
     paramPlus(paramId) {
         let plus = super.paramPlus(paramId);
         if (paramId === 0) {
-            // maxHpBonus logic from duplicated systems/objects
-             plus += (this._maxHpBonus || 0);
+             plus += this._maxHpBonus;
         }
         return plus;
     }
@@ -173,11 +182,6 @@ export class Game_Actor extends Game_Battler {
         if (level <= 1) return 0;
         // Cumulative XP required to reach 'level'
         // Using formula: 100 * (level-1)^1.1
-        // This matches common.js getXpForNextLevel logic where:
-        // getXpForNextLevel(1) = 100 (Threshold for L2)
-        // getXpForNextLevel(2) = 214 (Threshold for L3)
-        // So expForLevel(2) should be 100.
-        // expForLevel(3) should be 214.
         return Math.round(100 * Math.pow(level - 1, 1.1));
     }
 
@@ -186,8 +190,6 @@ export class Game_Actor extends Game_Battler {
      */
     levelUp() {
         this._level++;
-        // Stat growth handling
-        // Full heal on level up?
         this.recoverAll();
     }
 
@@ -197,5 +199,11 @@ export class Game_Actor extends Game_Battler {
     /** @returns {string} The temperament of the creature. */
     get temperament() { return Data.creatures[this._speciesId].temperament; }
     /** @returns {Array} The elemental affinities of the creature. */
-    get elements() { return Data.creatures[this._speciesId].elements || []; }
+    get elements() {
+        // Start with innate elements
+        const innate = Data.creatures[this._speciesId].elements || [];
+        // Check for element overrides from traits
+        const traitElements = this.elementTraits;
+        return traitElements.length > 0 ? traitElements : innate;
+    }
 }
