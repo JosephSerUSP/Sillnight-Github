@@ -3,6 +3,56 @@ import { GameState } from './state.js';
 import { Log } from './log.js';
 import { resolveAssetPath } from './core.js';
 
+// ------------------- HELPER CLASSES -------------------
+
+class ParticleSystem {
+    constructor(scene) {
+        this.scene = scene; this.particles = [];
+        const geo = new THREE.PlaneGeometry(0.1, 0.1);
+        const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true });
+        for(let i=0; i<50; i++) {
+            const p = new THREE.Mesh(geo, mat.clone()); p.visible = false; scene.add(p);
+            this.particles.push({ mesh: p, life: 0, velocity: new THREE.Vector3() });
+        }
+    }
+
+    spawnBurst(x, y, color, count=10) {
+        let spawned = 0;
+        for(let p of this.particles) {
+            if(p.life <= 0 && spawned < count) {
+                p.mesh.visible = true; p.mesh.position.set(x, 0.5, y);
+                p.mesh.material.color.setHex(color); p.mesh.material.opacity = 1;
+                const angle = Math.random() * Math.PI * 2; const speed = 0.05 + Math.random() * 0.05;
+                p.velocity.set(Math.cos(angle) * speed, (Math.random() * 0.1), Math.sin(angle) * speed);
+                p.life = 1.0; spawned++;
+            }
+        }
+    }
+
+    spawnSparkle(x, y) {
+        let count = 5; let spawned = 0;
+        for(let p of this.particles) {
+             if(p.life <= 0 && spawned < count) {
+                p.mesh.visible = true;
+                p.mesh.position.set(x + (Math.random()-0.5)*0.5, 0.2, y + (Math.random()-0.5)*0.5);
+                p.mesh.material.color.setHex(0xffff00); p.mesh.material.opacity = 1;
+                p.life = 1.5; p.velocity.set(0, 0.03 + Math.random()*0.02, 0);
+                spawned++;
+             }
+        }
+    }
+
+    update() {
+        for(let p of this.particles) {
+            if(p.life > 0) {
+                p.life -= 0.02; p.mesh.position.add(p.velocity);
+                p.mesh.material.opacity = Math.min(1, p.life); p.mesh.rotation.z += 0.1;
+                if(p.life <= 0) p.mesh.visible = false;
+            }
+        }
+    }
+}
+
 // ------------------- SYSTEMS DEFINITIONS -------------------
 
 /**
@@ -160,60 +210,11 @@ export const Systems = {
          * Generates a new random floor layout.
          */
         generateFloor() {
-            const floor = GameState.run.floor;
-            const dungeon = Data.dungeons.default;
-            const mapCfg = dungeon.map;
-
-            const map = Array(mapCfg.height).fill().map(() => Array(mapCfg.width).fill(1));
-            let x = Math.floor(mapCfg.width / 2);
-            let y = Math.floor(mapCfg.height / 2);
-            GameState.exploration.playerPos = { x, y };
-            
-            for (let i = 0; i < mapCfg.carveSteps; i++) {
-                map[y][x] = 0;
-                const dir = Math.floor(Math.random() * 4);
-                if (dir === 0 && y > 1) y--;
-                else if (dir === 1 && y < mapCfg.height - 2) y++;
-                else if (dir === 2 && x > 1) x--;
-                else if (dir === 3 && x < mapCfg.width - 2) x++;
+            if (window.$gameMap) {
+                window.$gameMap.generateFloor();
+                Log.add(`Floor ${window.$gameMap.floor} generated.`);
             }
-            
-            const emptyTiles = [];
-            for (let ry = 0; ry < mapCfg.height; ry++) {
-                for (let rx = 0; rx < mapCfg.width; rx++) {
-                    if (map[ry][rx] === 0 && (rx !== GameState.exploration.playerPos.x || ry !== GameState.exploration.playerPos.y)) {
-                        emptyTiles.push({ x: rx, y: ry });
-                    }
-                }
-            }
-            
-            const place = (code, count) => {
-                for (let i = 0; i < count; i++) {
-                    if (emptyTiles.length === 0) break;
-                    const idx = Math.floor(Math.random() * emptyTiles.length);
-                    const tile = emptyTiles.splice(idx, 1)[0];
-                    map[tile.y][tile.x] = code;
-                }
-            };
-            
-            const getCount = (def) => {
-                if (typeof def === 'number') return def;
-                const { base = 0, perFloor = 0, min = 0, max = Infinity, round = 'round' } = def;
-                const count = base + perFloor * floor;
-                const rounded = Math[round](count);
-                return Math.max(min, Math.min(max, rounded));
-            };
-            place(2, getCount(mapCfg.tileCounts.enemies));
-            place(3, getCount(mapCfg.tileCounts.stairs));
-            place(4, getCount(mapCfg.tileCounts.treasure));
-            place(5, getCount(mapCfg.tileCounts.shops));
-            place(6, getCount(mapCfg.tileCounts.recruits));
-            place(7, getCount(mapCfg.tileCounts.shrines));
-            place(8, getCount(mapCfg.tileCounts.traps));
-
-            GameState.exploration.map = map;
-            GameState.exploration.visited = Array(mapCfg.height).fill().map(() => Array(mapCfg.width).fill(false));
-            Log.add(`Floor ${floor} generated.`);
+            if(Systems.Explore.initialized) Systems.Explore.rebuildLevel();
         },
         /**
          * Gets the tile code at a specific coordinate.
@@ -222,9 +223,10 @@ export const Systems = {
          * @returns {number} The tile code (1 for wall, 0 for empty, etc.).
          */
         tileAt(x, y) {
-            const map = GameState.exploration.map;
-            if (!map[y] || map[y][x] === undefined) return 1;
-            return map[y][x];
+            if (window.$gameMap) {
+                return window.$gameMap.tileAt(x, y);
+            }
+            return 1;
         },
         /**
          * Resolves the effect of stepping on a specific tile code.
@@ -263,19 +265,228 @@ export const Systems = {
     },
 
     /**
-     * System for handling the exploration view and rendering.
+     * System for handling the 3D exploration view and rendering.
      * @namespace Explore
      */
     Explore: {
+        scene: null,
+        camera: null,
+        renderer: null,
+        playerMesh: null,
+        mapGroup: null,
+        dynamicGroup: null,
+        instancedFloor: null,
+        instancedWalls: null,
+        particles: null,
+        moveLerpStart: new THREE.Vector3(),
+        moveLerpEnd: new THREE.Vector3(),
+        moveLerpProgress: 1,
+        isAnimating: false,
+        playerTarget: new THREE.Vector3(),
+        cameraLookCurrent: new THREE.Vector3(),
+        initialized: false,
+
         /** Initializes the exploration system. */
-        init() { this.resize(); },
+        init() {
+            const container = document.getElementById('explore-container');
+            if(!container) return;
+
+            this.scene = new THREE.Scene();
+            this.scene.background = new THREE.Color(0x050510);
+            this.scene.fog = new THREE.FogExp2(0x051015, 0.05);
+
+            const containerW = container.clientWidth;
+            const containerH = container.clientHeight;
+
+            // PS1 Style Resolution
+            const targetH = 240;
+            const aspect = containerW / containerH;
+            const targetW = Math.floor(targetH * aspect);
+
+            this.camera = new THREE.PerspectiveCamera(50, aspect, 0.1, 100);
+
+            this.renderer = new THREE.WebGLRenderer({ antialias: false });
+            this.renderer.setSize(targetW, targetH, false);
+            this.renderer.domElement.id = 'explore-canvas-3d';
+
+            // Ensure canvas scales up
+            this.renderer.domElement.style.width = '100%';
+            this.renderer.domElement.style.height = '100%';
+            this.renderer.domElement.style.imageRendering = 'pixelated';
+
+            container.innerHTML = '';
+            container.appendChild(this.renderer.domElement);
+
+            this.scene.add(new THREE.AmbientLight(0x222222));
+            const dirLight = new THREE.DirectionalLight(0x555555, 0.6);
+            dirLight.position.set(10, 20, 10);
+            this.scene.add(dirLight);
+
+            this.playerLight = new THREE.PointLight(0x004444, 1.5, 15);
+            this.scene.add(this.playerLight);
+
+            const geo = new THREE.OctahedronGeometry(0.35);
+            this.matPlayer = new THREE.MeshPhongMaterial({ color: 0x00ffff, emissive: 0x001133 });
+            this.playerMesh = new THREE.Mesh(geo, this.matPlayer);
+            this.playerMesh.userData.uid = 'player';
+            this.scene.add(this.playerMesh);
+
+            this.mapGroup = new THREE.Group();
+            this.scene.add(this.mapGroup);
+
+            this.dynamicGroup = new THREE.Group();
+            this.scene.add(this.dynamicGroup);
+
+            this.particles = new ParticleSystem(this.scene);
+
+            this.initialized = true;
+            this.rebuildLevel();
+            this.animate();
+        },
+
+        /** Rebuilds the 3D map based on GameState.exploration.map */
+        rebuildLevel() {
+            if(!this.scene) return;
+            this.mapGroup.clear();
+            const map = GameState.exploration.map;
+            const height = map.length;
+            const width = map[0].length;
+            const count = width * height;
+
+            const geoFloor = new THREE.PlaneGeometry(0.95, 0.95);
+            const matFloor = new THREE.MeshLambertMaterial({ color: 0x333333 });
+            this.instancedFloor = new THREE.InstancedMesh(geoFloor, matFloor, count);
+
+            const geoBlock = new THREE.BoxGeometry(0.95, 1, 0.95);
+            const matWall = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+            this.instancedWalls = new THREE.InstancedMesh(geoBlock, matWall, count);
+
+            const dummy = new THREE.Object3D();
+            let fIdx = 0, wIdx = 0;
+
+            const hasFloorNeighbor = (x, y) => {
+                const check = (nx, ny) => nx>=0 && nx<width && ny>=0 && ny<height && map[ny][nx] !== 1;
+                return check(x+1,y) || check(x-1,y) || check(x,y+1) || check(x,y-1);
+            };
+
+            for(let y=0; y<height; y++) {
+                for(let x=0; x<width; x++) {
+                    const tile = map[y][x];
+                    if(tile === 0 || tile >= 2) {
+                        // Floor
+                        dummy.position.set(x, 0, y);
+                        dummy.rotation.set(-Math.PI/2, 0, 0);
+                        dummy.scale.set(1,1,1);
+                        dummy.updateMatrix();
+                        this.instancedFloor.setMatrixAt(fIdx++, dummy.matrix);
+
+                        // Special Static Tiles (Stairs)
+                        if (tile === 3) {
+                            const numSteps = 5; const maxH = 0.4; const sliceW = 0.8 / numSteps;
+                            for(let s=0; s<numSteps; s++) {
+                                const h = maxH * (numSteps - s) / numSteps;
+                                const yPos = h / 2; const zPos = y - 0.4 + (s * sliceW) + (sliceW / 2);
+                                const step = new THREE.Mesh(new THREE.BoxGeometry(0.8, h, sliceW * 0.9), new THREE.MeshPhongMaterial({ color: 0x00ffaa, flatShading: true }));
+                                step.position.set(x, yPos, zPos);
+                                this.mapGroup.add(step);
+                            }
+                        }
+                    } else if (tile === 1) {
+                        // Wall
+                         if(hasFloorNeighbor(x,y)) {
+                            dummy.position.set(x, 0.5, y);
+                            dummy.rotation.set(0,0,0);
+                            dummy.scale.set(1,1,1);
+                            dummy.updateMatrix();
+                            this.instancedWalls.setMatrixAt(wIdx++, dummy.matrix);
+                         }
+                    }
+                }
+            }
+
+            this.instancedFloor.count = fIdx;
+            this.instancedWalls.count = wIdx;
+            this.instancedFloor.instanceMatrix.needsUpdate = true;
+            this.instancedWalls.instanceMatrix.needsUpdate = true;
+            this.mapGroup.add(this.instancedFloor);
+            this.mapGroup.add(this.instancedWalls);
+
+            // Initial dynamic sync
+            this.syncDynamic();
+
+            const startX = GameState.exploration.playerPos.x;
+            const startY = GameState.exploration.playerPos.y;
+            this.playerMesh.position.set(startX, 0.5, startY);
+            this.playerTarget.set(startX, 0.5, startY);
+            this.cameraLookCurrent.set(startX, 0, startY);
+            this.moveLerpProgress = 1;
+            this.isAnimating = false;
+        },
+
+        /**
+         * Synchronizes dynamic elements (enemies, loot, etc.) without rebuilding static geometry.
+         */
+        syncDynamic() {
+            // Remove existing dynamic objects
+            if (!this.dynamicGroup) {
+                this.dynamicGroup = new THREE.Group();
+                this.scene.add(this.dynamicGroup);
+            }
+            this.dynamicGroup.clear();
+
+            const map = GameState.exploration.map;
+            const height = map.length;
+            const width = map[0].length;
+
+            for(let y=0; y<height; y++) {
+                for(let x=0; x<width; x++) {
+                    const tile = map[y][x];
+                    if(tile === 2) { // Enemy
+                       const mesh = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.6, 4), new THREE.MeshPhongMaterial({color: 0xff0000}));
+                       mesh.position.set(x, 0.3, y);
+                       this.dynamicGroup.add(mesh);
+                    }
+                    else if(tile === 4) { // Gold
+                       const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), new THREE.MeshPhongMaterial({color: 0xffd700}));
+                       mesh.position.set(x, 0.25, y);
+                       this.dynamicGroup.add(mesh);
+                    }
+                    else if(tile === 5) { // Shop
+                       const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 6), new THREE.MeshPhongMaterial({color: 0x0000ff}));
+                       mesh.position.set(x, 0.1, y);
+                       this.dynamicGroup.add(mesh);
+                    }
+                    // Recruit(6), Shrine(7), Trap(8) can have markers too if desired
+                    else if (tile === 6) { // Recruit
+                       const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshPhongMaterial({color: 0x00ff00}));
+                       mesh.position.set(x, 0.3, y);
+                       this.dynamicGroup.add(mesh);
+                    }
+                    else if (tile === 7) { // Shrine
+                       const mesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.2), new THREE.MeshPhongMaterial({color: 0xffffff}));
+                       mesh.position.set(x, 0.3, y);
+                       this.dynamicGroup.add(mesh);
+                    }
+                }
+            }
+        },
+
         /** Resizes the canvas to match the window dimensions. */
         resize() {
-            const canvas = document.getElementById('explore-canvas');
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            this.render();
+            if(!this.renderer || !this.camera) return;
+            const container = document.getElementById('explore-container');
+            const w = container.clientWidth || window.innerWidth;
+            const h = container.clientHeight || window.innerHeight;
+
+            const targetH = 240;
+            const aspect = w / h;
+            const targetW = Math.floor(targetH * aspect);
+
+            this.camera.aspect = aspect;
+            this.camera.updateProjectionMatrix();
+            this.renderer.setSize(targetW, targetH, false);
         },
+
         /**
          * Moves the player in the given direction.
          * @param {number} dx - The change in X.
@@ -283,15 +494,30 @@ export const Systems = {
          */
         move(dx, dy) {
             if (GameState.ui.mode !== 'EXPLORE' || GameState.ui.formationMode) return;
+            if (this.isAnimating) return;
+
             const newX = GameState.exploration.playerPos.x + dx;
             const newY = GameState.exploration.playerPos.y + dy;
             const tile = Systems.Map.tileAt(newX, newY);
+
             if (tile !== 1) {
+                // Update Logical Position
                 GameState.exploration.playerPos = { x: newX, y: newY };
+
+                // Trigger Animation
+                this.moveLerpStart.copy(this.playerMesh.position);
+                this.moveLerpEnd.set(newX, 0.5, newY);
+                this.moveLerpProgress = 0;
+                this.playerTarget.set(newX, 0.5, newY);
+                this.isAnimating = true;
+
+                // Trigger events after delay or checkTile handles it
+                // We'll let the animation finish before fully giving back control, but events trigger on arrival
+                // For now, trigger tile logic immediately, but visual update handles smooth transition
                 this.checkTile(tile);
-                this.render();
             }
         },
+
         /**
          * Checks the tile the player landed on and triggers its effect.
          * @param {number} code - The tile code.
@@ -299,73 +525,81 @@ export const Systems = {
         checkTile(code) {
             Systems.Map.resolveTile(code);
             window.Game.Windows.HUD.refresh();
-        },
-        /**
-         * Renders the exploration view (minimap/grid) to the canvas.
-         */
-        render() {
-            const canvas = document.getElementById('explore-canvas');
-            const ctx = canvas.getContext('2d');
-            const mapCfg = Data.dungeons.default.map;
-            const w = canvas.width;
-            const h = canvas.height;
-            ctx.fillStyle = '#050505';
-            ctx.fillRect(0, 0, w, h);
-            
-            const offsetX = (w / 2) - (GameState.exploration.playerPos.x * mapCfg.tileSize);
-            const offsetY = (h / 2) - (GameState.exploration.playerPos.y * mapCfg.tileSize);
-            ctx.save();
-            ctx.translate(offsetX, offsetY);
-            
-            for (let y = 0; y < mapCfg.height; y++) {
-                for (let x = 0; x < mapCfg.width; x++) {
-                    const dist = Math.hypot(x - GameState.exploration.playerPos.x, y - GameState.exploration.playerPos.y);
-                    if (dist < mapCfg.viewDistance) GameState.exploration.visited[y][x] = true;
-                    if (!GameState.exploration.visited[y][x]) continue;
-                    
-                    const tile = GameState.exploration.map[y][x];
-                    const px = x * mapCfg.tileSize;
-                    const py = y * mapCfg.tileSize;
-                    
-                    if (tile === 1) {
-                        ctx.fillStyle = '#333';
-                        ctx.fillRect(px, py, mapCfg.tileSize, mapCfg.tileSize);
-                        ctx.strokeStyle = '#111';
-                        ctx.strokeRect(px, py, mapCfg.tileSize, mapCfg.tileSize);
-                    } else {
-                        ctx.fillStyle = '#1a1a1a';
-                        ctx.fillRect(px, py, mapCfg.tileSize, mapCfg.tileSize);
-                        ctx.strokeStyle = '#222';
-                        ctx.strokeRect(px, py, mapCfg.tileSize, mapCfg.tileSize);
-                        
-                        ctx.font = '32px serif';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        const cx = px + mapCfg.tileSize / 2;
-                        const cy = py + mapCfg.tileSize / 2;
-                        if (tile === 2) ctx.fillText('👹', cx, cy);
-                        else if (tile === 3) ctx.fillText('🪜', cx, cy);
-                        else if (tile === 4) ctx.fillText('💰', cx, cy);
-                        else if (tile === 5) ctx.fillText('🛒', cx, cy);
-                        else if (tile === 6) ctx.fillText('🤝', cx, cy);
-                        else if (tile === 7) ctx.fillText('⛪', cx, cy);
-                        else if (tile === 8) ctx.fillText('☠️', cx, cy);
-                    }
-                    if (dist >= mapCfg.viewDistance) {
-                        ctx.fillStyle = 'rgba(0,0,0,0.7)';
-                        ctx.fillRect(px, py, mapCfg.tileSize, mapCfg.tileSize);
-                    }
+            // Rebuild if map changed (e.g. loot picked up, floor changed)
+            // resolveTile for gold/shop/etc sets tile to 0
+            if (code === 2 || code === 3 || code === 4 || code === 5 || code === 6 || code === 7 || code === 8) {
+                // Delay rebuild slightly to allow move animation to start/complete?
+                // For floor change (code 3), it calls generateFloor which calls rebuildLevel.
+                // For others, we might want to update visuals.
+                if (code !== 3) {
+                     // Only sync dynamic objects if not changing floor
+                     setTimeout(() => this.syncDynamic(), 300);
                 }
             }
-            const playerX = GameState.exploration.playerPos.x * mapCfg.tileSize;
-            const playerY = GameState.exploration.playerPos.y * mapCfg.tileSize;
-            ctx.font = '36px serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.shadowColor = '#d4af37';
-            ctx.shadowBlur = 15;
-            ctx.fillText('🧙‍♂️', playerX + mapCfg.tileSize / 2, playerY + mapCfg.tileSize / 2);
-            ctx.restore();
+        },
+
+        /**
+         * Main animation loop.
+         */
+        animate() {
+            if (GameState.ui.mode === 'EXPLORE') {
+                requestAnimationFrame(() => this.animate());
+            } else {
+                // Keep loop running but maybe skip render if hidden?
+                // Or just keep running to ensure state resumes correctly.
+                // Better to request animation frame always if we want smooth transition back.
+                 requestAnimationFrame(() => this.animate());
+            }
+
+            if(!this.scene || !this.camera) return;
+
+             // Movement Interpolation
+            if (this.moveLerpProgress < 1) {
+                this.moveLerpProgress += 0.06;
+                if(this.moveLerpProgress > 1) this.moveLerpProgress = 1;
+
+                this.playerMesh.position.lerpVectors(this.moveLerpStart, this.moveLerpEnd, this.moveLerpProgress);
+
+                // Rotate player mesh
+                this.playerMesh.rotation.y = this.moveLerpProgress * Math.PI * 2;
+
+                if (this.moveLerpProgress === 1) {
+                    this.isAnimating = false;
+                    this.playerMesh.rotation.y = 0;
+                }
+            } else {
+                this.playerMesh.position.lerp(this.playerTarget, 0.3);
+            }
+
+            // Bobbing effect
+            this.playerMesh.position.y = 0.5 + Math.sin(Date.now()*0.005)*0.05;
+            this.playerLight.position.copy(this.playerMesh.position).add(new THREE.Vector3(0, 1, 0));
+
+            // Camera follow
+            const lx = this.playerTarget.x; const lz = this.playerTarget.z;
+            this.cameraLookCurrent.x += (lx - this.cameraLookCurrent.x) * 0.1;
+            this.cameraLookCurrent.z += (lz - this.cameraLookCurrent.z) * 0.1;
+
+            const tx = this.playerTarget.x;
+            const tz = this.playerTarget.z + 6;
+            const ty = 6;
+
+            this.camera.position.x += (tx - this.camera.position.x) * 0.1;
+            this.camera.position.z += (tz - this.camera.position.z) * 0.1;
+            this.camera.position.y += (ty - this.camera.position.y) * 0.1;
+            this.camera.lookAt(this.cameraLookCurrent.x, 0, this.cameraLookCurrent.z - 2);
+
+            this.particles.update();
+            this.renderer.render(this.scene, this.camera);
+        },
+
+        /**
+         * Renders the exploration view.
+         * Now just ensures the loop is running.
+         */
+        render() {
+             // 3D renderer handles its own loop in animate()
+             if(!this.initialized) this.init();
         }
     },
 
@@ -566,11 +800,20 @@ export const Systems = {
             this.scene = new THREE.Scene();
             this.scene.background = new THREE.Color(0x0a0a0a);
             
-            this.camera = new THREE.PerspectiveCamera(28, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            const targetH = 240;
+            const aspect = w / h;
+            const targetW = Math.floor(targetH * aspect);
+
+            this.camera = new THREE.PerspectiveCamera(28, aspect, 0.1, 1000);
             this.camera.up.set(0, 0, 1);
             
             this.renderer = new THREE.WebGLRenderer({ alpha: false, antialias: false });
-            this.renderer.setSize(window.innerWidth, window.innerHeight);
+            this.renderer.setSize(targetW, targetH, false);
+            this.renderer.domElement.style.width = '100%';
+            this.renderer.domElement.style.height = '100%';
+            this.renderer.domElement.style.imageRendering = 'pixelated';
             container.appendChild(this.renderer.domElement);
             
             Systems.Effekseer.init(this.renderer);
@@ -594,9 +837,16 @@ export const Systems = {
         /** Resizes the renderer and camera aspect ratio. */
         resize() {
             if (!this.camera || !this.renderer) return;
-            this.camera.aspect = window.innerWidth / window.innerHeight;
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+
+            const targetH = 240;
+            const aspect = w / h;
+            const targetW = Math.floor(targetH * aspect);
+
+            this.camera.aspect = aspect;
             this.camera.updateProjectionMatrix();
-            this.renderer.setSize(window.innerWidth, window.innerHeight);
+            this.renderer.setSize(targetW, targetH, false);
         },
         /**
          * Sets up the battle scene with ally and enemy sprites.
