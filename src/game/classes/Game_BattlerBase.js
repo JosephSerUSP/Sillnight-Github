@@ -163,7 +163,10 @@ export class Game_BattlerBase {
      * @param {number} paramId - The parameter ID.
      * @returns {number} The multiplier.
      */
-    paramRate(paramId) { return 1; }
+    paramRate(paramId) {
+        return this.traits().filter(trait => trait.type === 'param_rate' && trait.code === paramId)
+                   .reduce((acc, trait) => acc * (trait.value !== undefined ? trait.value : 1), 1);
+    }
 
     /**
      * Gets the multiplier from buffs/debuffs.
@@ -209,7 +212,12 @@ export class Game_BattlerBase {
      * @returns {number} The product of all values.
      */
     traitsPi(type) {
-        return this.traitsSet(type).reduce((r, trait) => r * (trait.formula !== undefined ? parseFloat(trait.formula) : 1), 1);
+        return this.traitsSet(type).reduce((r, trait) => {
+            let val = 1;
+            if (trait.value !== undefined) val = trait.value;
+            else if (trait.formula !== undefined) val = parseFloat(trait.formula);
+            return r * val;
+        }, 1);
     }
 
     /**
@@ -218,6 +226,11 @@ export class Game_BattlerBase {
      * @returns {number} The sum of all values.
      */
     traitsSum(type) {
-        return this.traitsSet(type).reduce((r, trait) => r + (trait.formula !== undefined ? parseFloat(trait.formula) : 0), 0);
+        return this.traitsSet(type).reduce((r, trait) => {
+             let val = 0;
+             if (trait.value !== undefined) val = trait.value;
+             else if (trait.formula !== undefined) val = parseFloat(trait.formula);
+             return r + val;
+        }, 0);
     }
 }

@@ -39,6 +39,7 @@ export class Window_CreatureModal extends Window_Selectable {
      */
     toggle() {
         if (this.root.classList.contains('hidden')) {
+            this.refresh();
             this.show();
         } else {
             this.hide();
@@ -250,6 +251,7 @@ export class Window_Inventory extends Window_Selectable {
      */
     toggle() {
         if (this.root.classList.contains('hidden')) {
+            this.refresh();
             this.show();
         } else {
             this.hide();
@@ -262,10 +264,27 @@ export class Window_Inventory extends Window_Selectable {
     refresh() {
         const list = this.root.querySelector('#inventory-list');
         list.innerHTML = '';
+
+        // Artifacts
+        const artifacts = window.$gameParty.artifacts; // using getter
+        if (artifacts && artifacts.length > 0) {
+             const artTitle = document.createElement('div');
+            artTitle.className = 'text-purple-400 mb-2';
+            artTitle.innerText = 'Artifacts';
+            list.appendChild(artTitle);
+            artifacts.forEach(id => {
+                const def = Data.artifacts[id];
+                const row = document.createElement('div');
+                row.className = 'flex justify-between items-center bg-gray-900 p-2 border border-purple-900/50 mb-1';
+                row.innerHTML = `<div><span class="text-purple-200">${def.name}</span><div class="text-xs text-gray-500">${def.description}</div></div>`;
+                list.appendChild(row);
+            });
+        }
+
         const eqKeys = Object.keys(GameState.inventory.equipment);
         if (eqKeys.length > 0) {
             const eqTitle = document.createElement('div');
-            eqTitle.className = 'text-yellow-400 mb-2';
+            eqTitle.className = 'text-yellow-400 mt-4 mb-2';
             eqTitle.innerText = 'Equipment';
             list.appendChild(eqTitle);
             eqKeys.forEach(id => {

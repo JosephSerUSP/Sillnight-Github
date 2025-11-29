@@ -394,8 +394,30 @@ export const BattleManager = {
                 Systems.sceneHooks?.onBattleEnd?.();
                 Systems.Triggers.fire('onBattleEnd', [...this.allies, ...this.enemies].filter(u => u && u.hp > 0));
                 Systems.Battle3D.setFocus('victory');
-                const gold = this.enemies.length * Data.config.baseGoldPerEnemy * GameState.run.floor;
+
+                // Calculate base rewards
+                let gold = this.enemies.length * Data.config.baseGoldPerEnemy * GameState.run.floor;
                 const baseXp = this.enemies.length * Data.config.baseXpPerEnemy * GameState.run.floor;
+
+                // Apply Global Gold Modifiers (Artifacts/Traits on active party)
+                let goldMultiplier = 1.0;
+
+                // Check global artifacts for gold_rate traits directly to avoid per-actor stacking
+                if (window.$gameParty && window.$gameParty.artifacts) {
+                    window.$gameParty.artifacts.forEach(id => {
+                        const artifact = Data.artifacts[id];
+                        if (artifact && artifact.traits) {
+                            artifact.traits.forEach(t => {
+                                if (t.type === 'gold_rate') {
+                                    goldMultiplier += (t.value - 1);
+                                }
+                            });
+                        }
+                    });
+                }
+
+                gold = Math.floor(gold * goldMultiplier);
+
                 GameState.run.gold += gold;
                 let finalXp = baseXp;
 

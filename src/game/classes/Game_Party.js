@@ -19,12 +19,16 @@ export class Game_Party {
             items: {},
             equipment: {}
         };
+        /** @type {Set<string>} Set of owned artifact IDs. */
+        this._artifacts = new Set();
     }
 
     /** @returns {number} Current gold. */
     get gold() { return this._gold; }
     /** @returns {Object} Inventory object. */
     get inventory() { return this._inventory; }
+    /** @returns {Array<string>} List of owned artifact IDs. */
+    get artifacts() { return Array.from(this._artifacts); }
     /** @returns {Array<Game_Actor|null>} Active slots array. */
     get activeSlots() { return this._activeSlots; }
     /** @returns {Array<Game_Actor>} Full roster. */
@@ -62,6 +66,18 @@ export class Game_Party {
      */
     gainEquipment(equipId, amount = 1) {
         this._inventory.equipment[equipId] = (this._inventory.equipment[equipId] || 0) + amount;
+    }
+
+    /**
+     * Adds an artifact to the collection.
+     * @param {string} artifactId - The artifact ID.
+     */
+    gainArtifact(artifactId) {
+        if (!this._artifacts.has(artifactId)) {
+            this._artifacts.add(artifactId);
+            // Refresh all actors to apply new global traits
+            this._roster.forEach(actor => actor.refresh());
+        }
     }
 
     /**

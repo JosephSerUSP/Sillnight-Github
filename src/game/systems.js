@@ -247,6 +247,17 @@ export const Systems = {
                 const amt = treasure.gold.base
                     + Math.floor(Math.random() * treasure.gold.random)
                     + treasure.gold.perFloor * GameState.run.floor;
+
+                // Small chance (5%) for artifact in chest
+                if (Math.random() < 0.05 && Data.artifacts) {
+                    const artKeys = Object.keys(Data.artifacts).filter(k => !window.$gameParty.artifacts.includes(k));
+                    if (artKeys.length > 0) {
+                        const key = artKeys[Math.floor(Math.random() * artKeys.length)];
+                        window.$gameParty.gainArtifact(key);
+                        Log.loot(`Found ${Data.artifacts[key].name}!`);
+                    }
+                }
+
                 GameState.run.gold += amt;
                 GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
                 Log.loot(`Found ${amt} Gold!`);
@@ -642,6 +653,14 @@ export const Systems = {
                 const key = pool[Math.floor(Math.random() * pool.length)];
                 if (Data.equipment[key]) stock.push({ type: 'equip', id: key });
             }
+            // 20% chance to sell a random artifact
+            if (Math.random() < 0.2 && Data.artifacts) {
+                const artKeys = Object.keys(Data.artifacts).filter(k => !window.$gameParty.artifacts.includes(k));
+                if (artKeys.length > 0) {
+                    const key = artKeys[Math.floor(Math.random() * artKeys.length)];
+                    stock.push({ type: 'artifact', id: key });
+                }
+            }
 
             stock.forEach(s => {
                 const row = document.createElement('div');
@@ -649,10 +668,14 @@ export const Systems = {
                 let def, name, desc, price;
                 if (s.type === 'item') {
                     def = Data.items[s.id]; name = def.name; desc = def.description; price = def.cost;
-                } else {
+                } else if (s.type === 'equip') {
                     def = Data.equipment[s.id]; name = def.name; desc = def.description; price = def.cost;
+                } else {
+                    def = Data.artifacts[s.id]; name = def.name; desc = def.description; price = def.cost;
                 }
-                row.innerHTML = `<div class="flex flex-col"><span class="text-yellow-100">${name}</span><span class="text-xs text-gray-500">${desc}</span><span class="text-xs text-gray-400">${price} G</span></div>`;
+
+                const nameColor = s.type === 'artifact' ? 'text-purple-300' : 'text-yellow-100';
+                row.innerHTML = `<div class="flex flex-col"><span class="${nameColor}">${name}</span><span class="text-xs text-gray-500">${desc}</span><span class="text-xs text-gray-400">${price} G</span></div>`;
                 const btn = document.createElement('button');
                 btn.className = 'text-xs border border-gray-600 px-2 py-1 hover:bg-white hover:text-black';
                 btn.innerText = 'BUY';
@@ -661,8 +684,10 @@ export const Systems = {
                         GameState.run.gold -= price;
                         if (s.type === 'item') {
                             GameState.inventory.items[s.id] = (GameState.inventory.items[s.id] || 0) + 1;
-                        } else {
+                        } else if (s.type === 'equip') {
                             GameState.inventory.equipment[s.id] = (GameState.inventory.equipment[s.id] || 0) + 1;
+                        } else {
+                            window.$gameParty.gainArtifact(s.id);
                         }
                         Log.loot(`Bought ${def.name}.`);
                         window.Game.Windows.HUD.refresh();
@@ -1421,6 +1446,13 @@ showDamageNumber(uid, val, isCrit = false) {
             switch (eventName) {
                 case 'onBattleEnd':
                     if(unit.evadeBonus) unit.evadeBonus = 0;
+                    if (trait.type === 'gold_rate') {
+                         // handled in BattleManager.processVictory, but we can log?
+                         // actually BattleManager logic needs to check this trait globally.
+                         // But if we want it here, we need to affect the outcome.
+                         // Since we can't easily affect the gold calc from here without events, we skip.
+                         // However, 'post_battle_heal' is handled here.
+                    }
                     if (trait.type === 'post_battle_heal') {
                         // Formula evaluation
                         // trait.formula might be 'level'
@@ -1429,7 +1461,8 @@ showDamageNumber(uid, val, isCrit = false) {
                         else amount = parseInt(trait.formula) || 0;
 
                         unit.hp = Math.min(unit.mhp, unit.hp + amount);
-                        Log.add(`${unit.name} was healed by Soothing Breeze.`);
+                        // Only log if amount > 0 and unit was damaged
+                        if (amount > 0 && unit.hp > 0) Log.add(`${unit.name} recovered ${amount} HP.`);
                     } else if (trait.type === 'post_battle_leech') {
                         const party = args[0];
                         const adjacent = this.getAdjacentUnits(unit, party);
