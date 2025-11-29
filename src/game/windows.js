@@ -8,46 +8,127 @@
  */
 export class Window_Base {
     /**
-     * @param {HTMLElement} [root] - The root DOM element for the window. If not provided, a div is created.
+     * @param {HTMLElement|string} rectOrId - The root DOM element, an ID string, or a rect (future use).
      */
-    constructor(root) {
-        this.root = root || document.createElement('div');
+    constructor(rectOrId) {
+        if (typeof rectOrId === 'string') {
+            this.root = document.getElementById(rectOrId);
+        } else if (rectOrId instanceof HTMLElement) {
+            this.root = rectOrId;
+        } else {
+            this.root = document.createElement('div');
+            // Default styling for dynamic windows can go here
+            this.root.className = 'absolute bg-black/80 border border-white';
+        }
+
+        if (!this.root) {
+            console.error(`Window_Base: Could not find element with ID '${rectOrId}'`);
+        }
+
+        this._handlers = {};
+        this.initialize();
     }
+
+    initialize() {
+        if (this.root) {
+            this.root.style.fontSize = `${this.standardFontSize()}px`;
+            this.root.style.lineHeight = `${this.lineHeight()}px`;
+        }
+    }
+
     /**
-     * Opens the window and appends it to a parent element.
+     * Returns the standard font size for windows.
+     * @returns {number}
+     */
+    standardFontSize() {
+        return 12;
+    }
+
+    /**
+     * Returns the standard line height for windows.
+     * @returns {number}
+     */
+    lineHeight() {
+        return 16;
+    }
+
+    /**
+     * Opens the window. If it's a dynamic window, appends to parent.
      * @param {HTMLElement} [parent] - The parent element. Defaults to document.body.
      */
     open(parent) {
-        (parent || document.body).appendChild(this.root);
+        if (parent && !this.root.parentElement) {
+            parent.appendChild(this.root);
+        }
         this.show();
     }
+
     /**
-     * Removes the window from the DOM.
+     * Removes the window from the DOM (if dynamic) or hides it.
      */
     close() {
-        this.root.remove();
+        this.hide();
+        // If we want to support destroying dynamic windows:
+        // this.root.remove();
     }
+
     /** Shows the window by removing the 'hidden' class. */
-    show() { this.root.classList.remove('hidden'); }
+    show() {
+        if (this.root) this.root.classList.remove('hidden');
+    }
+
     /** Hides the window by adding the 'hidden' class. */
-    hide() { this.root.classList.add('hidden'); }
+    hide() {
+        if (this.root) this.root.classList.add('hidden');
+    }
+
     /** Refreshes the window content. Intended to be overridden. */
     refresh() {}
+
+    /**
+     * Helper to clear all content from the window.
+     */
+    clear() {
+        if (this.root) this.root.innerHTML = '';
+    }
+
+    /**
+     * Helper to create and append a DOM element.
+     * @param {string} tag - HTML tag (e.g., 'div').
+     * @param {string} [className] - CSS classes.
+     * @param {HTMLElement} [parent] - Parent to append to (default: this.root).
+     * @returns {HTMLElement} The created element.
+     */
+    createEl(tag, className = '', parent = this.root) {
+        const el = document.createElement(tag);
+        if (className) el.className = className;
+        if (parent) parent.appendChild(el);
+        return el;
+    }
 }
 
 /**
- * A window that supports selecting items from a list.
+ * A window that supports selecting items from a list or grid.
  */
 export class Window_Selectable extends Window_Base {
-    /**
-     * @param {HTMLElement} [root] - The root DOM element.
-     */
-    constructor(root) {
-        super(root);
-        /** @type {Array} The list of items. */
-        this.items = [];
-        /** @type {number} The index of the currently selected item. */
-        this.index = -1;
+    initialize() {
+        super.initialize();
+        this._index = -1;
+        this._items = [];
+        this._handlers = {};
+    }
+
+    set items(list) {
+        this._items = list;
+        this.refresh();
+    }
+
+    get items() {
+        return this._items;
+    }
+
+    maxItems() {
+        return this._items ? this._items.length : 0;
     }
 
     /**
@@ -55,31 +136,55 @@ export class Window_Selectable extends Window_Base {
      * @param {number} index - The index to select.
      */
     select(index) {
-        this.index = Math.max(0, Math.min(this.items.length - 1, index));
-        this.refresh();
+        this._index = index;
+        this.refresh(); // Or just update classes to be more efficient
     }
 
     /**
      * Deselects the current item.
      */
     deselect() {
-        this.index = -1;
+        this._index = -1;
         this.refresh();
+    }
+
+    /**
+     * Refreshes the entire list.
+     * Default implementation clears root and calls drawItem for each item.
+     */
+    refresh() {
+        this.clear();
+        const max = this.maxItems();
+        for (let i = 0; i < max; i++) {
+            this.drawItem(i);
+        }
+    }
+
+    /**
+     * Draws a single item. Must be overridden by subclasses.
+     * @param {number} index - The index of the item.
+     */
+    drawItem(index) {
+        // Abstract
     }
 
     /**
      * Adds an event handler to the window.
      * @param {string} handler - The event name (e.g., 'click').
-     * @param {Function} callback - The callback function. Receives the index of the clicked item.
+     * @param {Function} callback - The callback function.
      */
     addHandler(handler, callback) {
-        // This is a simple event handler for now, it can be expanded later
-        this.root.addEventListener(handler, (e) => {
-            // Find the index of the clicked element
-            const index = Array.from(this.root.children).indexOf(e.target.closest('.party-slot'));
-            if (index !== -1) {
-                callback(index);
-            }
-        });
+        this._handlers[handler] = callback;
+    }
+
+    /**
+     * Helper to call a handler.
+     * @param {string} handler - The event name.
+     * @param {any} args - Arguments to pass.
+     */
+    callHandler(handler, ...args) {
+        if (this._handlers[handler]) {
+            this._handlers[handler](...args);
+        }
     }
 }
