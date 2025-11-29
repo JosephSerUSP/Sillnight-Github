@@ -184,7 +184,7 @@
         <div id="ui-layer" class="absolute inset-0 pointer-events-none p-4 z-10">
             <!-- Top HUD -->
             <div class="absolute top-4 left-4 flex gap-4 pointer-events-auto">
-                <div class="rpg-window px-4 py-1 text-yellow-500 bg-black/90">
+                <div id="hud" class="rpg-window px-4 py-1 text-yellow-500 bg-black/90">
                     FLOOR <span id="hud-floor">1</span> | G: <span id="hud-gold">0</span>
                 </div>
             </div>
@@ -202,21 +202,21 @@
             <div class="absolute bottom-4 left-4 right-4 flex justify-between items-end gap-4 pointer-events-auto">
                 <!-- Left: Log & Controls -->
                 <div class="w-1/3 flex flex-col gap-2" style="height: 160px;"> <!-- Reduced height h-40 approx 160px -->
-                    <div class="rpg-window flex-grow flex flex-col bg-black/90 min-h-0">
-                        <div class="rpg-header text-sm text-gray-400">LOG</div>
-                        <div id="game-log" class="p-2 overflow-y-auto text-sm font-mono leading-tight space-y-1 no-scrollbar text-gray-300 flex-grow"></div>
+                    <div id="battle-log-window" class="rpg-window flex-grow flex flex-col bg-black/90 min-h-0">
+                        <div class="rpg-header text-[10px] text-gray-400">LOG</div>
+                        <div id="game-log" class="p-2 overflow-y-auto font-mono leading-tight space-y-1 no-scrollbar text-gray-300 flex-grow"></div>
                     </div>
                     <!-- Controls -->
                     <div class="h-10 flex gap-2 w-full">
                         <div id="battle-controls" class="hidden w-full h-full">
-                            <button id="btn-player-turn" class="rpg-window w-full h-full hover:bg-yellow-900 border-yellow-700 text-yellow-500 text-sm font-bold flex items-center justify-center" onclick="Game.BattleManager.requestPlayerTurn()">
+                            <button id="btn-player-turn" class="rpg-window w-full h-full hover:bg-yellow-900 border-yellow-700 text-yellow-500 text-[10px] font-bold flex items-center justify-center" onclick="Game.BattleManager.requestPlayerTurn()">
                                 STOP ROUND (SPACE)
                             </button>
                         </div>
                         <div id="explore-controls" class="flex gap-2 w-full h-full">
-                            <button class="rpg-window flex-1 h-full hover:bg-gray-700 text-xs" onclick="window.Game.Windows.PartyMenu.toggle()">PARTY (P)</button>
-                            <button id="btn-formation" class="rpg-window flex-1 h-full hover:bg-gray-700 text-xs" onclick="window.Game.Windows.Party.toggleFormationMode()">FORMATION</button>
-                            <button id="btn-inventory" class="rpg-window flex-1 h-full hover:bg-gray-700 text-xs" onclick="window.Game.Windows.Inventory.toggle()">BAG (B)</button>
+                            <button class="rpg-window flex-1 h-full hover:bg-gray-700 text-[10px]" onclick="window.Game.Windows.PartyMenu.toggle()">PARTY (P)</button>
+                            <button id="btn-formation" class="rpg-window flex-1 h-full hover:bg-gray-700 text-[10px]" onclick="window.Game.Windows.Party.toggleFormationMode()">FORMATION</button>
+                            <button id="btn-inventory" class="rpg-window flex-1 h-full hover:bg-gray-700 text-[10px]" onclick="window.Game.Windows.Inventory.toggle()">BAG (B)</button>
                         </div>
                     </div>
                 </div>
@@ -224,8 +224,8 @@
                 <div class="w-1/3" style="height: 160px;"> <!-- Reduced height h-40 approx 160px -->
                     <div class="rpg-window h-full flex flex-col bg-black/90">
                         <div class="rpg-header flex justify-between">
-                            <span class="text-sm text-gray-400">PARTY STATUS</span>
-                            <span id="turn-indicator" class="text-xs text-yellow-500 hidden mode-overlay px-2">FORMATION MODE</span>
+                            <span class="text-[10px] text-gray-400">PARTY STATUS</span>
+                            <span id="turn-indicator" class="text-[10px] text-yellow-500 hidden mode-overlay px-2">FORMATION MODE</span>
                         </div>
                         <div id="party-grid" class="flex-grow grid grid-rows-2 grid-cols-3 gap-1 p-1">
                             <!-- JS Generated -->
@@ -242,7 +242,7 @@
                     <span>PARTY / RESERVE</span>
                     <button onclick="Game.Windows.PartyMenu.toggle()" class="text-red-500 px-2 hover:bg-red-900">X</button>
                 </div>
-                <div class="p-2 text-sm text-gray-400 border-b border-gray-700">
+                <div class="p-2 text-[10px] text-gray-400 border-b border-gray-700">
                     Click a unit to select it, then click another unit or an empty slot to swap them.
                 </div>
                 <div id="party-menu-container" class="grid grid-cols-7 grid-rows-5 gap-1 p-2 overflow-y-auto no-scrollbar flex-grow">
@@ -273,44 +273,44 @@
                             <span id="modal-sprite" class="status-sprite"></span>
                         </div>
                         <div class="text-center w-full space-y-1">
-                            <h2 id="modal-name" class="text-3xl text-yellow-400 tracking-widest"></h2>
-                            <div class="text-sm text-gray-400">Lv. <span id="modal-lvl"></span></div>
-                            <div id="modal-temperament" class="text-xs text-gray-500"></div>
+                            <h2 id="modal-name" class="text-2xl text-yellow-400 tracking-widest"></h2>
+                            <div class="text-[10px] text-gray-400">Lv. <span id="modal-lvl"></span></div>
+                            <div id="modal-temperament" class="text-[10px] text-gray-500"></div>
                         </div>
                     </div>
                     <div class="w-3/5 flex flex-col gap-3 relative">
-                        <div class="grid grid-cols-3 gap-3 text-lg">
+                        <div class="grid grid-cols-3 gap-3 text-base">
                             <div class="rpg-window bg-black/70 px-3 py-2 border border-gray-700">
-                                <div class="text-xs text-gray-500">HP</div>
-                                <div id="modal-hp" class="text-green-400 text-xl"></div>
+                                <div class="text-[10px] text-gray-500">HP</div>
+                                <div id="modal-hp" class="text-green-400 text-lg"></div>
                             </div>
                             <div class="rpg-window bg-black/70 px-3 py-2 border border-gray-700">
-                                <div class="text-xs text-gray-500">XP</div>
-                                <div id="modal-xp" class="text-blue-400 text-xl"></div>
+                                <div class="text-[10px] text-gray-500">XP</div>
+                                <div id="modal-xp" class="text-blue-400 text-lg"></div>
                             </div>
                             <div class="rpg-window bg-black/70 px-3 py-2 border border-gray-700">
-                                <div class="text-xs text-gray-500">EQUIPMENT</div>
+                                <div class="text-[10px] text-gray-500">EQUIPMENT</div>
                                 <button id="modal-equip-slot" class="mt-1 w-full text-left flex items-center justify-between px-2 py-1 border border-gray-600 bg-gray-900 hover:border-yellow-400 hover:text-yellow-200 transition-colors"></button>
                             </div>
                         </div>
-                        <div class="grid grid-cols-3 gap-3 text-sm">
+                        <div class="grid grid-cols-3 gap-3 text-[10px]">
                             <div class="rpg-window bg-black/70 px-3 py-2 border border-gray-700">
-                                <div class="text-xs text-gray-500">RACE</div>
-                                <div id="modal-race" class="text-yellow-200 text-lg"></div>
+                                <div class="text-[10px] text-gray-500">RACE</div>
+                                <div id="modal-race" class="text-yellow-200 text-sm"></div>
                             </div>
                             <div class="rpg-window bg-black/70 px-3 py-2 border border-gray-700">
-                                <div class="flex items-center justify-between text-xs text-gray-500">
+                                <div class="flex items-center justify-between text-[10px] text-gray-500">
                                     <span>ELEMENTS</span>
-                                    <span class="text-[10px] text-gray-600">future feature</span>
+                                    <span class="text-[8px] text-gray-600">future feature</span>
                                 </div>
-                                <div id="modal-elements" class="text-xl"></div>
+                                <div id="modal-elements" class="text-sm"></div>
                             </div>
                             <div class="rpg-window bg-black/70 px-3 py-2 border border-gray-700">
-                                <div class="flex items-center justify-between text-xs text-gray-500">
+                                <div class="flex items-center justify-between text-[10px] text-gray-500">
                                     <span>PASSIVE</span>
-                                    <span class="text-[10px] text-gray-600">coming soon</span>
+                                    <span class="text-[8px] text-gray-600">coming soon</span>
                                 </div>
-                                <div id="modal-passive" class="text-gray-300 text-sm leading-tight"></div>
+                                <div id="modal-passive" class="text-gray-300 text-[10px] leading-tight"></div>
                             </div>
                         </div>
                         <div>
@@ -318,18 +318,18 @@
                                 <h3 class="text-gray-300 tracking-wide">ACTIONS</h3>
                                 <span class="text-[10px] text-gray-500">Known skills</span>
                             </div>
-                            <div id="modal-actions" class="grid grid-cols-2 gap-2 text-sm"></div>
+                            <div id="modal-actions" class="grid grid-cols-2 gap-2 text-[10px]"></div>
                         </div>
-                        <div class="rpg-window bg-black/70 px-3 py-2 text-sm text-left border border-gray-700">
-                            <div class="text-gray-400 text-xs mb-1">LORE</div>
+                        <div class="rpg-window bg-black/70 px-3 py-2 text-[10px] text-left border border-gray-700">
+                            <div class="text-gray-400 text-[8px] mb-1">LORE</div>
                             <div id="modal-desc" class="leading-tight text-gray-300"></div>
                         </div>
                         <div class="flex-grow rpg-window bg-black/70 border border-gray-700 p-3 flex flex-col gap-2 overflow-hidden">
                             <div class="flex justify-between items-center">
                                 <h3 class="text-gray-300 tracking-wide">EQUIPMENT LIBRARY</h3>
-                                <button id="modal-close-picker" class="hidden text-xs text-gray-400 hover:text-white" onclick="Game.Windows.CreatureModal.closeCenterModal()">Close</button>
+                                <button id="modal-close-picker" class="hidden text-[10px] text-gray-400 hover:text-white" onclick="Game.Windows.CreatureModal.closeCenterModal()">Close</button>
                             </div>
-                            <div id="equipment-empty-hint" class="text-xs text-gray-500">Tap the equipment slot above to browse what this creature can wear.</div>
+                            <div id="equipment-empty-hint" class="text-[10px] text-gray-500">Tap the equipment slot above to browse what this creature can wear.</div>
                             <div id="equipment-options" class="grid grid-cols-2 gap-2 overflow-y-auto pr-1"></div>
                         </div>
                     </div>
