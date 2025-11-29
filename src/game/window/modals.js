@@ -2,26 +2,27 @@ import { Data } from '../../assets/data/data.js';
 import { GameState } from '../state.js';
 import { Window_Selectable } from '../windows.js';
 import { renderCreaturePanel, spriteMarkup } from './common.js';
-import { Systems } from '../systems.js';
 import { Log } from '../log.js';
 
 /**
  * Window for displaying creature details and managing equipment.
  */
 export class Window_CreatureModal extends Window_Selectable {
-    /**
-     * Initializes the Creature Modal.
-     * Sets up the equipment slot click handler.
-     */
     constructor() {
-        super(document.getElementById('creature-modal'));
+        super('creature-modal');
+    }
+
+    initialize() {
+        super.initialize();
         this._unit = null;
-        this.root.querySelector('#modal-equip-slot').addEventListener('click', () => {
-            if (this._unit.equipmentId) {
-                this.unequipUnit(this._unit);
-            } else {
-                this.startEquipFlow(null);
-            }
+        this.root.addEventListener('click', (e) => {
+             if (e.target.id === 'modal-equip-slot' || e.target.closest('#modal-equip-slot')) {
+                if (this._unit && this._unit.equipmentId) {
+                    this.unequipUnit(this._unit);
+                } else if (this._unit) {
+                    this.startEquipFlow(null);
+                }
+             }
         });
     }
 
@@ -53,18 +54,24 @@ export class Window_CreatureModal extends Window_Selectable {
         const box = document.getElementById('center-modal');
         box.classList.remove('hidden');
         box.classList.add('pointer-events-auto');
-        // Roster is now a list of Game_Actor objects.
+
         const list = GameState.roster.map(u => ({ owner: u, id: u.equipmentId, source: 'unit' })).filter(x => x.id);
         const inv = Object.keys(GameState.inventory.equipment).map(key => ({ owner: null, id: key, source: 'inventory' }));
         const options = [...list, ...inv];
+
         const first = this._unit || GameState.party.activeSlots.find(Boolean);
         this.equipmentPickerPreset = id ? { id, source: 'inventory' } : null;
+
         box.innerHTML = '';
         const card = document.createElement('div');
-        card.className = 'rpg-window w-1/2 bg-black/90 p-4 border border-gray-700 text-sm';
-        card.innerHTML = `<div class="flex justify-between items-center mb-3"><div class="text-lg text-yellow-300">Choose a creature to equip ${id ? Data.equipment[id].name : 'item'}</div><button class="text-red-500" onclick="window.Game.Windows.CreatureModal.closeCenterModal()">Cancel</button></div>`;
+        // Reduce size and padding for cleaner look
+        card.className = 'rpg-window w-1/2 bg-black/90 p-3 border border-gray-700'; // Inherit base font size
+        card.innerHTML = `<div class="flex justify-between items-center mb-2"><div class="text-yellow-300">Choose a creature to equip ${id ? Data.equipment[id].name : 'item'}</div><button class="text-red-500" id="btn-cancel-equip">Cancel</button></div>`;
+        card.querySelector('#btn-cancel-equip').onclick = () => this.closeCenterModal();
+
         const grid = document.createElement('div');
         grid.className = 'grid grid-cols-2 gap-2';
+
         options.forEach(opt => {
             const def = Data.equipment[opt.id];
             const name = typeof opt.owner?.name === 'function' ? opt.owner.name() : opt.owner?.name;
@@ -74,7 +81,8 @@ export class Window_CreatureModal extends Window_Selectable {
             if (this.equipmentPickerPreset && this.equipmentPickerPreset.id === opt.id && this.equipmentPickerPreset.source === opt.source) {
                 cardInner.classList.add('border-yellow-500');
             }
-            cardInner.innerHTML = `<div class="flex justify-between items-center"><div class="text-yellow-200">${def.name}</div><span class="text-xs text-gray-500 uppercase">${opt.source}</span></div><div class="text-xs text-gray-400 leading-tight">${subtitle}</div>`;
+            // Use inherit font size for main text, smaller subtitle [10px]
+            cardInner.innerHTML = `<div class="flex justify-between items-center"><div class="text-yellow-200">${def.name}</div><span class="text-[10px] text-gray-500 uppercase">${opt.source}</span></div><div class="text-[10px] text-gray-400 leading-tight">${subtitle}</div>`;
             cardInner.addEventListener('click', () => {
                 const target = first;
                 if (!target) return;
@@ -88,19 +96,12 @@ export class Window_CreatureModal extends Window_Selectable {
         box.appendChild(card);
     }
 
-    /**
-     * Closes the center equipment modal.
-     */
     closeCenterModal() {
-        document.getElementById('center-modal').classList.add('hidden');
-        document.getElementById('center-modal').innerHTML = '';
+        const modal = document.getElementById('center-modal');
+        modal.classList.add('hidden');
+        modal.innerHTML = '';
     }
 
-    /**
-     * Equips an item from the inventory to a target unit.
-     * @param {Object} target - The unit to equip.
-     * @param {string} equipmentId - The equipment ID.
-     */
     equipFromInventory(target, equipmentId) {
         const count = GameState.inventory.equipment[equipmentId] || 0;
         if (count <= 0) return;
@@ -115,16 +116,10 @@ export class Window_CreatureModal extends Window_Selectable {
 
         const name = typeof target.name === 'function' ? target.name() : target.name;
         Log.add(`${name} equipped ${Data.equipment[equipmentId].name}.`);
-        window.Game.Windows.Party.refresh();
+        if (window.Game.Windows.Party) window.Game.Windows.Party.refresh();
         this.refresh();
     }
 
-    /**
-     * Transfers equipment from one unit to another.
-     * @param {Object} target - The receiving unit.
-     * @param {Object} owner - The current owner of the equipment.
-     * @param {string} equipmentId - The equipment ID.
-     */
     transferEquipment(target, owner, equipmentId) {
         const previous = target.equipmentId;
         if (previous === equipmentId && owner.uid === target.uid) return;
@@ -140,14 +135,10 @@ export class Window_CreatureModal extends Window_Selectable {
         const name = typeof target.name === 'function' ? target.name() : target.name;
         const ownerName = typeof owner.name === 'function' ? owner.name() : owner.name;
         Log.add(`${name} borrowed ${Data.equipment[equipmentId].name} from ${ownerName}.`);
-        window.Game.Windows.Party.refresh();
+        if (window.Game.Windows.Party) window.Game.Windows.Party.refresh();
         this.refresh();
     }
 
-    /**
-     * Unequips the item from a unit.
-     * @param {Object} unit - The unit to unequip.
-     */
     unequipUnit(unit) {
         if (!unit.equipmentId) return;
         const previous = unit.equipmentId;
@@ -156,22 +147,14 @@ export class Window_CreatureModal extends Window_Selectable {
         this.recomputeHp(unit);
         const name = typeof unit.name === 'function' ? unit.name() : unit.name;
         Log.add(`${name} removed ${Data.equipment[previous].name}.`);
-        window.Game.Windows.Party.refresh();
+        if (window.Game.Windows.Party) window.Game.Windows.Party.refresh();
         this.refresh();
     }
 
-    /**
-     * Recalculates HP after equipment changes to ensure validity.
-     * @param {Object} unit - The unit to update.
-     */
     recomputeHp(unit) {
-        // If class, it handles HP updates, but we need to ensure max HP is capped?
-        // Game_BattlerBase handles clamping in refresh().
-        // If using class, just set HP.
         if (typeof unit.refresh === 'function') {
             unit.refresh();
         } else {
-             // Fallback
             const maxhp = unit.mhp || 1;
             if (unit.hp > maxhp) unit.hp = maxhp;
         }
@@ -185,6 +168,9 @@ export class Window_CreatureModal extends Window_Selectable {
         const unit = this._unit;
         const def = Data.creatures[unit.speciesId];
 
+        const setText = (sel, txt) => { const el = this.root.querySelector(sel); if(el) el.innerText = txt; };
+        const setHTML = (sel, htm) => { const el = this.root.querySelector(sel); if(el) el.innerHTML = htm; };
+
         let maxhp = 0;
         if (typeof unit.mhp === 'number') maxhp = unit.mhp;
         else if (typeof unit.mhp === 'function') maxhp = unit.mhp();
@@ -192,44 +178,59 @@ export class Window_CreatureModal extends Window_Selectable {
 
         const name = typeof unit.name === 'function' ? unit.name() : unit.name;
 
-        this.root.querySelector('#modal-sprite').innerHTML = spriteMarkup(unit, 'h-28 w-28 object-contain', 'status-sprite');
-        this.root.querySelector('#modal-name').innerText = name;
-        this.root.querySelector('#modal-lvl').innerText = unit.level || 1;
-        this.root.querySelector('#modal-temperament').innerText = def.temperament;
-        this.root.querySelector('#modal-hp').innerText = `${unit.hp}/${maxhp}`;
-        this.root.querySelector('#modal-xp').innerText = `${unit.exp ?? 0}`;
-        this.root.querySelector('#modal-race').innerText = def.race;
-        this.root.querySelector('#modal-elements').innerText = (unit.elements || []).join(', ');
+        setHTML('#modal-sprite', spriteMarkup(unit, 'h-28 w-28 object-contain', 'status-sprite'));
+        // Name uses inherit size (12px) now, removing override.
+        setText('#modal-name', name);
+
+        setText('#modal-lvl', unit.level || 1);
+        setText('#modal-temperament', def.temperament);
+        setText('#modal-hp', `${unit.hp}/${maxhp}`);
+        setText('#modal-xp', `${unit.exp ?? 0}`);
+        setText('#modal-race', def.race);
+        setText('#modal-elements', (unit.elements || []).join(', '));
+
         const passiveContainer = this.root.querySelector('#modal-passive');
-        if (def.passives && def.passives.length > 0) {
-            passiveContainer.innerHTML = '';
-            def.passives.forEach(passiveId => {
-                const passive = Data.passives[passiveId];
-                if (passive) {
-                    const passiveEl = document.createElement('div');
-                    passiveEl.className = 'text-xs';
-                    passiveEl.innerHTML = `<div class="text-yellow-200">${passive.name}</div> <div class="text-gray-400">${passive.description}</div>`;
-                    passiveContainer.appendChild(passiveEl);
-                }
-            });
-        } else {
-            passiveContainer.innerText = '—';
+        if (passiveContainer) {
+            if (def.passives && def.passives.length > 0) {
+                passiveContainer.innerHTML = '';
+                def.passives.forEach(passiveId => {
+                    const passive = Data.passives[passiveId];
+                    if (passive) {
+                        const passiveEl = document.createElement('div');
+                        // Use inherit size, detail smaller
+                        passiveEl.className = '';
+                        // Description: text-[10px] to be smaller than base text
+                        passiveEl.innerHTML = `<div class="text-yellow-200">${passive.name}</div> <div class="text-[10px] text-gray-400">${passive.description}</div>`;
+                        passiveContainer.appendChild(passiveEl);
+                    }
+                });
+            } else {
+                passiveContainer.innerText = '—';
+            }
         }
-        this.root.querySelector('#modal-desc').innerText = def.description;
+
+        setText('#modal-desc', def.description);
+
         const actions = this.root.querySelector('#modal-actions');
-        actions.innerHTML = '';
-        (def.acts || []).forEach(act => {
-            const card = document.createElement('div');
-            card.className = 'rpg-window px-3 py-2 bg-black/70 border border-gray-700';
-            card.innerHTML = `<div class="text-yellow-200">${act.name}</div><div class="text-xs text-gray-400">${act.description}</div>`;
-            actions.appendChild(card);
-        });
+        if (actions) {
+            actions.innerHTML = '';
+            (def.acts || []).forEach(act => {
+                const card = document.createElement('div');
+                card.className = 'rpg-window px-3 py-2 bg-black/70 border border-gray-700';
+                // Description: text-[10px] to be smaller than base text
+                card.innerHTML = `<div class="text-yellow-200">${act.name}</div><div class="text-[10px] text-gray-400">${act.description}</div>`;
+                actions.appendChild(card);
+            });
+        }
+
         const equipBtn = this.root.querySelector('#modal-equip-slot');
-        if (unit.equipmentId) {
-            const eq = Data.equipment[unit.equipmentId];
-            equipBtn.innerText = eq.name;
-        } else {
-            equipBtn.innerText = '[ Empty ]';
+        if (equipBtn) {
+            if (unit.equipmentId) {
+                const eq = Data.equipment[unit.equipmentId];
+                equipBtn.innerText = eq ? eq.name : 'Unknown';
+            } else {
+                equipBtn.innerText = '[ Empty ]';
+            }
         }
     }
 }
@@ -238,16 +239,14 @@ export class Window_CreatureModal extends Window_Selectable {
  * Window for displaying the party's inventory.
  */
 export class Window_Inventory extends Window_Selectable {
-    /**
-     * Initializes the Inventory window.
-     */
     constructor() {
-        super(document.getElementById('inventory-modal'));
+        super('inventory-modal');
     }
 
-    /**
-     * Toggles visibility.
-     */
+    initialize() {
+        super.initialize();
+    }
+
     toggle() {
         if (this.root.classList.contains('hidden')) {
             this.show();
@@ -256,52 +255,48 @@ export class Window_Inventory extends Window_Selectable {
         }
     }
 
-    /**
-     * Refresh the inventory list.
-     */
     refresh() {
         const list = this.root.querySelector('#inventory-list');
+        if (!list) return;
+
         list.innerHTML = '';
         const eqKeys = Object.keys(GameState.inventory.equipment);
+
         if (eqKeys.length > 0) {
-            const eqTitle = document.createElement('div');
-            eqTitle.className = 'text-yellow-400 mb-2';
+            const eqTitle = this.createEl('div', 'text-yellow-400 mb-2', list);
             eqTitle.innerText = 'Equipment';
-            list.appendChild(eqTitle);
+
             eqKeys.forEach(id => {
                 const count = GameState.inventory.equipment[id];
                 const def = Data.equipment[id];
-                const row = document.createElement('div');
-                row.className = 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1';
-                row.innerHTML = `<div><span class="text-yellow-100">${def.name}</span> <span class="text-xs text-gray-400">x${count}</span><div class="text-xs text-gray-500">${def.description}</div></div>`;
-                const btn = document.createElement('button');
-                btn.className = 'text-xs border border-gray-600 px-2 py-1 hover:bg-white hover:text-black';
+                const row = this.createEl('div', 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1', list);
+                // Inherit font size
+                // Using text-[10px] for secondary info like quantity and description to establish hierarchy
+                row.innerHTML = `<div><span class="text-yellow-100">${def.name}</span> <span class="text-[10px] text-gray-400">x${count}</span><div class="text-[10px] text-gray-500">${def.description}</div></div>`;
+
+                const btn = this.createEl('button', 'text-[10px] border border-gray-600 px-2 py-1 hover:bg-white hover:text-black', row);
                 btn.innerText = 'EQUIP';
                 btn.addEventListener('click', () => {
                     window.Game.Windows.CreatureModal.startEquipFlow(id);
                 });
-                row.appendChild(btn);
-                list.appendChild(row);
             });
         }
+
         const itemKeys = Object.keys(GameState.inventory.items);
         if (itemKeys.length > 0) {
-            const itmTitle = document.createElement('div');
-            itmTitle.className = 'text-yellow-400 mt-4 mb-2';
+            const itmTitle = this.createEl('div', 'text-yellow-400 mt-4 mb-2', list);
             itmTitle.innerText = 'Items';
-            list.appendChild(itmTitle);
+
             itemKeys.forEach(id => {
                 const count = GameState.inventory.items[id];
                 const def = Data.items[id];
-                const row = document.createElement('div');
-                row.className = 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1';
-                row.innerHTML = `<div><span class="text-yellow-100">${def.name}</span> <span class="text-xs text-gray-400">x${count}</span><div class="text-xs text-gray-500">${def.description}</div></div>`;
-                const btn = document.createElement('button');
-                btn.className = 'text-xs border border-gray-600 px-2 py-1 hover:bg-white hover:text-black';
+                const row = this.createEl('div', 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1', list);
+                // Using text-[10px] for secondary info
+                row.innerHTML = `<div><span class="text-yellow-100">${def.name}</span> <span class="text-[10px] text-gray-400">x${count}</span><div class="text-[10px] text-gray-500">${def.description}</div></div>`;
+
+                const btn = this.createEl('button', 'text-[10px] border border-gray-600 px-2 py-1 hover:bg-white hover:text-black', row);
                 btn.innerText = 'USE';
                 btn.addEventListener('click', () => alert('Item usage coming soon'));
-                row.appendChild(btn);
-                list.appendChild(row);
             });
         }
     }
@@ -311,23 +306,23 @@ export class Window_Inventory extends Window_Selectable {
  * Window for managing party formation and reserves.
  */
 export class Window_PartyMenu extends Window_Selectable {
-    /**
-     * Initializes the Party Menu window.
-     * Sets up click handlers for party slots.
-     */
     constructor() {
-        super(document.getElementById('party-modal'));
-        this.root.querySelector('#party-menu-container').addEventListener('click', (e) => {
-            const target = e.target.closest('.party-menu-slot');
-            if (target) {
-                this.onPartySlotClick(target);
-            }
-        });
+        super('party-modal');
     }
 
-    /**
-     * Toggles visibility.
-     */
+    initialize() {
+        super.initialize();
+        const container = this.root.querySelector('#party-menu-container');
+        if (container) {
+            container.addEventListener('click', (e) => {
+                const target = e.target.closest('.party-menu-slot');
+                if (target) {
+                    this.onPartySlotClick(target);
+                }
+            });
+        }
+    }
+
     toggle() {
         if (this.root.classList.contains('hidden')) {
             this.show();
@@ -336,10 +331,6 @@ export class Window_PartyMenu extends Window_Selectable {
         }
     }
 
-    /**
-     * Handles clicks on party slots for swapping members.
-     * @param {HTMLElement} element - The clicked slot element.
-     */
     onPartySlotClick(element) {
         const selected = this.root.querySelector('.party-menu-slot.selected');
 
@@ -386,17 +377,16 @@ export class Window_PartyMenu extends Window_Selectable {
             }
 
             this.refresh();
-            window.Game.Windows.Party.refresh();
+            if (window.Game.Windows.Party) window.Game.Windows.Party.refresh();
         } else {
             element.classList.add('selected');
         }
     }
 
-    /**
-     * Updates the party menu grid.
-     */
     refresh() {
         const container = this.root.querySelector('#party-menu-container');
+        if (!container) return;
+
         container.innerHTML = '';
         const columns = 7;
         const rows = 5;
@@ -445,7 +435,7 @@ export class Window_PartyMenu extends Window_Selectable {
                 div.innerHTML = renderCreaturePanel(unit);
             } else {
                  if (isEmptyActiveSlot) {
-                    div.innerHTML = '<span class="m-auto text-gray-600 text-xs">EMPTY</span>';
+                    div.innerHTML = '<span class="m-auto text-gray-600 text-[10px]">EMPTY</span>';
                  } else {
                     div.style.visibility = 'hidden';
                  }
