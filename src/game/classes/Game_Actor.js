@@ -84,6 +84,14 @@ export class Game_Actor extends Game_Battler {
             const equip = Data.equipment[this._equipmentId];
             if (equip) objects.push(equip);
         }
+        // 4. Global Artifacts (Only applies to actors, which this is)
+        // Access window.$gameParty directly as it's the global state source
+        if (window.$gameParty && window.$gameParty.artifacts) {
+            window.$gameParty.artifacts.forEach(artifactId => {
+                const artifact = Data.artifacts[artifactId];
+                if (artifact) objects.push(artifact);
+            });
+        }
         return objects;
     }
 
