@@ -28,6 +28,7 @@ export const Game = {
     log: Log,
     Scenes: {},
     SceneManager: new SceneManager(),
+    BattleManager: BattleManager,
     Windows: {},
 
     /**

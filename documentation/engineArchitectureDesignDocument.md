@@ -2,7 +2,7 @@
 
 # Stillnight Engine Architecture & Refactoring Design Document
 
-**Version:** 1.2
+**Version:** 1.3
 **Author:** Senior Game Engine Architect
 **Date:** 2025-11-26
 **Reference:** RPG Maker MZ Architecture (RMMZ)
@@ -11,14 +11,12 @@
 
 ## 1. Executive Summary
 
-The current `Stillnight` codebase is a functional "vertical slice" prototype. It successfully demonstrates the core gameplay loop (Exploration -> Battle -> Reward), integration of 3D assets (Three.js), and particle effects (Effekseer).
+The `Stillnight` codebase has been refactored from a "vertical slice" prototype to a data-driven, modular game engine. The architecture now follows a strict Separation of Concerns (MVC-like pattern), replacing previous "God Objects" with specialized classes.
 
-However, the current architecture relies on "God Objects" (`Systems`, `ShellUI`) and direct global state manipulation (`GameState`), which creates high coupling. This makes adding new features (e.g., new stats, complex turn logic, custom windows) exponentially more difficult.
-
-**The Refactoring Goal:** Transition from a specific *game script* to a data-driven *game engine*. This involves adopting a strict Separation of Concerns (MVC-like pattern):
-1.  **Model:** `Game_Objects` (Data & Logic)
-2.  **View:** `Windows` (UI) and `Sprites` (Visuals)
-3.  **Controller:** `Scenes` and `Managers` (Flow)
+**Architecture Overview:**
+1.  **Model:** `Game_Objects` (Data & Logic) - Encapsulated in `src/game/classes/`.
+2.  **View:** `Windows` (UI) - Managed by `src/game/window/` classes. `Sprites` (Visuals) - Managed by `Battle3D` and `Systems.Explore`.
+3.  **Controller:** `Scenes` and `Managers` (Flow) - Managed by `SceneManager`, `BattleManager`, and `DataManager`.
 
 ---
 
@@ -26,138 +24,99 @@ However, the current architecture relies on "God Objects" (`Systems`, `ShellUI`)
 
 ### 2.1 Inheritance & Class Hierarchy
 
-#### Current State
-The project currently relies on functional composition and singleton objects. Inheritance is minimal.
-*   **Scenes:** `Scene_Base` exists but is thin.
-*   **UI:** `ShellUI` (in `windows.js`) is a monolithic class handling HUD, Party, Inventory, and Modals.
-*   **Logic:** `Systems` (in `systems.js`) is a static object containing `Battle`, `Map`, `Explore`, etc.
-
-#### Target Hierarchy (Refactor Target)
-We will move to a strict class-based hierarchy to ensure modularity.
+#### Current State (Refactored)
+The project now uses a robust class hierarchy.
 
 **1. Managers (Static Classes)**
 *   `SceneManager`: Controls the game loop and scene stack.
-*   `BattleManager`: (New) Handles turn phases, action resolution, and victory conditions (extracted from `Systems.Battle`).
-*   `DataManager`: (New) Handles loading JSONs and instantiating game objects.
-*   `SoundManager`: (New) Central audio handling.
+*   `BattleManager`: Handles turn phases, action resolution, and victory conditions.
+*   `DataManager`: Handles setup of new games and object instantiation.
+*   `InputManager`: Maps keyboard inputs to game commands.
 
 **2. Game Objects (The "Model")**
-*   `Game_Temp`: Transient data (common events, immediate flags).
-*   `Game_System`: System data (save counts, settings).
+*   `Game_Temp`: Transient data.
+*   `Game_System`: System data.
 *   `Game_Map`: Map data, scroll position, events.
 *   `Game_Party`: Inventory, gold, steps, collection of `Game_Actor`.
-*   `Game_Battler` (Base) -> `Game_Actor` (Player) / `Game_Enemy` (Foe).
+*   `Game_BattlerBase` -> `Game_Battler` -> `Game_Actor` (Player) / `Game_Enemy` (Foe).
     *   *Responsibility:* Stats, Buffs, HP/MP logic, Trait evaluation.
+*   `Game_Action`: Encapsulates action execution, target selection, and effect application.
 
 **3. Scenes (The "Controller")**
 *   `Scene_Base`
-    *   `Scene_Boot`: Asset loading.
-    *   `Scene_Title`: Main menu.
-    *   `Scene_Map`: Exploration logic.
+    *   `Scene_Explore`: Exploration logic.
     *   `Scene_Battle`: Battle flow.
-    *   `Scene_Menu`: Base for UI screens.
 
 **4. Windows (The "View" - UI)**
-*   `Window_Base`: Canvas/DOM context, open/close animations.
-    *   `Window_Selectable`: Cursor logic, scrolling, input handling.
-        *   `Window_Command`: Generic list of execute commands.
-        *   `Window_ItemList`: Inventory display.
-        *   `Window_Status`: Character details.
-        *   `Window_BattleLog`: Text scrolling during combat.
+*   `Window_Base`: Base UI class.
+    *   `Window_Selectable`: Cursor logic.
+        *   `Window_Party`: Active party display.
+        *   `Window_Inventory`: Item management.
+        *   `Window_HUD`: Heads-up display.
+        *   `Window_BattleLog`: Battle text feed.
+        *   `Window_CreatureModal`: Detailed status view.
 
-**5. Sprites (The "View" - Visuals)**
-*   `Spriteset_Base`: Container for visual layers.
-    *   `Spriteset_Map`
-    *   `Spriteset_Battle` (Wraps the Three.js Logic).
+**5. Visual Systems**
+*   `Systems.Explore`: Handles 3D map rendering (Three.js).
+*   `Systems.Battle3D`: Handles 3D battle scene rendering (Three.js + Effekseer).
+    *   *Note:* `Battle3D` sets textures to `NearestFilter` for a pixelated aesthetic.
 
-### 2.2 Coupling Analysis
+### 2.2 Coupling Analysis (Improvements)
 
-| Component | Current Coupling | Severity | Solution |
-| :--- | :--- | :--- | :--- |
-| **ShellUI** | Directly accesses `GameState.party`, `GameState.inventory`. Calls `Systems.Battle` functions directly. Hardcoded HTML strings. | **Critical** | decouple via `Window` classes. UI should observe `Game_Objects`, not read raw JSON. Use a Window Layer. |
-| **Systems.Battle** | Directly modifies DOM (`Log.battle`), directly calls `UI.renderParty`. Hardcoded damage formulas inside `calculateEffectValue`. | **Critical** | Move logic to `BattleManager`. Move damage math to `Game_Action`. UI updates via Event listeners or update loop. |
-| **Systems.Map** | Generates map data and renders canvas in one object. | **High** | Split into `Game_Map` (Data) and `Spriteset_Map` (Rendering). |
-| **Events** | Hardcoded HTML construction in `Systems.Events`. | **Medium** | Use `Window_Message` or `Window_Shop` to generate UI based on data. |
+| Component | Status | Solution Implemented |
+| :--- | :--- | :--- |
+| **ShellUI** | **Removed** | Replaced by `Window_` classes in `src/game/window/`. |
+| **Systems.Battle** | **Removed** | Logic moved to `BattleManager`, `Game_Action`, and `Game_Battler`. |
+| **GameState** | **Legacy Proxy** | Retained for backward compatibility, proxies requests to global `window.$gameParty` etc. |
+| **Systems.Triggers** | **Legacy** | Still handles some event hooks, but logic is gradually moving to `Game_Battler` traits. |
 
 ### 2.3 Hardcoding vs. Modularity
 
-**Problem Area: Effect Evaluation (`Systems.Battle`)**
-Currently, `calculateEffectValue` contains `eval(effect.formula)`.
-*   *Issue:* It relies on implicit variable names (`a`, `b`) defined in the scope of `Systems.Battle`.
-*   *Target:* Move this to `Game_Action.prototype.evalDamageFormula(target)`.
+**Effect Evaluation**
+*   Logic moved to `Game_Action` and `BattleManager`.
+*   Formulas are evaluated within `Game_Action` context.
 
-**Problem Area: Trait Handling (`Systems.Triggers`)**
-Traits are handled via a `switch` statement inside `handleTrait`.
-*   *Issue:* Adding a new trait (e.g., "Counter Attack") requires modifying the core engine code.
-*   *Target:* `Game_Battler.prototype.traitObjects()` should aggregate traits. Specific getter methods (e.g., `hitRate()`, `evasive()`) should iterate over traits to calculate the final value.
+**Trait Handling**
+*   `Game_Battler` now implements `traitObjects()` to aggregate traits from Actor/Enemy data, Equipment, and Passives.
+*   Derived stats (`cri`, `eva`, `hit`, `speed`) use `traitsSum()` to calculate values dynamically.
 
 ---
 
 ## 3. Scalability Assessment
 
-*   **Adding Stats:** Currently requires editing `objects.js` (creation), `windows.js` (rendering), and `systems.js` (battle logic).
-    *   *Score:* 2/10.
-*   **Adding Windows:** Requires adding methods to `ShellUI` and manually managing `innerHTML` and event listeners.
-    *   *Score:* 3/10.
-*   **Adding Equipment Slots:** Hardcoded to one slot in `objects.js` logic and UI.
-    *   *Score:* 1/10.
+*   **Adding Stats:** Requires editing `Game_BattlerBase` and data files. (Significantly improved).
+*   **Adding Windows:** Create a new `Window_` subclass and instantiate in `Game.init`. (Modular).
+*   **Adding Equipment:** Defined in data, logic handled by `Game_Actor`.
 
 ---
 
-## 4. Phased Refactoring Roadmap
+## 4. Completed Refactoring Phases
 
-### Phase 1: The Object Model (Foundation) - Not Started
-*Goal: Encapsulate `GameState` raw JSON into functional Classes.*
+### Phase 1: The Object Model (Foundation) - Complete
+*   `Game_BattlerBase`, `Game_Battler`, `Game_Actor`, `Game_Enemy` are implemented.
+*   `Game_Party` and `Game_Map` manage state.
+*   `Game_Action` handles battle mechanics.
 
-1.  **Create `Game_BattlerBase`, `Game_Battler`, `Game_Actor`, `Game_Enemy`.**
-    *   Move `getMaxHp`, `applyHealing` from `objects.js` into these classes.
-    *   Implement `addState`, `removeState`, `isStateAffected`.
-2.  **Create `Game_Party`.**
-    *   Encapsulate `activeSlots`, `inventory`, and `gold`.
-    *   Add methods: `gainGold()`, `gainItem()`, `swapOrder()`.
-3.  **Create `Game_Map`.**
-    *   Encapsulate tile data and player XY coordinates.
-    *   Move "Generate Floor" logic here.
-4.  **Replace `GameState`:** The global object should instanciate these classes: `window.$gameParty = new Game_Party();`.
+### Phase 2: The Manager Layer (Logic Decoupling) - Complete
+*   `BattleManager` controls the battle flow.
+*   `SceneManager` handles scene switching.
+*   `Systems.Battle` has been deprecated and removed.
 
-### Phase 2: The Manager Layer (Logic Decoupling) - Not Started
-*Goal: Remove `Systems` god-object.*
+### Phase 3: The Window System (UI Abstraction) - Complete
+*   `ShellUI` is gone.
+*   UI is composed of independent `Window` classes.
 
-1.  **Implement `BattleManager`.**
-    *   Move `startEncounter`, `nextRound`, `processNextTurn` here.
-    *   Instead of calling `UI.renderParty`, it should emit events or set phase flags that the Scene reads.
-2.  **Implement `SceneManager` (Robust).**
-    *   Implement a proper `.update()` loop that calls `currentScene.update()`.
-    *   Handle scene transitions with a "busy" state to prevent input bleed.
-
-### Phase 3: The Window System (UI Abstraction) - In Progress
-*Goal: Remove `ShellUI` and DOM string building.*
-
-1.  **Create `Window_Base`.**
-    *   Handles creation of a generic `<div>` (or Canvas layer).
-    *   Standardizes `show()`, `hide()`, `refresh()`.
-2.  **Create `Window_Party`.**
-    *   Subclass `Window_Selectable`.
-    *   Reads `$gameParty`. Draws items based on data.
-3.  **Refactor `Scene_Explore`.**
-    *   Instead of calling `Systems.Explore.render`, it should contain a `Spriteset_Map` and a `Window_HUD`.
-**Note:** The initial refactor is complete, but interactivity is still being restored to the modals.
-
-### Phase 4: Battle System Integration
-1.  **Create `Spriteset_Battle`.**
-    *   Move the Three.js and Effekseer logic here.
-    *   This class observes `$gameTroop` (Enemies) and `$gameParty` (Actors).
-2.  **Connect `Scene_Battle`.**
-    *   `Scene_Battle` owns `BattleManager`, `Spriteset_Battle`, and `Window_BattleLog`.
-    *   Input flows: Input -> Scene -> Window_Command -> BattleManager.
+### Phase 4: Battle System Integration - Functional
+*   `Battle3D` (in `systems.js`) handles 3D rendering.
+*   `Scene_Battle` orchestrates the battle loop using `BattleManager`.
 
 ---
 
 ## 5. Coding Standards & JSDoc Strategy
 
-To ensure maintainability, all new classes must use JSDoc. This allows IDEs (VS Code) to provide Intellisense.
+All new classes use JSDoc. This allows IDEs (VS Code) to provide Intellisense.
 
-**Example: Refactoring `objects.js` / `getMaxHp` into `Game_Battler`**
+**Example: `Game_Battler`**
 
 ```javascript
 /**
@@ -183,14 +142,5 @@ class Game_Battler {
         val *= this.paramRate(0);
         val += this.paramPlus(0);
         return Math.round(val);
-    }
-
-    /**
-     * Gets the base parameter value from the a source.
-     * @param {number} paramId - The ID of the parameter.
-     * @returns {number}
-     */
-    paramBase(paramId) {
-        return 0; // Override in subclass
     }
 }

@@ -40,7 +40,7 @@ export function renderCreaturePanel(unit) {
     let maxhp = 0;
     if (typeof unit.mhp === 'number') maxhp = unit.mhp; // Getter
     else if (typeof unit.mhp === 'function') maxhp = unit.mhp(); // Method
-    else maxhp = Systems.Battle.getMaxHp(unit); // Fallback
+    else maxhp = 1; // Fallback
 
     const hpPct = (hp / maxhp) * 100;
     const hpColor = hpPct < 30 ? 'bg-red-600' : 'bg-green-600';

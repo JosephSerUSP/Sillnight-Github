@@ -172,7 +172,7 @@ export class Window_CreatureModal extends Window_Selectable {
             unit.refresh();
         } else {
              // Fallback
-            const maxhp = Systems.Battle.getMaxHp(unit);
+            const maxhp = unit.mhp || 1;
             if (unit.hp > maxhp) unit.hp = maxhp;
         }
     }
@@ -188,7 +188,7 @@ export class Window_CreatureModal extends Window_Selectable {
         let maxhp = 0;
         if (typeof unit.mhp === 'number') maxhp = unit.mhp;
         else if (typeof unit.mhp === 'function') maxhp = unit.mhp();
-        else maxhp = Systems.Battle.getMaxHp(unit);
+        else maxhp = 1;
 
         const name = typeof unit.name === 'function' ? unit.name() : unit.name;
 
