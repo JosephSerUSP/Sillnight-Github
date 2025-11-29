@@ -32,6 +32,12 @@
             justify-content: center;
             height: 100vh;
             width: 100vw;
+            /* Enforce pixelated scaling and disable font smoothing */
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+            -webkit-font-smoothing: none;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         /* Scanline & CRT Effects */
@@ -166,7 +172,7 @@
 
 <div id="app-wrapper">
     <!-- GAME CONTAINER - Fixed 960x540 -->
-    <div id="game-container" class="relative bg-black overflow-hidden shadow-2xl" style="width: 960px; height: 540px;">
+    <div id="game-container" class="relative bg-black overflow-hidden shadow-2xl" style="width: 960px; height: 540px; image-rendering: pixelated; image-rendering: -moz-crisp-edges; image-rendering: crisp-edges;">
 
         <!-- EXPLORATION LAYER -->
         <div id="explore-layer" class="absolute inset-0 active-scene">
