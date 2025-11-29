@@ -1175,8 +1175,9 @@ showDamageNumber(uid, val, isCrit = false) {
                 const currentWorldPos = label.worldPos.clone().add(label.offset);
                 currentWorldPos.project(this.camera);
 
-                const width = window.innerWidth;
-                const height = window.innerHeight;
+                // Fixed Resolution 960x540
+                const width = 960;
+                const height = 540;
                 
                 const x = (currentWorldPos.x * 0.5 + 0.5) * width;
                 const y = (-(currentWorldPos.y * 0.5) + 0.5) * height;
