@@ -12,6 +12,9 @@ export class Window_Base {
      */
     constructor(root) {
         this.root = root || document.createElement('div');
+        // Define standard UI scaling: reduced font size and tighter line height for better information density.
+        this.root.style.fontSize = '14px';
+        this.root.style.lineHeight = '1.2';
     }
     /**
      * Opens the window and appends it to a parent element.
