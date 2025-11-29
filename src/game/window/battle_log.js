@@ -4,11 +4,15 @@ import { Window_Base } from '../windows.js';
  * The window responsible for displaying battle logs, banners, and indicators.
  */
 export class Window_BattleLog extends Window_Base {
+    constructor() {
+        super('battle-log-window');
+    }
+
     /**
      * Initializes the BattleLog window and gets references to its UI elements.
      */
-    constructor() {
-        super(document.getElementById('battle-log'));
+    initialize() {
+        // Assume elements exist in HTML
         this._banner = document.getElementById('battle-banner');
         this._bannerText = document.getElementById('banner-text');
         this._turnIndicator = document.getElementById('turn-indicator');
@@ -22,6 +26,7 @@ export class Window_BattleLog extends Window_Base {
      * @param {string} text - The text to display.
      */
     showBanner(text) {
+        if (!this._bannerText || !this._banner) return;
         this._bannerText.innerText = text;
         this._banner.classList.remove('opacity-0');
         setTimeout(() => this._banner.classList.add('opacity-0'), 2500);
@@ -36,6 +41,8 @@ export class Window_BattleLog extends Window_Base {
      * @param {Function} [handlers.onRequest] - Callback for requesting a pause.
      */
     togglePlayerTurn(active, handlers) {
+        if (!this._turnIndicator || !this._playerTurnButton) return;
+
         if (active) {
             this._turnIndicator.innerText = 'PLAYER INPUT PHASE';
             this._turnIndicator.classList.remove('hidden');
@@ -55,6 +62,7 @@ export class Window_BattleLog extends Window_Base {
      * @param {string} html - The HTML content of the modal.
      */
     showModal(html) {
+        if (!this._centerModal) return;
         this._centerModal.innerHTML = html;
         this._centerModal.classList.remove('hidden');
     }
@@ -63,6 +71,7 @@ export class Window_BattleLog extends Window_Base {
      * Closes the center modal.
      */
     closeModal() {
+        if (!this._centerModal) return;
         this._centerModal.classList.add('hidden');
     }
 }
