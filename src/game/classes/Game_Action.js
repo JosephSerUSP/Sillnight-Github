@@ -15,6 +15,7 @@ export class Game_Action {
         this._subject = subject;
         this._item = null;
         this._skill = null;
+        this._lastResultIsCrit = false;
     }
 
     /**
@@ -40,11 +41,9 @@ export class Game_Action {
      * @param {Object} obj - The action data object.
      */
     setObject(obj) {
-        // Determine if skill or item based on ID or properties
-        // For now, we assume the caller knows, or we check Data
         if (Data.skills[obj.id]) this.setSkill(obj);
         else if (Data.items[obj.id]) this.setItem(obj);
-        else this.setSkill(obj); // Default to skill
+        else this.setSkill(obj);
     }
 
     /**
@@ -80,36 +79,21 @@ export class Game_Action {
         const actionElement = this.item().element;
         if (!actionElement) return 1.0;
 
-        const targetElements = target.elements || []; // Use getter from Game_Battler
+        const targetElements = target.elements || [];
 
-        // Logic from Systems.Battle.elementMultiplier
         const strengths = { G: 'B', B: 'R', R: 'G', W: 'K', K: 'W' };
-        const weaknesses = { G: 'R', B: 'G', R: 'B', W: 'W', K: 'K' };
 
         return targetElements.reduce((mult, e) => {
-            // Systems.Battle.elementRelation(actionElement, e, 'defender')
-            // If actionElement is strong against targetElement (e), multiplier increases?
-            // Wait, the logic in Systems.Battle was:
-            // if (creatureElement === actionElement) return 0.75 (Resist same)
-            // if (strongAgainst === creatureElement) return 1.25 (Action is Strong vs Target)
-            // if (weakAgainst === creatureElement) return 0.75 (Action is Weak vs Target)
-
             let rate = 1.0;
             if (e === actionElement) {
-                rate = (e === 'W' || e === 'K') ? 0.75 : 1.25; // Original logic had strange same-element boost for non-WK?
-                // Re-reading Systems.Battle.elementRelation:
-                // if (role === 'attacker') ...
-                // if (role === 'defender')
-                //   if (creatureElement === actionElement && (W or K)) return 0.75;
-                //   if (strongAgainst === creatureElement) return 1.25; // e.g. Action G, StrongAgainst=B. If Target is B, 1.25. Correct.
-                //   if (weakAgainst === creatureElement || strengths[creatureElement] === actionElement) return 0.75;
-            } else {
-                if (strengths[actionElement] === e) rate = 1.25;
-                if (weaknesses[actionElement] === e) rate = 0.75;
-                // Also check reverse relation for clarity?
-                // The original code:
-                // if (weakAgainst === creatureElement || this.elementStrengths[creatureElement] === actionElement) return 0.75;
-                if (strengths[e] === actionElement) rate = 0.75;
+                // Same element resist
+                rate = 0.75;
+            } else if (strengths[actionElement] === e) {
+                // Action Strong vs Target Element
+                rate = 1.25;
+            } else if (strengths[e] === actionElement) {
+                // Target Element Strong vs Action
+                rate = 0.75;
             }
             return mult * rate;
         }, 1.0);
@@ -129,90 +113,87 @@ export class Game_Action {
         let value = 0;
 
         try {
-            // Helper for eval to access 'a' and 'b'
-            value = Math.floor(eval(effect.formula));
-            // Note: In a real engine, avoid eval. Use a parser.
-            // For this refactor, we preserve existing behavior but encapsulate it.
+            // Evaluates the formula string (e.g. "4 + 2 * a.level")
+            value = Math.max(0, eval(effect.formula));
         } catch (e) {
             console.error('Error evaluating formula:', effect.formula, e);
             return 0;
         }
 
-        // Apply stat bonuses
-        // Systems.Battle used getUnitWithStats(a).power_bonus
-        const baseDamage = value + a.power; // Game_Battler.power getter
+        if (effect.type === 'hp_damage') {
+             // 1. Add Power Bonus
+             value += a.power;
 
-        // Apply element multipliers
-        // Attacker element multiplier? (Original logic had it, seems like STAB - Same Type Attack Bonus)
-        // Systems.Battle.elementMultiplier(element, attacker, 'attacker')
-        // In Systems.Battle: if creatureElement === actionElement return 1.25
-        const actionElement = this.item().element;
-        let attackMult = 1.0;
-        if (actionElement) {
-             const subjectElements = a.elements || [];
-             if (subjectElements.includes(actionElement)) attackMult = 1.25;
-        }
+             // 2. Attacker Element Boost (STAB)
+             const actionElement = this.item().element;
+             let attackMult = 1.0;
+             if (actionElement) {
+                 const subjectElements = a.elements || [];
+                 if (subjectElements.includes(actionElement)) attackMult = 1.25;
+             }
 
-        const defenseMult = this.calcElementRate(target);
+             // 3. Target Element Resistance
+             const defenseMult = this.calcElementRate(target);
 
-        let finalValue = Math.floor(baseDamage * attackMult * defenseMult);
+             value = Math.floor(value * attackMult * defenseMult);
 
-        // Critical Hit
-        // Systems.Battle: critChance = base + attacker.crit_bonus_percent
-        const critChance = a.cri;
-        if (Math.random() < critChance) {
-            finalValue = Math.floor(finalValue * (Data.config.baseCritMultiplier || 1.5));
-            Log.battle('> Critical Hit!');
-            // We might want to store isCrit for UI display
-            this._lastResultIsCrit = true;
+             // 4. Critical Hit
+             const critChance = a.cri;
+             if (Math.random() < critChance) {
+                 value = Math.floor(value * (Data.config.baseCritMultiplier || 1.5));
+                 this._lastResultIsCrit = true;
+                 Log.battle('> Critical Hit!');
+             } else {
+                 this._lastResultIsCrit = false;
+             }
+
+             // 5. Guarding
+             if (target.isStateAffected('guarding') || (target.status && target.status.includes('guarding'))) {
+                  value = Math.floor(value / 2);
+                  Log.battle('> Guarding!');
+             }
         } else {
             this._lastResultIsCrit = false;
+            value = Math.floor(value);
         }
 
-        // Guarding
-        if (effect.type === 'hp_damage' && target.isStateAffected && target.isStateAffected('guarding')) {
-             // 'guarding' is currently a string in .status array in legacy,
-             // but we want to move to .isStateAffected(id).
-             // However, data uses string 'guarding'.
-             // Let's assume for now we check the legacy status array via getter or direct prop if migration isn't 100%
-             if ((target.status && target.status.includes('guarding'))) {
-                 finalValue = Math.floor(finalValue / 2);
-                 Log.battle('> Guarding!');
-             }
-        }
-
-        return Math.max(0, finalValue);
+        return Math.max(0, value);
     }
 
     /**
      * Applies the action to the target.
      * @param {Game_Battler} target - The target battler.
-     * @returns {Array<Object>} List of results { target, value, effect }.
+     * @returns {Array<Object>} List of results { target, value, effect, isCrit, isMiss }.
      */
     apply(target) {
         const results = [];
         const item = this.item();
         if (!item || !item.effects) return results;
 
-        // Evasion Check (Physical/Magical split not fully implemented, generic evade)
-        // Systems.Battle: if (Math.random() < defender.evade_chance)
-        const hitRate = this._subject.hit; // Usually > 1.0
-        const evaRate = target.eva;
+        // Evasion Check (Only for damage actions)
+        const isDamage = item.effects.some(e => e.type === 'hp_damage');
+        if (isDamage) {
+            const hitRate = this._subject.hit;
+            const evaRate = target.eva;
+            const chanceToHit = Math.max(0, hitRate - evaRate);
 
-        // Simple hit check: Random < (Hit - Eva)? Or Random < Hit * (1-Eva)?
-        // Original logic: if (Math.random() < defender.evade_chance) return 0;
-        // This implies 100% hit rate unless evaded.
-        if (Math.random() < evaRate) {
-            Systems.Triggers.fire('onUnitEvade', target);
-            Log.battle('> Miss!');
-             // Push a miss result?
-            results.push({ target, value: 0, effect: { type: 'miss' } });
-            return results;
+            if (Math.random() > chanceToHit) {
+                Systems.Triggers.fire('onUnitEvade', target);
+                Log.battle('> Miss!');
+                results.push({ target, value: 0, effect: { type: 'miss' }, isMiss: true });
+                return results;
+            }
         }
 
         item.effects.forEach(effect => {
             let value = 0;
-            if (effect.type !== 'add_status') {
+            if (effect.type === 'hp_heal_ratio') {
+                const ratio = parseFloat(effect.formula);
+                value = Math.floor(target.mhp * ratio);
+            } else if (effect.type === 'revive') {
+                 const ratio = parseFloat(effect.formula);
+                 value = Math.floor(target.mhp * ratio);
+            } else if (effect.type !== 'add_status') {
                 value = this.evalDamageFormula(target, effect);
             }
             results.push({ target, value, effect, isCrit: this._lastResultIsCrit });

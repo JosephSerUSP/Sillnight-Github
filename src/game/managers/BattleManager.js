@@ -126,10 +126,15 @@ export const BattleManager = {
         if (this.enemies.every(u => u.hp <= 0)) return this.end(true);
 
         [...this.allies, ...this.enemies].forEach(u => {
-             // Use proper state management if available
+             // Remove 'guarding' state
              if (typeof u.removeState === 'function') {
-                 // TODO: Use state ID for guarding
-                 // For now, if 'guarding' is just in status array, we filter
+                 // We don't have a fixed ID for guarding yet, using string 'guarding' in _states
+                 // Game_Action logic checks for 'guarding' string in _states.
+                 // So we filter it out.
+                 if (u.isStateAffected && u.isStateAffected('guarding')) {
+                     u.removeState('guarding');
+                 }
+                 // Legacy fallback
                  if (u.status) u.status = u.status.filter(s => s !== 'guarding');
              } else if (u.status) {
                  u.status = u.status.filter(s => s !== 'guarding');
@@ -148,9 +153,6 @@ export const BattleManager = {
 
         const allUnits = [...this.allies, ...this.enemies]
             .filter(u => u.hp > 0);
-
-        // No need to use Systems.Battle.getUnitWithStats.
-        // Game_Battler instances have .speed getter that includes traits.
 
         allUnits.sort((a, b) => b.speed - a.speed || Math.random() - 0.5);
         this.queue = allUnits;
@@ -242,9 +244,16 @@ export const BattleManager = {
             }
 
             const script = Data.actionScripts[actionData.script] || Data.actionScripts.attack || [];
+
+            // Apply effects via animation callback
             const applyResults = () => {
-                allResults.forEach(({ target, value, effect, isCrit }) => {
+                allResults.forEach(({ target, value, effect, isCrit, isMiss }) => {
                     if (!target) return;
+
+                    if (isMiss) {
+                        Log.battle(`> Missed ${target.name}!`);
+                        return;
+                    }
 
                     switch (effect.type) {
                         case 'hp_damage':
@@ -260,8 +269,7 @@ export const BattleManager = {
                             }
 
                             target.hp = Math.max(0, newHp);
-                            if (dealtDamage > 0 || (value === 0 && !effect.isMiss)) { // Show 0 dmg if hit but 0?
-                                // If missed, it's handled below/separately or value is 0
+                            if (dealtDamage > 0 || value === 0) {
                                 Log.battle(`> ${unit.name} hits ${target.name} for ${dealtDamage}.`);
                                 Systems.Battle3D.showDamageNumber(target.uid, -dealtDamage, isCrit);
                                 Systems.Battle3D.playAnim(target.uid, [{type: 'feedback', bind: 'self', shake: 0.8, opacity: 0.7, color: 0xffffff}]);
@@ -271,9 +279,10 @@ export const BattleManager = {
                                 Systems.Battle3D.playDeathFade(target.uid);
                                 Systems.Triggers.fire('onUnitDeath', target);
 
-                                const reviveChance = target.traitsSum('revive_on_ko_chance'); // Sum or Pi? Traits logic needs check
+                                // Revive check
+                                const reviveChance = target.traitsSum('revive_on_ko_chance');
                                 if (Math.random() < reviveChance) {
-                                    const revivePercent = target.traitsSum('revive_on_ko_percent') || 0.5; // Actually this was split across traits
+                                    const revivePercent = target.traitsSum('revive_on_ko_percent') || 0.5;
                                     const revivedHp = Math.floor(target.mhp * revivePercent);
                                     target.hp = revivedHp;
                                     Log.battle(`> ${target.name} was revived with ${revivedHp} HP!`);
@@ -283,42 +292,18 @@ export const BattleManager = {
                             }
                             break;
                         case 'hp_heal':
-                            const maxhp = target.mhp;
-                            target.hp = Math.min(maxhp, target.hp + value);
-                            Log.battle(`> ${target.name} healed for ${value}.`);
-                            Systems.Battle3D.showDamageNumber(target.uid, value);
-                            Systems.Battle3D.playAnim(target.uid, [{type: 'feedback', bind: 'self', opacity: 0.5, color: 0x00ff00}]);
-                            break;
                         case 'hp_heal_ratio':
-                            const maxHpRatio = target.mhp;
-                            // value already calculated in evalDamageFormula?
-                            // Wait, evalDamageFormula handles damage formula evaluation.
-                            // Does it handle ratios?
-                            // In Game_Action.evalDamageFormula: value = eval(effect.formula).
-                            // If formula is "0.3", value is 0.
-                            // Systems.Battle logic: Math.floor(maxHpRatio * parseFloat(effect.formula))
-                            // Game_Action needs to handle this specific type or we handle it here.
-
-                            // Re-check Game_Action.evalDamageFormula logic.
-                            // It does `eval`. If formula is '0.3', it returns 0.3. Math.floor makes it 0.
-
-                            // Let's rely on Game_Action returning the raw value if possible or move logic there.
-                            // Since I can't easily change Game_Action right now without context switch, let's fix it here
-                            // OR fix Game_Action to return float for specific types?
-
-                            // For now, let's assume Game_Action returns the calculated numeric value.
-                            // If type is hp_heal_ratio, we might need to recalculate if Game_Action floored it.
-
-                            // Actually, let's just do it here for safety for special types not fully migrated to pure formula
-                            const ratio = parseFloat(effect.formula);
-                            const healAmount = Math.floor(target.mhp * ratio);
+                            // Value is already calculated in Game_Action.apply
+                            const healAmount = value;
                             target.hp = Math.min(target.mhp, target.hp + healAmount);
                             Log.battle(`> ${target.name} healed for ${healAmount}.`);
                             Systems.Battle3D.showDamageNumber(target.uid, healAmount);
+                            Systems.Battle3D.playAnim(target.uid, [{type: 'feedback', bind: 'self', opacity: 0.5, color: 0x00ff00}]);
                             break;
                         case 'revive':
                             if (target.hp <= 0) {
-                                const revivedHp = Math.floor(target.mhp * parseFloat(effect.formula));
+                                // Value calculated in apply (based on target mhp)
+                                const revivedHp = value;
                                 target.hp = revivedHp;
                                 Log.battle(`> ${target.name} was revived with ${revivedHp} HP.`);
                                 const ts = Systems.Battle3D.sprites[target.uid];
@@ -335,8 +320,9 @@ export const BattleManager = {
                             break;
                         case 'add_status':
                             if (Math.random() < (effect.chance || 1)) {
-                                if (typeof target.addStatus === 'function') {
-                                    target.addStatus(effect.status);
+                                if (typeof target.addState === 'function') {
+                                    // Using string ID for now as per data
+                                    target.addState(effect.status);
                                 } else {
                                     // Fallback
                                     if (!target.status) target.status = [];
@@ -348,15 +334,16 @@ export const BattleManager = {
                             }
                             break;
                         case 'miss':
-                            Log.battle(`> Missed ${target.name}!`);
-                            break;
+                             Log.battle(`> Missed ${target.name}!`);
+                             break;
                     }
                 });
                 window.Game.Windows.Party.refresh();
                 if (this.allies.every(u => u.hp <= 0) || this.enemies.every(u => u.hp <= 0)) {
-                    this.turnIndex = 999;
+                    this.turnIndex = 999; // End round early
                 }
             };
+
             Systems.Battle3D.playAnim(unit.uid, script, {
                 targets,
                 onApply: applyResults,
