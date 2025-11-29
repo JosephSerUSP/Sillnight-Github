@@ -235,7 +235,9 @@ export const Systems = {
         resolveTile(code) {
             if (code === 2) { 
                 GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
-                Systems.Battle.startEncounter();
+                import('./managers.js').then(({ BattleManager }) => {
+                    BattleManager.startEncounter();
+                });
             } else if (code === 3) { 
                 GameState.run.floor++;
                 Log.add('Descended...');
@@ -758,7 +760,7 @@ export const Systems = {
         trap() {
             Log.add('A hidden trap triggers!');
             const damage = (u) => {
-                const maxhp = Systems.Battle.getMaxHp(u);
+                const maxhp = u.mhp;
                 const dmg = Math.ceil(maxhp * 0.2);
                 u.hp = Math.max(0, u.hp - dmg);
                 if (u.hp === 0) Log.battle(`${u.name} was knocked out by the trap!`);
@@ -867,6 +869,7 @@ export const Systems = {
                     resolvedPath,
                     (texture) => {
                         texture.magFilter = THREE.NearestFilter;
+                        texture.minFilter = THREE.NearestFilter;
                         this.textureCache[resolvedPath] = texture;
                         ready(texture);
                     },
@@ -901,6 +904,7 @@ export const Systems = {
                         cx.fillText(unit.sprite, 64, 74);
                         texture = new THREE.CanvasTexture(canvas);
                         texture.magFilter = THREE.NearestFilter;
+                        texture.minFilter = THREE.NearestFilter;
                     }
                     const mat = new THREE.SpriteMaterial({
                         map: texture,
@@ -1517,57 +1521,4 @@ showDamageNumber(uid, val, isCrit = false) {
         }
     },
 
-    /**
-     * Legacy battle system containing calculation logic.
-     * Most state management has moved to BattleManager.
-     * @namespace Battle
-     */
-    Battle: {
-        // Refactor Note: This has been moved to Game_Action.
-        // We keep this object only for methods not yet fully migrated or for backward compat if any.
-        // elementStrengths/Weaknesses might be used by UI?
-        elementStrengths: { G: 'B', B: 'R', R: 'G', W: 'K', K: 'W' },
-        elementWeaknesses: { G: 'R', B: 'G', R: 'B', W: 'W', K: 'K' },
-
-        /**
-         * Starts a new encounter.
-         * Delegates to BattleManager.
-         */
-        startEncounter() {
-            import('./managers.js').then(({ BattleManager }) => {
-                BattleManager.startEncounter();
-            });
-        },
-
-        /**
-         * Swaps the positions of two units in the active party.
-         * @param {number} idx1 - Index of the first unit.
-         * @param {number} idx2 - Index of the second unit.
-         */
-        swapUnits(idx1, idx2) {
-            const u1 = GameState.party.activeSlots[idx1];
-            const u2 = GameState.party.activeSlots[idx2];
-            GameState.party.activeSlots[idx1] = u2;
-            GameState.party.activeSlots[idx2] = u1;
-            if (GameState.party.activeSlots[idx1]) GameState.party.activeSlots[idx1].slotIndex = idx1;
-            if (GameState.party.activeSlots[idx2]) GameState.party.activeSlots[idx2].slotIndex = idx2;
-            window.Game.Windows.Party.refresh();
-            if (GameState.ui.mode === 'BATTLE') {
-                GameState.battle.allies = GameState.party.activeSlots.filter(u => u !== null);
-                Systems.Battle3D.setupScene(GameState.battle.allies, GameState.battle.enemies);
-            }
-            Log.add('Formation changed.');
-        },
-
-        // Deprecated Methods
-        // elementRelation, elementMultiplier, calculateEffectValue, applyEffects, getUnitWithStats, getMaxHp
-        // These are now handled by Game_Action and Game_Battler
-
-        getMaxHp(unit) {
-            // Fallback just in case
-             if (typeof unit.mhp === 'number') return unit.mhp;
-             if (typeof unit.mhp === 'function') return unit.mhp();
-             return 1;
-        }
-    },
 };
