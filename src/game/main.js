@@ -3,7 +3,7 @@ import { GameState } from './state.js';
 import { DataManager } from './DataManager.js';
 import { Log } from './log.js';
 import { Systems } from './systems.js';
-import { SceneManager, InputManager, BattleManager } from './managers.js';
+import { SceneManager, InputManager, BattleManager, RenderManager } from './managers.js';
 import { Scene_Explore, Scene_Battle } from './scenes.js';
 import { Window_HUD } from './window/hud.js';
 import { Window_Party } from './window/party.js';
@@ -29,6 +29,7 @@ export const Game = {
     Scenes: {},
     SceneManager: new SceneManager(),
     BattleManager: BattleManager,
+    RenderManager: new RenderManager(),
     Windows: {},
 
     /**
@@ -52,6 +53,7 @@ export const Game = {
 
         // Initial map generation (already done in setupNewGame, but need to render)
         // Systems.Map.generateFloor(); // Moved to DataManager
+        this.RenderManager.init();
         Systems.Explore.init();
         Systems.Battle3D.init();
         await Systems.Effekseer.preload();
@@ -99,8 +101,9 @@ function scaleGameContainer() {
 
 window.addEventListener('resize', () => {
     scaleGameContainer();
-    Systems.Explore.resize();
-    Systems.Battle3D.resize();
+    Game.RenderManager.resize();
+    // Systems.Explore.resize(); // Deprecated: RenderManager handles it
+    // Systems.Battle3D.resize(); // Deprecated: RenderManager handles it
 });
 
 window.addEventListener('load', async () => {
