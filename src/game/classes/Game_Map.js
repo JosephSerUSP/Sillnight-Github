@@ -1,4 +1,5 @@
 import { Data } from '../../assets/data/data.js';
+import { Game_Event } from './Game_Event.js';
 
 /**
  * Manages the map state, including grid data, player position, and visited tiles.
@@ -19,6 +20,8 @@ export class Game_Map {
         this._playerPos = { x: 0, y: 0 };
         /** @type {number} The current dungeon floor number. */
         this._floor = 1;
+        /** @type {Map<string, Game_Event>} Map of active events keyed by "x,y". */
+        this._events = new Map();
     }
 
     /** @returns {number} The map width. */
@@ -31,6 +34,8 @@ export class Game_Map {
     get floor() { return this._floor; }
     /** @param {number} v - The new floor number. */
     set floor(v) { this._floor = v; }
+    /** @returns {Array<Game_Event>} List of all active events. */
+    get events() { return Array.from(this._events.values()); }
 
     /**
      * Sets up the map for a specific floor.
@@ -39,6 +44,7 @@ export class Game_Map {
      */
     setup(floor = 1) {
         this._floor = floor;
+        this._events.clear();
         this.generateFloor();
     }
 
@@ -151,5 +157,57 @@ export class Game_Map {
         if (y >= 0 && y < this._height && x >= 0 && x < this._width) {
             this._visited[y][x] = visited;
         }
+    }
+
+    /**
+     * Adds an event to the map.
+     * @param {Game_Event} event
+     */
+    addEvent(event) {
+        if (!event) return;
+        const key = `${event.x},${event.y}`;
+        this._events.set(key, event);
+    }
+
+    /**
+     * Removes an event from the map.
+     * @param {Game_Event} event
+     */
+    removeEvent(event) {
+        if (!event) return;
+        const key = `${event.x},${event.y}`;
+        // Ensure we are removing the correct event instance
+        if (this._events.get(key) === event) {
+            this._events.delete(key);
+        }
+    }
+
+    /**
+     * Moves an event to a new location, updating the spatial index.
+     * @param {Game_Event} event
+     * @param {number} x
+     * @param {number} y
+     */
+    moveEvent(event, x, y) {
+        if (!event) return;
+
+        // Remove from old location
+        this.removeEvent(event);
+
+        // Update position
+        event.setPosition(x, y);
+
+        // Add to new location
+        this.addEvent(event);
+    }
+
+    /**
+     * Gets the event at specific coordinates.
+     * @param {number} x
+     * @param {number} y
+     * @returns {Game_Event|null}
+     */
+    eventAt(x, y) {
+        return this._events.get(`${x},${y}`) || null;
     }
 }
