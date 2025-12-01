@@ -273,7 +273,7 @@ export const Systems = {
     Explore: {
         scene: null,
         camera: null,
-        renderer: null,
+        // renderer: null, // Deprecated: Use RenderManager
         playerMesh: null,
         mapGroup: null,
         dynamicGroup: null,
@@ -290,8 +290,10 @@ export const Systems = {
 
         /** Initializes the exploration system. */
         init() {
-            const container = document.getElementById('explore-container');
-            if(!container) return;
+            // Get shared renderer
+            if (window.Game && window.Game.RenderManager) {
+                window.Game.RenderManager.attachTo('explore-container');
+            }
 
             this.scene = new THREE.Scene();
             this.scene.background = new THREE.Color(0x050510);
@@ -304,19 +306,7 @@ export const Systems = {
 
             this.camera = new THREE.PerspectiveCamera(50, aspect, 0.1, 100);
 
-            this.renderer = new THREE.WebGLRenderer({ antialias: false });
-            this.renderer.setPixelRatio(1); // Force 1:1 pixel ratio
-            this.renderer.setSize(targetW, targetH, false);
-            this.renderer.domElement.id = 'explore-canvas-3d';
-
-            // Ensure canvas scales up
-            this.renderer.domElement.style.width = '100%';
-            this.renderer.domElement.style.height = '100%';
-            this.renderer.domElement.style.imageRendering = 'pixelated';
-
-            container.innerHTML = '';
-            container.appendChild(this.renderer.domElement);
-
+            // Light setup
             this.scene.add(new THREE.AmbientLight(0x222222));
             const dirLight = new THREE.DirectionalLight(0x555555, 0.6);
             dirLight.position.set(10, 20, 10);
@@ -473,16 +463,14 @@ export const Systems = {
 
         /** Resizes the canvas to match the window dimensions. */
         resize() {
-            if(!this.renderer || !this.camera) return;
-            // Resolution is fixed, so we just ensure the renderer stays at fixed size.
-            // Aspect ratio is fixed 16:9 (480x270)
+            // Handled by RenderManager mostly, but we update camera aspect
+            if(!this.camera) return;
             const targetW = 480;
             const targetH = 270;
             const aspect = targetW / targetH;
 
             this.camera.aspect = aspect;
             this.camera.updateProjectionMatrix();
-            this.renderer.setSize(targetW, targetH, false);
         },
 
         /**
@@ -588,7 +576,12 @@ export const Systems = {
             this.camera.lookAt(this.cameraLookCurrent.x, 0, this.cameraLookCurrent.z - 2);
 
             this.particles.update();
-            this.renderer.render(this.scene, this.camera);
+
+            // Render using shared renderer
+            const renderer = window.Game.RenderManager.getRenderer();
+            if (renderer && GameState.ui.mode === 'EXPLORE') {
+                renderer.render(this.scene, this.camera);
+            }
         },
 
         /**
@@ -783,7 +776,7 @@ export const Systems = {
     Battle3D: {
         scene: null,
         camera: null,
-        renderer: null,
+        // renderer: null, // Deprecated: Use RenderManager
         group: null,
         sprites: {},
         textureLoader: null,
@@ -794,7 +787,15 @@ export const Systems = {
 
         /** Initializes the 3D scene. */
         init() {
-            const container = document.getElementById('three-container');
+             // Get shared renderer
+             if (window.Game && window.Game.RenderManager) {
+                // Battle scene logic will attach it when needed, or we attach it now?
+                // Actually, init() is called at startup. Battle isn't active yet.
+                // We should rely on scene transitions to attach.
+                // But for now, let's just make sure Effekseer init works.
+                Systems.Effekseer.init(window.Game.RenderManager.getRenderer());
+            }
+
             this.scene = new THREE.Scene();
             this.scene.background = new THREE.Color(0x0a0a0a);
             
@@ -805,16 +806,6 @@ export const Systems = {
 
             this.camera = new THREE.PerspectiveCamera(28, aspect, 0.1, 1000);
             this.camera.up.set(0, 0, 1);
-            
-            this.renderer = new THREE.WebGLRenderer({ alpha: false, antialias: false });
-            this.renderer.setPixelRatio(1); // Force 1:1 pixel ratio for consistency
-            this.renderer.setSize(targetW, targetH, false);
-            this.renderer.domElement.style.width = '100%';
-            this.renderer.domElement.style.height = '100%';
-            this.renderer.domElement.style.imageRendering = 'pixelated';
-            container.appendChild(this.renderer.domElement);
-            
-            Systems.Effekseer.init(this.renderer);
             
             const amb = new THREE.AmbientLight(0xffffff, 0.6);
             const dir = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -834,15 +825,13 @@ export const Systems = {
         },
         /** Resizes the renderer and camera aspect ratio. */
         resize() {
-            if (!this.camera || !this.renderer) return;
-            // Fixed Resolution 480x270
+            if (!this.camera) return;
             const targetW = 480;
             const targetH = 270;
             const aspect = targetW / targetH;
 
             this.camera.aspect = aspect;
             this.camera.updateProjectionMatrix();
-            this.renderer.setSize(targetW, targetH, false);
         },
         /**
          * Sets up the battle scene with ally and enemy sprites.
@@ -984,8 +973,11 @@ export const Systems = {
             this.camera.position.z = Z_HEIGHT;
             this.camera.lookAt(cs.targetX, cs.targetY, 2);
             
-            this.renderer.render(this.scene, this.camera);
-            Systems.Effekseer.update(this.camera);
+            const renderer = window.Game.RenderManager.getRenderer();
+            if (renderer && (GameState.ui.mode === 'BATTLE' || GameState.ui.mode === 'BATTLE_WIN')) {
+                renderer.render(this.scene, this.camera);
+                Systems.Effekseer.update(this.camera);
+            }
 
             // Update damage labels every frame
             this.updateDamageLabels();
