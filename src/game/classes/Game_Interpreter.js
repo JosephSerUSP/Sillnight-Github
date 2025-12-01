@@ -72,9 +72,6 @@ export class Game_Interpreter {
         // Currently Systems.Events.show just shows it and returns.
         // We might need to promisify the UI interaction.
 
-        // Let's implement a simple promisified message if possible,
-        // or just log it for now if we haven't refactored the UI to return Promises.
-
         if (window.Game && window.Game.Systems && window.Game.Systems.Events) {
              return new Promise((resolve) => {
                  // Create a custom content with a button that resolves the promise
@@ -130,6 +127,28 @@ export class Game_Interpreter {
     }
 
     /**
+     * Give gold to the party.
+     * { code: 'GIVE_GOLD', amount: 100 }
+     */
+    command_GIVE_GOLD(params) {
+        const amount = params.amount || 0;
+        if (window.$gameParty) {
+            window.$gameParty.gainGold(amount);
+            Log.loot(`Found ${amount} Gold!`);
+        }
+    }
+
+    /**
+     * Start a battle encounter.
+     * { code: 'BATTLE' }
+     */
+    async command_BATTLE(params) {
+        if (window.Game && window.Game.BattleManager) {
+            await window.Game.BattleManager.startEncounter();
+        }
+    }
+
+    /**
      * Trigger a Shop.
      * { code: 'SHOP', stock: [...] }
      */
@@ -176,6 +195,27 @@ export class Game_Interpreter {
     async command_TRAP(params) {
         if (window.Game && window.Game.Systems && window.Game.Systems.Events) {
             await window.Game.Systems.Events.trap();
+        }
+    }
+
+    /**
+     * Erase the event.
+     * { code: 'ERASE_EVENT' }
+     */
+    command_ERASE_EVENT(params) {
+        if (window.$gameMap && this._eventId) {
+            const event = window.$gameMap.events.find(e => e.id === this._eventId);
+            if (event) {
+                // If it's a one-time event, we might want to remove it from the map completely.
+                // Or just 'erase' it until map reload.
+                // The current Game_Map logic for removeEvent expects the object.
+                // Game_Event has .erase() which sets _erased = true.
+                event.erase();
+                // We should also trigger a visual update in ExploreSystem?
+                // ExploreSystem.syncDynamic() should handle it if it checks .isErased
+                // But we might want to remove it from the map's active event list if it's permanently gone?
+                // For now, let's just use event.erase() and rely on renderer to hide it.
+            }
         }
     }
 }

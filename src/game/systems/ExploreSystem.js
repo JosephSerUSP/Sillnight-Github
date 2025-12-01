@@ -1,5 +1,6 @@
 import { Data } from '../../assets/data/data.js';
 import { Log } from '../log.js';
+import { Game_Interpreter } from '../classes/Game_Interpreter.js';
 
 class ParticleSystem {
     constructor(scene) {
@@ -80,6 +81,9 @@ export class ExploreSystem {
         this.initialized = false;
         this.playerLight = null;
         this.matPlayer = null;
+
+        /** @type {Game_Interpreter} */
+        this.interpreter = new Game_Interpreter();
     }
 
     /** Initializes the exploration system. */
@@ -134,10 +138,7 @@ export class ExploreSystem {
         this.mapGroup.clear();
         // Access Game_Map data directly
         if (!window.$gameMap) return;
-        const mapData = window.$gameMap._data; // Direct access or via getter if exposed? _data is internal but accessible.
-        // Actually Game_Map doesn't expose data via getter, only tileAt.
-        // But for batch rendering, we need the whole grid.
-        // Let's rely on _data for now as Game_Map is a trusted class.
+        const mapData = window.$gameMap._data;
 
         const map = mapData;
         const height = map.length;
@@ -163,7 +164,16 @@ export class ExploreSystem {
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 const tile = map[y][x];
-                if (tile === 0 || tile >= 2) {
+                // Floor or Event location (that is not a wall)
+                // Note: Events are now separate, but generateFloor creates '0' (floor) for events
+                // EXCEPT Stairs which we kept as '3' in generateFloor for now.
+                // But wait, my modified generateFloor sets stairs to 3.
+                // Other events set to createEvent just use the tile from emptyTiles.
+                // The tile in _data remains 0 for most events now!
+                // So checking 'tile === 0' is correct for floor.
+                // We need to handle 'tile === 3' for stairs.
+
+                if (tile === 0 || tile === 3) {
                     // Floor
                     dummy.position.set(x, 0, y);
                     dummy.rotation.set(-Math.PI / 2, 0, 0);
@@ -229,35 +239,43 @@ export class ExploreSystem {
         this.dynamicGroup.clear();
 
         if (!window.$gameMap) return;
-        const map = window.$gameMap._data;
-        const height = map.length;
-        const width = map[0].length;
 
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                const tile = map[y][x];
-                if (tile === 2) { // Enemy
+        // Iterate over active events
+        const events = window.$gameMap.events;
+
+        for (const event of events) {
+            if (event.isErased) continue;
+
+            // Render visual representation
+            const visual = event.visual;
+            const x = event.x;
+            const y = event.y;
+
+            if (visual) {
+                if (visual.type === 'ENEMY') {
                     const mesh = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.6, 4), new THREE.MeshPhongMaterial({ color: 0xff0000 }));
                     mesh.position.set(x, 0.3, y);
                     this.dynamicGroup.add(mesh);
-                } else if (tile === 4) { // Gold
+                } else if (visual.type === 'TREASURE') {
                     const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), new THREE.MeshPhongMaterial({ color: 0xffd700 }));
                     mesh.position.set(x, 0.25, y);
                     this.dynamicGroup.add(mesh);
-                } else if (tile === 5) { // Shop
+                } else if (visual.type === 'SHOP') {
                     const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 6), new THREE.MeshPhongMaterial({ color: 0x0000ff }));
                     mesh.position.set(x, 0.1, y);
                     this.dynamicGroup.add(mesh);
-                }
-                // Recruit(6), Shrine(7), Trap(8) can have markers too if desired
-                else if (tile === 6) { // Recruit
+                } else if (visual.type === 'RECRUIT') {
                     const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshPhongMaterial({ color: 0x00ff00 }));
                     mesh.position.set(x, 0.3, y);
                     this.dynamicGroup.add(mesh);
-                } else if (tile === 7) { // Shrine
+                } else if (visual.type === 'SHRINE') {
                     const mesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.2), new THREE.MeshPhongMaterial({ color: 0xffffff }));
                     mesh.position.set(x, 0.3, y);
                     this.dynamicGroup.add(mesh);
+                }
+                // Trap logic: traps might be invisible or visible
+                else if (visual.type === 'TRAP') {
+                     // Maybe invisible? Or a spike?
                 }
             }
         }
@@ -288,7 +306,7 @@ export class ExploreSystem {
         const newY = window.$gameMap.playerPos.y + dy;
         const tile = window.$gameMap.tileAt(newX, newY);
 
-        if (tile !== 1) {
+        if (tile !== 1) { // Not a wall
             // Update Logical Position
             window.$gameMap._playerPos = { x: newX, y: newY };
 
@@ -300,65 +318,111 @@ export class ExploreSystem {
             this.isAnimating = true;
 
             // Trigger events after delay or checkTile handles it
-            this.checkTile(tile);
+            this.checkTile(newX, newY);
         }
     }
 
     /**
      * Checks the tile the player landed on and triggers its effect.
-     * @param {number} code - The tile code.
+     * @param {number} x
+     * @param {number} y
      */
-    checkTile(code) {
-        this.resolveTile(code);
-        window.Game.Windows.HUD.refresh();
-        // Rebuild if map changed (e.g. loot picked up, floor changed)
-        // resolveTile for gold/shop/etc sets tile to 0
-        if (code === 2 || code === 3 || code === 4 || code === 5 || code === 6 || code === 7 || code === 8) {
-            if (code !== 3) {
-                // Only sync dynamic objects if not changing floor
-                setTimeout(() => this.syncDynamic(), 300);
-            }
+    checkTile(x, y) {
+        // Check for static tile events (Stairs)
+        const tile = window.$gameMap.tileAt(x, y);
+        if (tile === 3) {
+            this.resolveStaticTile(tile);
+            return;
         }
+
+        // Check for dynamic events
+        const event = window.$gameMap.eventAt(x, y);
+        if (event && !event.isErased) {
+             if (event.trigger === 'TOUCH') {
+                 this.interpreter.setup(event.commands, event.id);
+             }
+             // For 'ACTION' trigger, we would need a separate input handler (e.g. pressing 'Space')
+             // But for now, let's assume 'SHOP' is action, but maybe we just auto-trigger it on bump
+             // to keep existing behavior?
+             // Existing behavior for SHOP was "bump to enter".
+             // Let's check existing code: resolveTile(5) was called from move->checkTile.
+             // So it was "Touch".
+             // Wait, the plan said SHOP is 'ACTION'.
+             // "Shop (5): { type: 'SHOP', trigger: 'ACTION', ... }"
+             // If I set it to ACTION, the player walks on it and nothing happens until they press a button?
+             // The current input system moves the player. It doesn't seem to have a dedicated "Interact" button separate from move.
+             // If I want to maintain existing behavior (bump to interact), I should use 'TOUCH'.
+             // However, shops in RPGs are often "Touch" or "Action".
+             // If I walk ONTO the shop, it should trigger.
+
+             // Let's override the trigger to TOUCH for now to ensure it works like before,
+             // or implement ACTION check.
+             // But my `createEvent` in Game_Map set SHOP to ACTION.
+             // If I want it to trigger on move, I should change it to TOUCH or handle ACTION here.
+
+             // If the player occupies the tile, and we press Enter, that's ACTION.
+             // But we just MOVED there.
+
+             // If I change Game_Map to use TOUCH for everything for now, it's safer.
+             // OR, I treat 'ACTION' as "Trigger when trying to move INTO it but blocked"?
+             // No, Shop is walkable?
+             // In legacy map, Shop was code 5.
+             // In rebuildLevel loop:
+             // if (tile === 0 || tile >= 2) -> Floor.
+             // So Shop was walkable.
+
+             // Let's force execution for now if we walk on it, or update Game_Map to use TOUCH.
+             // I'll update this method to execute if TOUCH.
+             // For SHOP (ACTION), we might need to change Game_Map or implement an interaction listener.
+             // Given the scope, let's assume "Bump" interaction is desired.
+             // I'll update Game_Map to use TOUCH for Shop too?
+             // Or just allow ACTION to trigger on Enter.
+
+             // The problem is `move` logic places player ON the tile.
+             // If it's ACTION, we are standing on it.
+
+             // Let's go with: if we move onto it, and trigger is TOUCH, execute.
+             // If trigger is ACTION, we do nothing yet.
+             // But I don't want to break the game.
+             // I will change SHOP to TOUCH in Game_Map in a follow-up step if needed.
+             // For now, I'll modify checkTile to also trigger ACTION if we just walked on it?
+             // No, that defeats the purpose.
+
+             // Let's check my Game_Map change.
+             // case 'SHOP': trigger: 'ACTION'.
+
+             // I should probably change SHOP to TOUCH to match "bump to interact" unless I implement an Interact button.
+             // The user didn't ask for an Interact button.
+             // I'll change SHOP to TOUCH in Game_Map later.
+             // Actually I can just check if event exists and execute it regardless of trigger for now?
+             // No, that's messy.
+
+             // Let's update Game_Map to TOUCH for Shop to be safe.
+             // I'll do that in a moment.
+
+             if (event.trigger === 'TOUCH' || event.trigger === 'ACTION') { // TEMPORARY: Treat ACTION as TOUCH for migration smoothness
+                  this.interpreter.setup(event.commands, event.id);
+             }
+        }
+
+        window.Game.Windows.HUD.refresh();
+
+        // Post-execution cleanup/sync
+        // We probably want to sync dynamic objects after a delay in case the event erased itself
+        setTimeout(() => this.syncDynamic(), 300);
     }
 
     /**
-     * Resolves the effect of stepping on a specific tile code.
-     * @param {number} code - The tile code.
+     * Resolves static tile effects (Stairs).
+     * @param {number} code
      */
-    resolveTile(code) {
+    resolveStaticTile(code) {
         const map = window.$gameMap;
-        const pos = map.playerPos;
-
-        if (code === 2) {
-            map.setTile(pos.x, pos.y, 0);
-            window.Game.BattleManager.startEncounter();
-        } else if (code === 3) {
-            map.floor++;
-            Log.add('Descended...');
-            // Generate new floor via Game_Map
-            map.generateFloor();
-            // Then rebuild 3D scene
-            this.rebuildLevel();
-        } else if (code === 4) {
-            const treasure = Data.events.treasure;
-            const amt = treasure.gold.base
-                + Math.floor(Math.random() * treasure.gold.random)
-                + treasure.gold.perFloor * map.floor;
-            window.$gameParty.gainGold(amt);
-            map.setTile(pos.x, pos.y, 0);
-            Log.loot(`Found ${amt} Gold!`);
-        } else if (code === 5) {
-            map.setTile(pos.x, pos.y, 0);
-            window.Game.Systems.Events.shop();
-        } else if (code === 6) {
-            map.setTile(pos.x, pos.y, 0);
-            window.Game.Systems.Events.recruit();
-        } else if (code === 7) {
-            map.setTile(pos.x, pos.y, 0);
-            window.Game.Systems.Events.shrine();
-        } else if (code === 8) {
-            map.setTile(pos.x, pos.y, 0);
-            window.Game.Systems.Events.trap();
+        if (code === 3) {
+             map.floor++;
+             Log.add('Descended...');
+             map.generateFloor();
+             this.rebuildLevel();
         }
     }
 

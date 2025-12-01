@@ -84,12 +84,20 @@ export class Game_Map {
             }
         }
 
-        const place = (code, count) => {
+        const place = (type, count) => {
             for (let i = 0; i < count; i++) {
                 if (emptyTiles.length === 0) break;
                 const idx = Math.floor(Math.random() * emptyTiles.length);
                 const tile = emptyTiles.splice(idx, 1)[0];
-                map[tile.y][tile.x] = code;
+
+                // Static tiles handled by integer grid
+                if (type === 'STAIRS') {
+                    map[tile.y][tile.x] = 3;
+                }
+                // Dynamic entities handled by Game_Event
+                else {
+                    this.createEvent(type, tile.x, tile.y);
+                }
             }
         };
 
@@ -101,16 +109,88 @@ export class Game_Map {
             return Math.max(min, Math.min(max, rounded));
         };
 
-        place(2, getCount(mapCfg.tileCounts.enemies));
-        place(3, getCount(mapCfg.tileCounts.stairs));
-        place(4, getCount(mapCfg.tileCounts.treasure));
-        place(5, getCount(mapCfg.tileCounts.shops));
-        place(6, getCount(mapCfg.tileCounts.recruits));
-        place(7, getCount(mapCfg.tileCounts.shrines));
-        place(8, getCount(mapCfg.tileCounts.traps));
+        place('ENEMY', getCount(mapCfg.tileCounts.enemies));
+        place('STAIRS', getCount(mapCfg.tileCounts.stairs));
+        place('TREASURE', getCount(mapCfg.tileCounts.treasure));
+        place('SHOP', getCount(mapCfg.tileCounts.shops));
+        place('RECRUIT', getCount(mapCfg.tileCounts.recruits));
+        place('SHRINE', getCount(mapCfg.tileCounts.shrines));
+        place('TRAP', getCount(mapCfg.tileCounts.traps));
 
         this._data = map;
         this._visited = Array(mapCfg.height).fill().map(() => Array(mapCfg.width).fill(false));
+    }
+
+    /**
+     * Creates an event of the specified type.
+     * @param {string} type
+     * @param {number} x
+     * @param {number} y
+     */
+    createEvent(type, x, y) {
+        let data = {};
+        switch (type) {
+            case 'ENEMY':
+                data = {
+                    type: 'ENEMY',
+                    trigger: 'TOUCH',
+                    visual: { type: 'ENEMY' },
+                    commands: [{ code: 'BATTLE' }, { code: 'ERASE_EVENT' }]
+                };
+                break;
+            case 'TREASURE':
+                const treasure = Data.events.treasure;
+                const amt = treasure.gold.base
+                    + Math.floor(Math.random() * treasure.gold.random)
+                    + treasure.gold.perFloor * this._floor;
+                data = {
+                    type: 'TREASURE',
+                    trigger: 'TOUCH',
+                    visual: { type: 'TREASURE' },
+                    commands: [
+                        { code: 'GIVE_GOLD', amount: amt },
+                        { code: 'ERASE_EVENT' }
+                    ]
+                };
+                break;
+            case 'SHOP':
+                data = {
+                    type: 'SHOP',
+                    trigger: 'ACTION', // Press to interact
+                    visual: { type: 'SHOP' },
+                    commands: [{ code: 'SHOP' }, { code: 'ERASE_EVENT' }]
+                };
+                break;
+            case 'RECRUIT':
+                data = {
+                    type: 'RECRUIT',
+                    trigger: 'TOUCH',
+                    visual: { type: 'RECRUIT' },
+                    commands: [{ code: 'RECRUIT' }, { code: 'ERASE_EVENT' }]
+                };
+                break;
+            case 'SHRINE':
+                data = {
+                    type: 'SHRINE',
+                    trigger: 'TOUCH',
+                    visual: { type: 'SHRINE' },
+                    commands: [{ code: 'SHRINE' }, { code: 'ERASE_EVENT' }]
+                };
+                break;
+            case 'TRAP':
+                data = {
+                    type: 'TRAP',
+                    trigger: 'TOUCH',
+                    visual: { type: 'TRAP' }, // Invisible or trap visual
+                    commands: [{ code: 'TRAP' }, { code: 'ERASE_EVENT' }]
+                };
+                break;
+        }
+
+        if (data.type) {
+            const event = new Game_Event(x, y, data);
+            this.addEvent(event);
+        }
     }
 
     /**
