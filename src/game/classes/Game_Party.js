@@ -7,7 +7,7 @@ import { Data } from '../../assets/data/data.js';
 export class Game_Party {
     constructor() {
         /** @type {number} Current gold amount. */
-        this._gold = 500;
+        this._gold = 0;
         /** @type {number} Steps taken (unused). */
         this._steps = 0;
         /** @type {Array<Game_Actor>} List of all owned units. */

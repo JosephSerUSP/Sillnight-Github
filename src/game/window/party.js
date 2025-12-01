@@ -1,4 +1,3 @@
-import { GameState } from '../state.js';
 import { Window_Selectable } from '../windows.js';
 import { renderCreaturePanel } from './common.js';
 
@@ -12,7 +11,7 @@ export class Window_Party extends Window_Selectable {
 
     initialize() {
         super.initialize();
-        this.items = GameState.party.activeSlots;
+        this.items = window.$gameParty.activeSlots;
         this.addHandler('click', this.onClick.bind(this));
     }
 
@@ -20,11 +19,11 @@ export class Window_Party extends Window_Selectable {
      * Toggles formation editing mode.
      */
     toggleFormationMode() {
-        if (GameState.ui.mode === 'BATTLE') return;
-        GameState.ui.formationMode = !GameState.ui.formationMode;
+        if (window.Game.ui.mode === 'BATTLE') return;
+        window.Game.ui.formationMode = !window.Game.ui.formationMode;
         const ind = document.getElementById('turn-indicator');
         const btn = document.getElementById('btn-formation');
-        if (GameState.ui.formationMode) {
+        if (window.Game.ui.formationMode) {
             ind.innerText = 'FORMATION MODE';
             ind.classList.remove('hidden');
             btn.classList.add('bg-yellow-900', 'text-white');
@@ -62,25 +61,18 @@ export class Window_Party extends Window_Selectable {
      * @param {number} index - The clicked slot index.
      */
     onClick(index) {
-        if (GameState.battle && GameState.battle.phase === 'PLAYER_INPUT' || GameState.ui.formationMode) {
-            const selectedIndex = this._index;
+        // Allow swapping only in formation mode
+        if (window.Game.ui.formationMode) {
+             const selectedIndex = this._index;
             if (selectedIndex !== -1 && selectedIndex !== index) {
-                const u1 = GameState.party.activeSlots[selectedIndex];
-                const u2 = GameState.party.activeSlots[index];
-
-                // Swap logic
-                GameState.party.activeSlots[selectedIndex] = u2;
-                GameState.party.activeSlots[index] = u1;
-
-                if (GameState.party.activeSlots[selectedIndex]) GameState.party.activeSlots[selectedIndex].slotIndex = selectedIndex;
-                if (GameState.party.activeSlots[index]) GameState.party.activeSlots[index].slotIndex = index;
-
-                this.deselect(); // Also refreshes
+                window.$gameParty.swapOrder(selectedIndex, index);
+                this.deselect();
             } else {
                 this.select(index);
             }
         } else {
-            const unit = GameState.party.activeSlots[index];
+            // Otherwise, show creature details
+            const unit = window.$gameParty.activeSlots[index];
             if (unit) {
                 window.Game.Windows.CreatureModal.setUnit(unit);
                 window.Game.Windows.CreatureModal.show();

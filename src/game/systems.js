@@ -1,5 +1,4 @@
 import { Data } from '../assets/data/data.js';
-import { GameState } from './state.js';
 import { Log } from './log.js';
 import { resolveAssetPath } from './core.js';
 
@@ -233,34 +232,37 @@ export const Systems = {
          * @param {number} code - The tile code.
          */
         resolveTile(code) {
+            const map = window.$gameMap;
+            const pos = map.playerPos;
+
             if (code === 2) { 
-                GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
+                map._data[pos.y][pos.x] = 0;
                 import('./managers.js').then(({ BattleManager }) => {
                     BattleManager.startEncounter();
                 });
             } else if (code === 3) { 
-                GameState.run.floor++;
+                map.floor++;
                 Log.add('Descended...');
                 Systems.Map.generateFloor();
             } else if (code === 4) { 
                 const treasure = Data.events.treasure;
                 const amt = treasure.gold.base
                     + Math.floor(Math.random() * treasure.gold.random)
-                    + treasure.gold.perFloor * GameState.run.floor;
-                GameState.run.gold += amt;
-                GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
+                    + treasure.gold.perFloor * map.floor;
+                window.$gameParty.gainGold(amt);
+                map._data[pos.y][pos.x] = 0;
                 Log.loot(`Found ${amt} Gold!`);
             } else if (code === 5) { 
-                GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
+                map._data[pos.y][pos.x] = 0;
                 Systems.Events.shop();
             } else if (code === 6) { 
-                GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
+                map._data[pos.y][pos.x] = 0;
                 Systems.Events.recruit();
             } else if (code === 7) { 
-                GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
+                map._data[pos.y][pos.x] = 0;
                 Systems.Events.shrine();
             } else if (code === 8) { 
-                GameState.exploration.map[GameState.exploration.playerPos.y][GameState.exploration.playerPos.x] = 0;
+                map._data[pos.y][pos.x] = 0;
                 Systems.Events.trap();
             }
         }
@@ -334,11 +336,11 @@ export const Systems = {
             this.animate();
         },
 
-        /** Rebuilds the 3D map based on GameState.exploration.map */
+        /** Rebuilds the 3D map based on window.$gameMap */
         rebuildLevel() {
             if(!this.scene) return;
             this.mapGroup.clear();
-            const map = GameState.exploration.map;
+            const map = window.$gameMap._data;
             const height = map.length;
             const width = map[0].length;
             const count = width * height;
@@ -404,8 +406,8 @@ export const Systems = {
             // Initial dynamic sync
             this.syncDynamic();
 
-            const startX = GameState.exploration.playerPos.x;
-            const startY = GameState.exploration.playerPos.y;
+            const startX = window.$gameMap.playerPos.x;
+            const startY = window.$gameMap.playerPos.y;
             this.playerMesh.position.set(startX, 0.5, startY);
             this.playerTarget.set(startX, 0.5, startY);
             this.cameraLookCurrent.set(startX, 0, startY);
@@ -424,7 +426,7 @@ export const Systems = {
             }
             this.dynamicGroup.clear();
 
-            const map = GameState.exploration.map;
+            const map = window.$gameMap._data;
             const height = map.length;
             const width = map[0].length;
 
@@ -479,16 +481,16 @@ export const Systems = {
          * @param {number} dy - The change in Y.
          */
         move(dx, dy) {
-            if (GameState.ui.mode !== 'EXPLORE' || GameState.ui.formationMode) return;
+            if (window.Game.ui.mode !== 'EXPLORE' || window.Game.ui.formationMode) return;
             if (this.isAnimating) return;
 
-            const newX = GameState.exploration.playerPos.x + dx;
-            const newY = GameState.exploration.playerPos.y + dy;
+            const newX = window.$gameMap.playerPos.x + dx;
+            const newY = window.$gameMap.playerPos.y + dy;
             const tile = Systems.Map.tileAt(newX, newY);
 
             if (tile !== 1) {
                 // Update Logical Position
-                GameState.exploration.playerPos = { x: newX, y: newY };
+                window.$gameMap._playerPos = { x: newX, y: newY };
 
                 // Trigger Animation
                 this.moveLerpStart.copy(this.playerMesh.position);
@@ -528,7 +530,7 @@ export const Systems = {
          * Main animation loop.
          */
         animate() {
-            if (GameState.ui.mode === 'EXPLORE') {
+            if (window.Game.ui.mode === 'EXPLORE') {
                 requestAnimationFrame(() => this.animate());
             } else {
                 // Keep loop running but maybe skip render if hidden?
@@ -579,7 +581,7 @@ export const Systems = {
 
             // Render using shared renderer
             const renderer = window.Game.RenderManager.getRenderer();
-            if (renderer && GameState.ui.mode === 'EXPLORE') {
+            if (renderer && window.Game.ui.mode === 'EXPLORE') {
                 renderer.render(this.scene, this.camera);
             }
         },
@@ -650,12 +652,12 @@ export const Systems = {
                 btn.className = 'text-xs border border-gray-600 px-2 py-1 hover:bg-white hover:text-black';
                 btn.innerText = 'BUY';
                 btn.onclick = () => {
-                    if (GameState.run.gold >= price) {
-                        GameState.run.gold -= price;
+                    if (window.$gameParty.gold >= price) {
+                        window.$gameParty.loseGold(price);
                         if (s.type === 'item') {
-                            GameState.inventory.items[s.id] = (GameState.inventory.items[s.id] || 0) + 1;
+                            window.$gameParty.gainItem(s.id, 1);
                         } else {
-                            GameState.inventory.equipment[s.id] = (GameState.inventory.equipment[s.id] || 0) + 1;
+                            window.$gameParty.gainItem(s.id, 1);
                         }
                         Log.loot(`Bought ${def.name}.`);
                         window.Game.Windows.HUD.refresh();
@@ -695,34 +697,16 @@ export const Systems = {
                 btn.className = 'text-xs border border-gray-600 px-2 py-1 hover:bg-white hover:text-black';
                 btn.innerText = 'RECRUIT';
                 btn.onclick = () => {
-                    const empty = GameState.party.activeSlots.findIndex(u => u === null);
-                    const unit = {
-                        uid: 'n' + Date.now() + '_' + Math.random().toString(16).slice(2),
-                        speciesId: def.id,
-                        name: def.name,
-                        sprite: def.sprite,
-                        spriteAsset: def.spriteAsset,
-                        level: GameState.run.floor,
-                        maxhp: Math.round(def.baseHp * (1 + def.hpGrowth * (GameState.run.floor - 1))),
-                        hp: Math.round(def.baseHp * (1 + def.hpGrowth * (GameState.run.floor - 1))),
-                        exp: 0,
-                        temperament: def.temperament,
-                        elements: def.elements ? [...def.elements] : [],
-                        acts: def.acts,
-                        equipmentId: null,
-                        slotIndex: -1
-                    };
-                    GameState.roster.push(unit);
-                    if (empty !== -1) {
-                        unit.slotIndex = empty;
-                        GameState.party.activeSlots[empty] = unit;
-                        Log.add(`${unit.name} joins your party.`);
-                    } else {
-                        Log.add(`${unit.name} waits in reserve.`);
-                    }
-                    window.Game.Windows.Party.refresh();
-                    btn.disabled = true;
-                    btn.innerText = 'TAKEN';
+                    const floor = window.$gameMap.floor;
+
+                    // We need to create a Game_Actor instance properly
+                    import('./classes/Game_Actor.js').then(({ Game_Actor }) => {
+                        const unit = new Game_Actor(def.id, floor);
+                        window.$gameParty.addActor(unit);
+                        window.Game.Windows.Party.refresh();
+                        btn.disabled = true;
+                        btn.innerText = 'TAKEN';
+                    });
                 };
                 row.appendChild(btn);
                 container.appendChild(row);
@@ -737,10 +721,8 @@ export const Systems = {
         /** Triggers the shrine event (heal). */
         shrine() {
             Log.add('You find a glowing shrine.');
-            GameState.roster.forEach(u => {
-                const def = Data.creatures[u.speciesId];
-                u.maxhp = Math.round(def.baseHp * (1 + def.hpGrowth * (u.level - 1)));
-                u.hp = u.maxhp;
+            window.$gameParty.roster.forEach(u => {
+                u.recoverAll();
             });
             window.Game.Windows.Party.refresh();
             const msg = document.createElement('div');
@@ -758,7 +740,7 @@ export const Systems = {
                 u.hp = Math.max(0, u.hp - dmg);
                 if (u.hp === 0) Log.battle(`${u.name} was knocked out by the trap!`);
             };
-            GameState.party.activeSlots.forEach(u => { if (u) damage(u); });
+            window.$gameParty.activeSlots.forEach(u => { if (u) damage(u); });
             window.Game.Windows.Party.refresh();
             const msg = document.createElement('div');
             msg.className = 'text-center space-y-2';
@@ -961,7 +943,7 @@ export const Systems = {
         animate() {
             requestAnimationFrame(() => this.animate());
             const cs = this.cameraState;
-            if (GameState.ui.mode === 'BATTLE_WIN') {
+            if (window.Game.ui.mode === 'BATTLE_WIN') {
                 cs.angle += 0.005;
             } else {
                 cs.angle += (cs.targetAngle - cs.angle) * 0.05;
@@ -974,7 +956,7 @@ export const Systems = {
             this.camera.lookAt(cs.targetX, cs.targetY, 2);
             
             const renderer = window.Game.RenderManager.getRenderer();
-            if (renderer && (GameState.ui.mode === 'BATTLE' || GameState.ui.mode === 'BATTLE_WIN')) {
+            if (renderer && (window.Game.ui.mode === 'BATTLE' || window.Game.ui.mode === 'BATTLE_WIN')) {
                 renderer.render(this.scene, this.camera);
                 Systems.Effekseer.update(this.camera);
             }
@@ -1372,34 +1354,36 @@ showDamageNumber(uid, val, isCrit = false) {
          * @param {...any} args - Additional arguments to pass to the handler.
          */
         fire(eventName, ...args) {
-            const allUnits = [...(GameState.battle?.allies || []), ...(GameState.battle?.enemies || [])];
-            allUnits.forEach(unit => {
-                if(unit.hp <= 0) return;
+            import('./managers.js').then(({ BattleManager }) => {
+                const allUnits = [...(BattleManager.allies || []), ...(BattleManager.enemies || [])];
+                allUnits.forEach(unit => {
+                    if(unit.hp <= 0) return;
 
-                // Using new trait system access
-                // If unit has traitObjects method (Game_Battler), use traits()
-                // Otherwise fall back to manual gathering (if any legacy objects remain, though all should be Game_Battler now)
+                    // Using new trait system access
+                    // If unit has traitObjects method (Game_Battler), use traits()
+                    // Otherwise fall back to manual gathering (if any legacy objects remain, though all should be Game_Battler now)
 
-                let traits = [];
-                if (typeof unit.traits === 'function') {
-                    traits = unit.traits();
-                } else {
-                     // Fallback for safety during transition
-                    const species = Data.creatures[unit.speciesId];
-                    if (species && species.passives) {
-                        species.passives.forEach(passiveId => {
-                            const passive = Data.passives[passiveId];
-                            if (passive) traits.push(...passive.traits);
-                        });
+                    let traits = [];
+                    if (typeof unit.traits === 'function') {
+                        traits = unit.traits();
+                    } else {
+                        // Fallback for safety during transition
+                        const species = Data.creatures[unit.speciesId];
+                        if (species && species.passives) {
+                            species.passives.forEach(passiveId => {
+                                const passive = Data.passives[passiveId];
+                                if (passive) traits.push(...passive.traits);
+                            });
+                        }
+                        if (unit.equipmentId) {
+                            const equipment = Data.equipment[unit.equipmentId];
+                            if (equipment) traits.push(...equipment.traits);
+                        }
                     }
-                    if (unit.equipmentId) {
-                        const equipment = Data.equipment[unit.equipmentId];
-                        if (equipment) traits.push(...equipment.traits);
-                    }
-                }
 
-                traits.forEach(trait => {
-                    this.handleTrait(eventName, trait, unit, ...args);
+                    traits.forEach(trait => {
+                        this.handleTrait(eventName, trait, unit, ...args);
+                    });
                 });
             });
         },
@@ -1455,19 +1439,20 @@ showDamageNumber(uid, val, isCrit = false) {
                                 // But BattleManager logic for applyEffects is now in Game_Action.
                                 // We can instantiate Game_Action here.
 
-                                // Since we need to apply effects to enemies...
-                                const enemies = GameState.battle.enemies.filter(e => e.hp > 0);
-                                import('./classes/Game_Action.js').then(({ Game_Action }) => {
-                                     const action = new Game_Action(unit);
-                                     action.setObject(skill);
-                                     enemies.forEach(target => {
-                                         // apply returns results but we just want to log?
-                                         // Or we need visual feedback?
-                                         // Ideally we queue this action in BattleManager but that's complex.
-                                         // For now, silent application or log.
-                                         action.apply(target);
-                                     });
-                                     Log.battle(`${unit.name} casts ${skill.name} upon death!`);
+                                import('./managers.js').then(({ BattleManager }) => {
+                                    const enemies = BattleManager.enemies.filter(e => e.hp > 0);
+                                    import('./classes/Game_Action.js').then(({ Game_Action }) => {
+                                        const action = new Game_Action(unit);
+                                        action.setObject(skill);
+                                        enemies.forEach(target => {
+                                            // apply returns results but we just want to log?
+                                            // Or we need visual feedback?
+                                            // Ideally we queue this action in BattleManager but that's complex.
+                                            // For now, silent application or log.
+                                            action.apply(target);
+                                        });
+                                        Log.battle(`${unit.name} casts ${skill.name} upon death!`);
+                                    });
                                 });
                             }
                         }

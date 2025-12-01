@@ -1,5 +1,4 @@
 import { Data } from '../assets/data/data.js';
-import { GameState } from './state.js';
 import { DataManager } from './DataManager.js';
 import { Log } from './log.js';
 import { Systems } from './systems.js';
@@ -22,7 +21,6 @@ export const Game = {
      * @type {boolean}
      */
     ready: false,
-    GameState,
     Systems,
     data: Data,
     log: Log,
@@ -31,6 +29,10 @@ export const Game = {
     BattleManager: BattleManager,
     RenderManager: new RenderManager(),
     Windows: {},
+    ui: {
+        mode: 'EXPLORE',
+        formationMode: false
+    },
 
     /**
      * Initializes the game.

@@ -1,5 +1,4 @@
 import { Data } from '../../assets/data/data.js';
-import { GameState } from '../state.js';
 import { Log } from '../log.js';
 import { Systems } from '../systems.js';
 import { Game_Enemy } from '../classes/Game_Enemy.js';
@@ -46,17 +45,6 @@ export const BattleManager = {
         this.roundCount = 0;
         this.playerTurnRequested = false;
         this.phase = 'INIT';
-
-        // Keep GameState.battle in sync for now
-        GameState.battle = {
-            allies: this.allies,
-            enemies: this.enemies,
-            queue: this.queue,
-            turnIndex: this.turnIndex,
-            roundCount: this.roundCount,
-            playerTurnRequested: this.playerTurnRequested,
-            phase: this.phase
-        };
     },
 
     /**
@@ -64,7 +52,7 @@ export const BattleManager = {
      */
     async startEncounter() {
         Systems.sceneHooks?.onBattleStart?.();
-        GameState.ui.mode = 'BATTLE';
+        window.Game.ui.mode = 'BATTLE';
         // Wait for scene switch (handles DOM race conditions)
         await window.Game.Scenes.battle.switchScene(true);
 
@@ -73,9 +61,9 @@ export const BattleManager = {
         Systems.Battle3D.setFocus('neutral');
         Systems.Battle3D.resize();
 
-        const allies = GameState.party.activeSlots.filter(u => u !== null);
+        const allies = window.$gameParty.activeSlots.filter(u => u !== null);
 
-        const floor = GameState.run.floor;
+        const floor = window.$gameMap.floor;
         const dungeon = Data.dungeons.default;
         const enc = dungeon.encounters;
         const pool = enc.pools.find(p => floor >= p.floors[0] && floor <= p.floors[1]);
@@ -113,10 +101,6 @@ export const BattleManager = {
         this.roundCount++;
         this.phase = 'ROUND_START';
 
-        // Update GameState mirror
-        GameState.battle.roundCount = this.roundCount;
-        GameState.battle.phase = this.phase;
-
         Systems.Battle3D.setFocus('neutral');
         if (this.allies.every(u => u.hp <= 0)) return this.end(false);
         if (this.enemies.every(u => u.hp <= 0)) return this.end(true);
@@ -140,7 +124,6 @@ export const BattleManager = {
         Log.battle(`--- Round ${this.roundCount} ---`);
         if (this.playerTurnRequested) {
             this.phase = 'PLAYER_INPUT';
-            GameState.battle.phase = this.phase;
             this.playerTurnRequested = false;
             window.Game.Windows.BattleLog.togglePlayerTurn(true);
             Log.battle('Waiting for orders...');
@@ -152,9 +135,7 @@ export const BattleManager = {
 
         allUnits.sort((a, b) => b.speed - a.speed || Math.random() - 0.5);
         this.queue = allUnits;
-        GameState.battle.queue = this.queue;
         this.turnIndex = 0;
-        GameState.battle.turnIndex = 0;
 
         this.processNextTurn();
     },
@@ -170,7 +151,6 @@ export const BattleManager = {
                 return;
             }
             const unit = this.queue[this.turnIndex++];
-            GameState.battle.turnIndex = this.turnIndex;
 
             if (unit.hp <= 0) {
                 this.processNextTurn();
@@ -351,9 +331,8 @@ export const BattleManager = {
      * Flags a request for manual player input at the next opportunity.
      */
     requestPlayerTurn() {
-         if (GameState.ui.mode === 'BATTLE') {
+         if (window.Game.ui.mode === 'BATTLE') {
             this.playerTurnRequested = true;
-            GameState.battle.playerTurnRequested = true;
             Log.add('Interrupt queued.');
             const btn = document.getElementById('btn-player-turn');
             if (btn) {
@@ -369,7 +348,6 @@ export const BattleManager = {
     resumeAuto() {
         window.Game.Windows.BattleLog.togglePlayerTurn(false);
         this.playerTurnRequested = false;
-        GameState.battle.playerTurnRequested = false;
         const btn = document.getElementById('btn-player-turn');
         if (btn) {
             btn.classList.remove('border-green-500', 'text-green-500');
@@ -386,13 +364,13 @@ export const BattleManager = {
          document.getElementById('battle-ui-overlay').innerHTML = '';
             if (win) {
                 window.Game.Windows.BattleLog.showBanner('VICTORY');
-                GameState.ui.mode = 'BATTLE_WIN';
+                window.Game.ui.mode = 'BATTLE_WIN';
                 Systems.sceneHooks?.onBattleEnd?.();
                 Systems.Triggers.fire('onBattleEnd', [...this.allies, ...this.enemies].filter(u => u && u.hp > 0));
                 Systems.Battle3D.setFocus('victory');
-                const gold = this.enemies.length * Data.config.baseGoldPerEnemy * GameState.run.floor;
-                const baseXp = this.enemies.length * Data.config.baseXpPerEnemy * GameState.run.floor;
-                GameState.run.gold += gold;
+                const gold = this.enemies.length * Data.config.baseGoldPerEnemy * window.$gameMap.floor;
+                const baseXp = this.enemies.length * Data.config.baseXpPerEnemy * window.$gameMap.floor;
+                window.$gameParty.gainGold(gold);
                 let finalXp = baseXp;
 
                 this.allies.forEach(p => {
@@ -427,7 +405,7 @@ export const BattleManager = {
                     <button class="mt-4 border border-white px-4 py-2 hover:bg-gray-800" onclick="Game.Windows.BattleLog.closeModal(); Game.SceneManager.changeScene(Game.Scenes.explore);">CONTINUE</button>
                 `);
             } else {
-                GameState.ui.mode = 'EXPLORE';
+                window.Game.ui.mode = 'EXPLORE';
                 Systems.Battle3D.setFocus('neutral');
                 window.Game.Windows.BattleLog.showModal(`
                     <div class="text-red-600 text-4xl mb-4">DEFEATED</div>
