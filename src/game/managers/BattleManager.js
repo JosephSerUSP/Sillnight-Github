@@ -62,51 +62,47 @@ export const BattleManager = {
     /**
      * Generates a random encounter based on the current floor and starts it.
      */
-    startEncounter() {
-         const swipe = document.getElementById('swipe-overlay');
-            swipe.className = 'swipe-down';
-            setTimeout(() => {
-                Systems.sceneHooks?.onBattleStart?.();
-                GameState.ui.mode = 'BATTLE';
-                window.Game.Scenes.battle.switchScene(true);
-                Systems.Battle3D.cameraState.angle = -Math.PI / 4;
-                Systems.Battle3D.cameraState.targetAngle = -Math.PI / 4;
-                Systems.Battle3D.setFocus('neutral');
-                Systems.Battle3D.resize();
+    async startEncounter() {
+        Systems.sceneHooks?.onBattleStart?.();
+        GameState.ui.mode = 'BATTLE';
+        // Wait for scene switch (handles DOM race conditions)
+        await window.Game.Scenes.battle.switchScene(true);
 
-                const allies = GameState.party.activeSlots.filter(u => u !== null);
+        Systems.Battle3D.cameraState.angle = -Math.PI / 4;
+        Systems.Battle3D.cameraState.targetAngle = -Math.PI / 4;
+        Systems.Battle3D.setFocus('neutral');
+        Systems.Battle3D.resize();
 
-                const floor = GameState.run.floor;
-                const dungeon = Data.dungeons.default;
-                const enc = dungeon.encounters;
-                const pool = enc.pools.find(p => floor >= p.floors[0] && floor <= p.floors[1]);
-                const enemyTypes = pool ? pool.enemies : [];
-                const enemyCount = Math.floor(Math.random() * (enc.count.max - enc.count.min + 1)) + enc.count.min;
-                const enemies = [];
+        const allies = GameState.party.activeSlots.filter(u => u !== null);
 
-                for (let i = 0; i < enemyCount; i++) {
-                    const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
-                    const mult = 1 + (floor * 0.1);
+        const floor = GameState.run.floor;
+        const dungeon = Data.dungeons.default;
+        const enc = dungeon.encounters;
+        const pool = enc.pools.find(p => floor >= p.floors[0] && floor <= p.floors[1]);
+        const enemyTypes = pool ? pool.enemies : [];
+        const enemyCount = Math.floor(Math.random() * (enc.count.max - enc.count.min + 1)) + enc.count.min;
+        const enemies = [];
 
-                    const enemy = new Game_Enemy(type, 0, 0, mult);
-                    enemy.slotIndex = i;
-                    // Ensure full heal after scaling
-                    enemy.recoverAll();
-                    enemies.push(enemy);
-                }
+        for (let i = 0; i < enemyCount; i++) {
+            const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+            const mult = 1 + (floor * 0.1);
 
-                this.setup(allies, enemies);
+            const enemy = new Game_Enemy(type, 0, 0, mult);
+            enemy.slotIndex = i;
+            // Ensure full heal after scaling
+            enemy.recoverAll();
+            enemies.push(enemy);
+        }
 
-                Systems.Battle3D.setupScene(this.allies, this.enemies);
-                const enemyNames = enemies.map(e => e.name).join(', ');
-                Log.battle(`Enemies: ${enemyNames}`);
-                window.Game.Windows.BattleLog.showBanner('ENCOUNTER');
-                swipe.className = 'swipe-clear';
-                setTimeout(() => {
-                    swipe.className = 'swipe-reset';
-                    setTimeout(() => this.nextRound(), 1500);
-                }, 600);
-            }, 600);
+        this.setup(allies, enemies);
+
+        Systems.Battle3D.setupScene(this.allies, this.enemies);
+        const enemyNames = enemies.map(e => e.name).join(', ');
+        Log.battle(`Enemies: ${enemyNames}`);
+        window.Game.Windows.BattleLog.showBanner('ENCOUNTER');
+
+        // Brief delay before first round starts to allow player to see enemies
+        setTimeout(() => this.nextRound(), 1000);
     },
 
     /**
