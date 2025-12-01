@@ -1,4 +1,3 @@
-import { GameState } from '../state.js';
 import { Window_Base } from '../windows.js';
 
 /**
@@ -48,7 +47,7 @@ export class Window_HUD extends Window_Base {
      * Updates the HUD with current game state values.
      */
     refresh() {
-        if (this._floorEl) this._floorEl.innerText = GameState.run.floor;
-        if (this._goldEl) this._goldEl.innerText = GameState.run.gold;
+        if (this._floorEl) this._floorEl.innerText = window.$gameMap ? window.$gameMap.floor : 1;
+        if (this._goldEl) this._goldEl.innerText = window.$gameParty ? window.$gameParty.gold : 0;
     }
 }

@@ -1,5 +1,4 @@
 import { Data } from '../../assets/data/data.js';
-import { GameState } from '../state.js';
 import { Window_Selectable } from '../windows.js';
 import { renderCreaturePanel, spriteMarkup } from './common.js';
 import { Log } from '../log.js';
@@ -55,11 +54,11 @@ export class Window_CreatureModal extends Window_Selectable {
         box.classList.remove('hidden');
         box.classList.add('pointer-events-auto');
 
-        const list = GameState.roster.map(u => ({ owner: u, id: u.equipmentId, source: 'unit' })).filter(x => x.id);
-        const inv = Object.keys(GameState.inventory.equipment).map(key => ({ owner: null, id: key, source: 'inventory' }));
+        const list = window.$gameParty.roster.map(u => ({ owner: u, id: u.equipmentId, source: 'unit' })).filter(x => x.id);
+        const inv = Object.keys(window.$gameParty.inventory.equipment).map(key => ({ owner: null, id: key, source: 'inventory' }));
         const options = [...list, ...inv];
 
-        const first = this._unit || GameState.party.activeSlots.find(Boolean);
+        const first = this._unit || window.$gameParty.activeSlots.find(Boolean);
         this.equipmentPickerPreset = id ? { id, source: 'inventory' } : null;
 
         box.innerHTML = '';
@@ -104,14 +103,16 @@ export class Window_CreatureModal extends Window_Selectable {
     }
 
     equipFromInventory(target, equipmentId) {
-        const count = GameState.inventory.equipment[equipmentId] || 0;
-        if (count <= 0) return;
+        if (!window.$gameParty.hasItem(equipmentId)) return;
         const previous = target.equipmentId;
+
+        // Remove item from inventory
+        window.$gameParty.loseItem(equipmentId, 1);
+
         if (previous) {
-            GameState.inventory.equipment[previous] = (GameState.inventory.equipment[previous] || 0) + 1;
+            window.$gameParty.gainItem(previous, 1);
         }
-        GameState.inventory.equipment[equipmentId] = count - 1;
-        if (GameState.inventory.equipment[equipmentId] <= 0) delete GameState.inventory.equipment[equipmentId];
+
         target.equipmentId = equipmentId;
         this.recomputeHp(target);
 
@@ -125,7 +126,7 @@ export class Window_CreatureModal extends Window_Selectable {
         const previous = target.equipmentId;
         if (previous === equipmentId && owner.uid === target.uid) return;
         if (previous) {
-            GameState.inventory.equipment[previous] = (GameState.inventory.equipment[previous] || 0) + 1;
+            window.$gameParty.gainItem(previous, 1);
         }
         if (owner && owner.equipmentId === equipmentId) {
             owner.equipmentId = null;
@@ -144,7 +145,7 @@ export class Window_CreatureModal extends Window_Selectable {
         if (!unit.equipmentId) return;
         const previous = unit.equipmentId;
         unit.equipmentId = null;
-        GameState.inventory.equipment[previous] = (GameState.inventory.equipment[previous] || 0) + 1;
+        window.$gameParty.gainItem(previous, 1);
         this.recomputeHp(unit);
         const name = typeof unit.name === 'function' ? unit.name() : unit.name;
         Log.add(`${name} removed ${Data.equipment[previous].name}.`);
@@ -258,14 +259,14 @@ export class Window_Inventory extends Window_Selectable {
         if (!list) return;
 
         list.innerHTML = '';
-        const eqKeys = Object.keys(GameState.inventory.equipment);
+        const eqKeys = Object.keys(window.$gameParty.inventory.equipment);
 
         if (eqKeys.length > 0) {
             const eqTitle = this.createEl('div', 'text-yellow-400 mb-2', list);
             eqTitle.innerText = 'Equipment';
 
             eqKeys.forEach(id => {
-                const count = GameState.inventory.equipment[id];
+                const count = window.$gameParty.inventory.equipment[id];
                 const def = Data.equipment[id];
                 const row = this.createEl('div', 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1', list);
                 // Inherit font size
@@ -279,13 +280,13 @@ export class Window_Inventory extends Window_Selectable {
             });
         }
 
-        const itemKeys = Object.keys(GameState.inventory.items);
+        const itemKeys = Object.keys(window.$gameParty.inventory.items);
         if (itemKeys.length > 0) {
             const itmTitle = this.createEl('div', 'text-yellow-400 mt-4 mb-2', list);
             itmTitle.innerText = 'Items';
 
             itemKeys.forEach(id => {
-                const count = GameState.inventory.items[id];
+                const count = window.$gameParty.inventory.items[id];
                 const def = Data.items[id];
                 const row = this.createEl('div', 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1', list);
                 row.innerHTML = `<div><span class="text-yellow-100">${def.name}</span> <span class="text-[10px] text-gray-400">x${count}</span><div class="text-[10px] text-gray-500">${def.description}</div></div>`;
@@ -343,11 +344,11 @@ export class Window_PartyMenu extends Window_Selectable {
 
             if (fromUid === toUid) return;
 
-            const fromUnit = fromIsReserved ? GameState.roster.find(u => u.uid === fromUid) : GameState.party.activeSlots[fromIndex];
-            const toUnit = toIsReserved ? GameState.roster.find(u => u.uid === toUid) : GameState.party.activeSlots[toIndex];
+            const fromUnit = fromIsReserved ? window.$gameParty.roster.find(u => u.uid === fromUid) : window.$gameParty.activeSlots[fromIndex];
+            const toUnit = toIsReserved ? window.$gameParty.roster.find(u => u.uid === toUid) : window.$gameParty.activeSlots[toIndex];
 
             // Enforce party limit
-            const activePartySize = GameState.party.activeSlots.filter(u => u !== null).length;
+            const activePartySize = window.$gameParty.activeSlots.filter(u => u !== null).length;
             if (fromIsReserved && !toIsReserved && !toUnit && activePartySize >= 4) {
                 alert("Your active party is full. Swap a member out before adding a new one.");
                 return;
@@ -355,19 +356,19 @@ export class Window_PartyMenu extends Window_Selectable {
 
             // Swap logic
             if (fromIsReserved && !toIsReserved) { // Reserve -> Active
-                GameState.party.activeSlots[toIndex] = fromUnit;
+                window.$gameParty.activeSlots[toIndex] = fromUnit;
                 if(toUnit) toUnit.slotIndex = -1;
                 fromUnit.slotIndex = toIndex;
 
             } else if (!fromIsReserved && toIsReserved) { // Active -> Reserve
-                GameState.party.activeSlots[fromIndex] = toUnit;
+                window.$gameParty.activeSlots[fromIndex] = toUnit;
                 if (toUnit) {
                     toUnit.slotIndex = fromIndex;
                 }
                 fromUnit.slotIndex = -1;
 
             } else if (!fromIsReserved && !toIsReserved) { // Active <-> Active
-                [GameState.party.activeSlots[fromIndex], GameState.party.activeSlots[toIndex]] = [toUnit, fromUnit];
+                [window.$gameParty.activeSlots[fromIndex], window.$gameParty.activeSlots[toIndex]] = [toUnit, fromUnit];
                 if (fromUnit) fromUnit.slotIndex = toIndex;
                 if (toUnit) toUnit.slotIndex = fromIndex;
             }
@@ -388,8 +389,8 @@ export class Window_PartyMenu extends Window_Selectable {
         const rows = 5;
         const totalSlots = columns * rows;
 
-        const activeSet = new Set(GameState.party.activeSlots.filter(Boolean).map(u => u.uid));
-        const reserveUnits = GameState.roster.filter(u => !activeSet.has(u.uid));
+        const activeSet = new Set(window.$gameParty.activeSlots.filter(Boolean).map(u => u.uid));
+        const reserveUnits = window.$gameParty.roster.filter(u => !activeSet.has(u.uid));
         let reserveUnitIndex = 0;
 
         for (let i = 0; i < totalSlots; i++) {
@@ -403,7 +404,7 @@ export class Window_PartyMenu extends Window_Selectable {
 
             if (row < 2 && col < 3) {
                 const activeSlotIndex = row * 3 + col;
-                unit = GameState.party.activeSlots[activeSlotIndex];
+                unit = window.$gameParty.activeSlots[activeSlotIndex];
                 index = activeSlotIndex;
                 isReserved = false;
                 if (!unit) {
