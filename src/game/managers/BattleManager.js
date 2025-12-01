@@ -424,7 +424,7 @@ export const BattleManager = {
                     <div class="text-yellow-500 text-2xl mb-4">VICTORY</div>
                     <div class="text-white">Found ${gold} Gold</div>
                     <div class="text-white">Party +${finalXp} XP</div>
-                    <button class="mt-4 border border-white px-4 py-2 hover:bg-gray-800" onclick="Game.Windows.BattleLog.closeModal(); Game.Scenes.battle.switchScene(false);">CONTINUE</button>
+                    <button class="mt-4 border border-white px-4 py-2 hover:bg-gray-800" onclick="Game.Windows.BattleLog.closeModal(); Game.SceneManager.changeScene(Game.Scenes.explore);">CONTINUE</button>
                 `);
             } else {
                 GameState.ui.mode = 'EXPLORE';

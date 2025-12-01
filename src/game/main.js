@@ -60,7 +60,7 @@ export const Game = {
 
         // Wire hooks for scene transitions originating from systems
         Systems.sceneHooks.onBattleStart = () => this.SceneManager.changeScene(this.Scenes.battle);
-        Systems.sceneHooks.onBattleEnd = () => this.SceneManager.changeScene(this.Scenes.explore);
+        // Systems.sceneHooks.onBattleEnd no longer automatically changes scene; handled by Victory UI
 
         // Bind battle handlers
         this.Windows.BattleLog.togglePlayerTurn(false, {
