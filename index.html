@@ -42,27 +42,6 @@
             box-shadow: inset 0 0 80px rgba(0,0,0,0.7);
         }
 
-        /* Swipe Transition Overlay */
-        #swipe-overlay {
-            position: fixed; inset: 0; pointer-events: none; z-index: 9000;
-            background-color: #000;
-            transform: translateY(-100%);
-            will-change: transform;
-        }
-        /* Swipe Animation Classes */
-        .swipe-down {
-            transition: transform 0.6s ease-in-out;
-            transform: translateY(0%) !important;
-        }
-        .swipe-clear {
-            transition: transform 0.6s ease-in-out;
-            transform: translateY(100%) !important;
-        }
-        .swipe-reset {
-            transition: none;
-            transform: translateY(-100%) !important;
-        }
-
         /* UI Styling */
         .rpg-window {
             background: #111;
@@ -162,7 +141,6 @@
 <body class="bg-black">
 
 <div id="crt-overlay"></div>
-<div id="swipe-overlay"></div>
 
 <div id="app-wrapper">
     <!-- GAME CONTAINER - Fixed 960x540 -->
