@@ -162,30 +162,41 @@ export const Systems = {
      * @namespace Events
      */
     Events: {
+        _resolve: null,
+
         /**
-         * Displays an event modal.
+         * Displays an event modal and waits for it to close.
          * @param {string} title - The title of the event.
          * @param {string|HTMLElement} content - The content to display.
+         * @returns {Promise<void>} Resolves when the modal is closed.
          */
         show(title, content) {
-            const modal = document.getElementById('event-modal');
-            const tEl = document.getElementById('event-title');
-            const cEl = document.getElementById('event-content');
-            tEl.innerText = title;
-            cEl.innerHTML = '';
-            if (typeof content === 'string') cEl.innerHTML = content;
-            else cEl.appendChild(content);
-            modal.classList.remove('hidden');
+            return new Promise(resolve => {
+                this._resolve = resolve;
+                const modal = document.getElementById('event-modal');
+                const tEl = document.getElementById('event-title');
+                const cEl = document.getElementById('event-content');
+                tEl.innerText = title;
+                cEl.innerHTML = '';
+                if (typeof content === 'string') cEl.innerHTML = content;
+                else cEl.appendChild(content);
+                modal.classList.remove('hidden');
+            });
         },
         /** Closes the event modal. */
         close() {
             document.getElementById('event-modal').classList.add('hidden');
+            if (this._resolve) {
+                this._resolve();
+                this._resolve = null;
+            }
         },
-        /** Triggers the shop event. */
-        shop() {
-            Log.add('You discover a mysterious merchant.');
-            const container = document.createElement('div');
-            container.className = 'space-y-2';
+
+        /**
+         * Generates random shop stock.
+         * @returns {Array<Object>} List of items/equipment.
+         */
+        generateShopStock() {
             const shopData = Data.events.shop;
             const stock = [];
             for (let i = 0; i < shopData.stock.count.items; i++) {
@@ -198,6 +209,18 @@ export const Systems = {
                 const key = pool[Math.floor(Math.random() * pool.length)];
                 if (Data.equipment[key]) stock.push({ type: 'equip', id: key });
             }
+            return stock;
+        },
+
+        /**
+         * Displays the shop UI.
+         * @param {Array<Object>} stock - The stock to display.
+         * @returns {Promise<void>} Resolves when closed.
+         */
+        showShop(stock) {
+            Log.add('You discover a mysterious merchant.');
+            const container = document.createElement('div');
+            container.className = 'space-y-2';
 
             stock.forEach(s => {
                 const row = document.createElement('div');
@@ -236,13 +259,19 @@ export const Systems = {
             leaveBtn.innerText = 'Leave';
             leaveBtn.onclick = () => { Systems.Events.close(); };
             container.appendChild(leaveBtn);
-            this.show('SHOP', container);
+            return this.show('SHOP', container);
         },
-        /** Triggers the recruit event. */
-        recruit() {
-            Log.add('You encounter a wandering soul.');
-            const container = document.createElement('div');
-            container.className = 'space-y-2';
+
+        /** Triggers the shop event (legacy/default). */
+        shop(stock) {
+            return this.showShop(stock || this.generateShopStock());
+        },
+
+        /**
+         * Generates random recruit offers.
+         * @returns {Array<Object>} List of creature definitions.
+         */
+        generateRecruitOffers() {
             const count = Math.random() < 0.5 ? 1 : 2;
             const speciesList = Object.keys(Data.creatures);
             const offers = [];
@@ -250,6 +279,19 @@ export const Systems = {
                 const sp = speciesList[Math.floor(Math.random() * speciesList.length)];
                 offers.push(Data.creatures[sp]);
             }
+            return offers;
+        },
+
+        /**
+         * Displays the recruit UI.
+         * @param {Array<Object>} offers - List of creature definitions.
+         * @returns {Promise<void>} Resolves when closed.
+         */
+        showRecruit(offers) {
+            Log.add('You encounter a wandering soul.');
+            const container = document.createElement('div');
+            container.className = 'space-y-2';
+
             offers.forEach(def => {
                 const row = document.createElement('div');
                 row.className = 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700';
@@ -277,8 +319,14 @@ export const Systems = {
             leave.innerText = 'Leave';
             leave.onclick = () => { Systems.Events.close(); };
             container.appendChild(leave);
-            this.show('RECRUIT', container);
+            return this.show('RECRUIT', container);
         },
+
+        /** Triggers the recruit event (legacy). */
+        recruit(offers) {
+            return this.showRecruit(offers || this.generateRecruitOffers());
+        },
+
         /** Triggers the shrine event (heal). */
         shrine() {
             Log.add('You find a glowing shrine.');
@@ -290,7 +338,7 @@ export const Systems = {
             msg.className = 'text-center space-y-2';
             msg.innerHTML = `<div class="text-green-500 text-xl">Your party feels rejuvenated.</div><button class="mt-4 border border-gray-600 px-4 py-2 hover:bg-gray-700">Continue</button>`;
             msg.querySelector('button').onclick = () => { Systems.Events.close(); };
-            this.show('SHRINE', msg);
+            return this.show('SHRINE', msg);
         },
         /** Triggers the trap event. */
         trap() {
@@ -307,7 +355,7 @@ export const Systems = {
             msg.className = 'text-center space-y-2';
             msg.innerHTML = `<div class="text-red-500 text-xl">A trap harms your party!</div><button class="mt-4 border border-gray-600 px-4 py-2 hover:bg-gray-700">Continue</button>`;
             msg.querySelector('button').onclick = () => { Systems.Events.close(); };
-            this.show('TRAP', msg);
+            return this.show('TRAP', msg);
         }
     },
 
