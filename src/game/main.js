@@ -2,6 +2,7 @@ import { Data } from '../assets/data/data.js';
 import { DataManager } from './DataManager.js';
 import { Log } from './log.js';
 import { Systems } from './systems.js';
+import { resolveAssetPath } from './core.js';
 import { SceneManager, InputManager, BattleManager, RenderManager } from './managers.js';
 import { Scene_Explore, Scene_Battle } from './scenes.js';
 import { Window_HUD } from './window/hud.js';
@@ -24,6 +25,7 @@ export const Game = {
     Systems,
     data: Data,
     log: Log,
+    resolveAssetPath,
     Scenes: {},
     SceneManager: new SceneManager(),
     BattleManager: BattleManager,

@@ -60,6 +60,23 @@ export class Window_Party extends Window_Selectable {
      * Swaps units if in formation mode, or opens details otherwise.
      * @param {number} index - The clicked slot index.
      */
+    /**
+     * Generates HTML markup for a creature's sprite.
+     * @param {object} def - The creature definition.
+     * @param {string} [className] - Additional CSS classes.
+     * @returns {string} The HTML string.
+     */
+    spriteMarkup(def, className = '') {
+        if (!def) return `<div class="w-8 h-8 ${className}"></div>`;
+        const sprite = def.sprite || '?';
+        const asset = def.spriteAsset;
+        if (asset) {
+            const path = window.Game.resolveAssetPath(asset);
+            return `<img src="${path}" class="${className}" alt="${def.name}">`;
+        }
+        return `<div class="flex items-center justify-center text-4xl ${className}">${sprite}</div>`;
+    }
+
     onClick(index) {
         // Allow swapping only in formation mode
         if (window.Game.ui.formationMode) {

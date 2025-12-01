@@ -411,8 +411,6 @@ export const Systems = {
             this.textureLoader = new THREE.TextureLoader();
             this.group = new THREE.Group();
             this.scene.add(this.group);
-            
-            this.animate();
         },
         /** Resizes the renderer and camera aspect ratio. */
         resize() {
@@ -545,6 +543,12 @@ export const Systems = {
                 this.cameraState.targetX = 0;
                 this.cameraState.targetY = 0;
             }
+        },
+        /**
+         * Renders the scene.
+         */
+        render() {
+            this.animate();
         },
         /**
          * Main animation loop for the 3D scene.

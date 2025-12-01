@@ -77,7 +77,7 @@ export class Scene_Battle extends Scene_Base {
      */
     onEnter() {
         window.Game.ui.mode = 'BATTLE';
-        this.switchScene(true);
+        this.switchScene(true, () => this.systems.Battle3D.render());
     }
 
     /**

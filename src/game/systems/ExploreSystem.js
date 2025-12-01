@@ -129,7 +129,6 @@ export class ExploreSystem {
 
         this.initialized = true;
         this.rebuildLevel();
-        this.animate();
     }
 
     /** Rebuilds the 3D map based on window.$gameMap */
@@ -429,6 +428,13 @@ export class ExploreSystem {
     /**
      * Main animation loop.
      */
+    /**
+     * Renders the scene.
+     */
+    render() {
+        this.animate();
+    }
+
     animate() {
         if (window.Game.ui.mode === 'EXPLORE') {
             requestAnimationFrame(() => this.animate());
