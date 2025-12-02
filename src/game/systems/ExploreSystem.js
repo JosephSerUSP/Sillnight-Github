@@ -1,6 +1,7 @@
 import { Data } from '../../assets/data/data.js';
 import { Log } from '../log.js';
 import { Game_Interpreter } from '../classes/Game_Interpreter.js';
+import { modifyMaterialWithFog } from '../materials/FogMaterial.js';
 
 class ParticleSystem {
     constructor(scene) {
@@ -61,111 +62,6 @@ class ParticleSystem {
         }
     }
 }
-
-/**
- * Modifies a material to support the Fog of War effect using a texture lookup.
- * @param {THREE.Material} material
- * @param {boolean} [displace=false] - Whether to apply vertical vertex displacement based on fog.
- */
-function modifyMaterialWithFog(material, displace = false) {
-    material.transparent = true;
-
-    material.onBeforeCompile = (shader) => {
-        material.userData.shader = shader;
-
-        // Uniforms
-        shader.uniforms.uFogMap = { value: null };
-        shader.uniforms.uMapSize = { value: new THREE.Vector2(1, 1) };
-
-        // --- Vertex Shader Modification ---
-        // Inject uniforms, varyings, and helper function via #include <common>
-        shader.vertexShader = shader.vertexShader.replace(
-            '#include <common>',
-            `
-            #include <common>
-            varying vec2 vFogUV;
-            uniform vec2 uMapSize;
-            ${displace ? 'uniform sampler2D uFogMap;' : ''}
-
-            float getFogNoise(vec2 co){
-                return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
-            }
-            `
-        );
-
-        shader.vertexShader = shader.vertexShader.replace(
-            '#include <project_vertex>',
-            `
-            vec4 worldPos = modelMatrix * vec4( transformed, 1.0 );
-            #ifdef USE_INSTANCING
-                worldPos = instanceMatrix * worldPos;
-            #endif
-
-            // Map World (X, Z) to Texture UV
-            // Map (0,0) is Top-Left. Texture (0,0) is Bottom-Left.
-            // So X maps directly, Z needs inversion relative to map height.
-            // vFogUV.x = (x + 0.5) / width
-            // vFogUV.y = 1.0 - (z + 0.5) / height
-
-            vFogUV = vec2(
-                (worldPos.x + 0.5) / uMapSize.x,
-                1.0 - (worldPos.z + 0.5) / uMapSize.y
-            );
-
-            ${displace ? `
-            // Sample fog texture in vertex shader
-            float fogValVS = texture2D(uFogMap, vFogUV).r;
-
-            // Random Vertex Warp - Per Tile Logic
-            // Use rounded worldPos to get consistent tile coordinate for all vertices of the block
-            vec2 tilePos = floor(worldPos.xz + 0.5);
-            float r = getFogNoise(tilePos);
-
-            // Direction: +1 or -1
-            float dir = step(0.5, r) * 2.0 - 1.0;
-
-            // Apply displacement: +/- 1.0 unit (1 tile) scaled by invisibility
-            worldPos.y += dir * (1.0 - fogValVS);
-            ` : ''}
-
-            vec4 mvPosition = viewMatrix * worldPos;
-            gl_Position = projectionMatrix * mvPosition;
-            `
-        );
-
-        // --- Fragment Shader Modification ---
-        // Inject uniforms and varyings via #include <common>
-        // Note: Fragment shader <common> is different, but safe to inject there.
-        shader.fragmentShader = shader.fragmentShader.replace(
-            '#include <common>',
-            `
-            #include <common>
-            varying vec2 vFogUV;
-            uniform sampler2D uFogMap;
-            `
-        );
-
-        shader.fragmentShader = shader.fragmentShader.replace(
-            '#include <dithering_fragment>',
-            `
-            #include <dithering_fragment>
-
-            // Sample the fog texture
-            // R channel contains visited state (0.0 to 1.0)
-            float fogVal = texture2D(uFogMap, vFogUV).r;
-
-            // Apply fog to alpha
-            gl_FragColor.a *= fogVal;
-
-            // Optional: Completely discard if invisible to solve depth sorting issues
-            // if (gl_FragColor.a < 0.01) discard;
-            `
-        );
-    };
-
-    return material;
-}
-
 
 export class ExploreSystem {
     constructor() {
