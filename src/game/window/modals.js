@@ -1,3 +1,4 @@
+
 import { Data } from '../../assets/data/data.js';
 import { Window_Selectable } from '../windows.js';
 import { renderCreaturePanel, spriteMarkup } from './common.js';
@@ -5,7 +6,7 @@ import { Log } from '../log.js';
 import { FlexLayout } from '../layout/FlexLayout.js';
 import { GridLayout } from '../layout/GridLayout.js';
 import { Component } from '../layout/Component.js';
-import { TextComponent, ButtonComponent } from '../layout/components.js';
+import { TextComponent, ButtonComponent, WindowFrameComponent } from '../layout/components.js';
 
 /**
  * Window for displaying creature details and managing equipment.
@@ -471,15 +472,46 @@ export class Window_CreatureModal extends Window_Selectable {
  */
 export class Window_Inventory extends Window_Selectable {
     constructor() {
-        super('inventory-modal');
+        super();
+        this.root.id = 'inventory-modal';
+        this.root.className = 'hidden absolute inset-0 bg-black/80 flex items-center justify-center z-50 pointer-events-auto backdrop-blur-sm';
+
+        const container = document.getElementById('game-container');
+        if (container) container.appendChild(this.root);
     }
 
     initialize() {
         super.initialize();
+        this.createLayout();
+    }
+
+    createLayout() {
+        this.root.innerHTML = '';
+
+        // Window Frame
+        this.frame = new WindowFrameComponent('w-1/2 h-2/3 flex flex-col bg-[#0a0a0a]');
+        this.root.appendChild(this.frame.element);
+
+        // Layout
+        this.layout = new FlexLayout(this.frame.element, { direction: 'column' });
+
+        // Header
+        const header = new Component('div', 'rpg-header flex justify-between');
+        const title = new TextComponent('INVENTORY');
+        const closeBtn = new ButtonComponent('X', () => this.hide(), 'text-red-500 px-2 hover:bg-red-900 border-none');
+
+        header.element.appendChild(title.element);
+        header.element.appendChild(closeBtn.element);
+        this.layout.add(header);
+
+        // Content
+        this.listContainer = new Component('div', 'flex-grow p-4 overflow-y-auto no-scrollbar');
+        this.layout.add(this.listContainer, { grow: 1 });
     }
 
     toggle() {
         if (this.root.classList.contains('hidden')) {
+            this.refresh();
             this.show();
         } else {
             this.hide();
@@ -487,45 +519,46 @@ export class Window_Inventory extends Window_Selectable {
     }
 
     refresh() {
-        const list = this.root.querySelector('#inventory-list');
-        if (!list) return;
+        if (!this.listContainer) return;
+        this.listContainer.element.innerHTML = '';
 
-        list.innerHTML = '';
         const eqKeys = Object.keys(window.$gameParty.inventory.equipment);
 
         if (eqKeys.length > 0) {
-            const eqTitle = this.createEl('div', 'text-yellow-400 mb-2', list);
-            eqTitle.innerText = 'Equipment';
+            const eqTitle = new Component('div', 'text-yellow-400 mb-2');
+            eqTitle.element.innerText = 'Equipment';
+            this.listContainer.element.appendChild(eqTitle.element);
 
             eqKeys.forEach(id => {
                 const count = window.$gameParty.inventory.equipment[id];
                 const def = Data.equipment[id];
-                const row = this.createEl('div', 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1', list);
-                // Inherit font size
-                row.innerHTML = `<div><span class="text-yellow-100">${def.name}</span> <span class="text-[10px] text-gray-400">x${count}</span><div class="text-[10px] text-gray-500">${def.description}</div></div>`;
+                const row = new Component('div', 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1');
+                row.element.innerHTML = `<div><span class="text-yellow-100">${def.name}</span> <span class="text-[10px] text-gray-400">x${count}</span><div class="text-[10px] text-gray-500">${def.description}</div></div>`;
 
-                const btn = this.createEl('button', 'text-[10px] border border-gray-600 px-2 py-1 hover:bg-white hover:text-black', row);
-                btn.innerText = 'EQUIP';
-                btn.addEventListener('click', () => {
-                    window.Game.Windows.CreatureModal.startEquipFlow(id);
-                });
+                const btn = new ButtonComponent('EQUIP', () => {
+                     window.Game.Windows.CreatureModal.startEquipFlow(id);
+                }, 'text-[10px] border border-gray-600 px-2 py-1 hover:bg-white hover:text-black');
+
+                row.element.appendChild(btn.element);
+                this.listContainer.element.appendChild(row.element);
             });
         }
 
         const itemKeys = Object.keys(window.$gameParty.inventory.items);
         if (itemKeys.length > 0) {
-            const itmTitle = this.createEl('div', 'text-yellow-400 mt-4 mb-2', list);
-            itmTitle.innerText = 'Items';
+            const itmTitle = new Component('div', 'text-yellow-400 mt-4 mb-2');
+            itmTitle.element.innerText = 'Items';
+            this.listContainer.element.appendChild(itmTitle.element);
 
             itemKeys.forEach(id => {
                 const count = window.$gameParty.inventory.items[id];
                 const def = Data.items[id];
-                const row = this.createEl('div', 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1', list);
-                row.innerHTML = `<div><span class="text-yellow-100">${def.name}</span> <span class="text-[10px] text-gray-400">x${count}</span><div class="text-[10px] text-gray-500">${def.description}</div></div>`;
+                const row = new Component('div', 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1');
+                row.element.innerHTML = `<div><span class="text-yellow-100">${def.name}</span> <span class="text-[10px] text-gray-400">x${count}</span><div class="text-[10px] text-gray-500">${def.description}</div></div>`;
 
-                const btn = this.createEl('button', 'text-[10px] border border-gray-600 px-2 py-1 hover:bg-white hover:text-black', row);
-                btn.innerText = 'USE';
-                btn.addEventListener('click', () => alert('Item usage coming soon'));
+                const btn = new ButtonComponent('USE', () => alert('Item usage coming soon'), 'text-[10px] border border-gray-600 px-2 py-1 hover:bg-white hover:text-black');
+                row.element.appendChild(btn.element);
+                this.listContainer.element.appendChild(row.element);
             });
         }
     }
@@ -536,24 +569,65 @@ export class Window_Inventory extends Window_Selectable {
  */
 export class Window_PartyMenu extends Window_Selectable {
     constructor() {
-        super('party-modal');
+        super();
+        this.root.id = 'party-modal';
+        this.root.className = 'hidden absolute inset-0 bg-black/80 flex items-center justify-center z-50 pointer-events-auto backdrop-blur-sm';
+
+        const container = document.getElementById('game-container');
+        if (container) container.appendChild(this.root);
     }
 
     initialize() {
         super.initialize();
-        const container = this.root.querySelector('#party-menu-container');
-        if (container) {
-            container.addEventListener('click', (e) => {
-                const target = e.target.closest('.party-menu-slot');
-                if (target) {
-                    this.onPartySlotClick(target);
-                }
-            });
-        }
+        this.createLayout();
+    }
+
+    createLayout() {
+        this.root.innerHTML = '';
+
+        // Frame
+        this.frame = new WindowFrameComponent('w-2/3 h-3/4 flex flex-col bg-[#0a0a0a]');
+        this.root.appendChild(this.frame.element);
+
+        const layout = new FlexLayout(this.frame.element, { direction: 'column' });
+
+        // Header
+        const header = new Component('div', 'rpg-header flex justify-between');
+        const title = new TextComponent('PARTY / RESERVE');
+        const closeBtn = new ButtonComponent('X', () => this.hide(), 'text-red-500 px-2 hover:bg-red-900 border-none');
+
+        header.element.appendChild(title.element);
+        header.element.appendChild(closeBtn.element);
+        layout.add(header);
+
+        // Hint
+        const hint = new Component('div', 'p-2 text-[10px] text-gray-400 border-b border-gray-700');
+        hint.element.innerText = 'Click a unit to select it, then click another unit or an empty slot to swap them.';
+        layout.add(hint);
+
+        // Grid Container
+        this.gridContainer = new Component('div', 'p-2 overflow-y-auto no-scrollbar flex-grow');
+        layout.add(this.gridContainer, { grow: 1 });
+
+        // Using GridLayout for the content
+        this.grid = new GridLayout(this.gridContainer.element, {
+            columns: 'repeat(7, 1fr)',
+            rows: 'repeat(5, 1fr)',
+            gap: 4
+        });
+
+        // Event delegation on container
+        this.gridContainer.element.addEventListener('click', (e) => {
+            const target = e.target.closest('.party-menu-slot');
+            if (target) {
+                this.onPartySlotClick(target);
+            }
+        });
     }
 
     toggle() {
         if (this.root.classList.contains('hidden')) {
+            this.refresh();
             this.show();
         } else {
             this.hide();
@@ -613,10 +687,9 @@ export class Window_PartyMenu extends Window_Selectable {
     }
 
     refresh() {
-        const container = this.root.querySelector('#party-menu-container');
-        if (!container) return;
+        if (!this.grid) return;
+        this.grid.clear();
 
-        container.innerHTML = '';
         const columns = 7;
         const rows = 5;
         const totalSlots = columns * rows;
@@ -669,7 +742,22 @@ export class Window_PartyMenu extends Window_Selectable {
                     div.style.visibility = 'hidden';
                  }
             }
-            container.appendChild(div);
+            // Use Component wrapper to add to Grid
+            const comp = new Component('div'); // Wrapper not needed if we just append, but LayoutManager expects Component or Element
+            // But GridLayout.add appends the element.
+            // Let's make a generic Component wrapper
+            // Or since div IS an element, GridLayout.add(div) works if it checks for .element or raw element
+            // GridLayout.add calls .element if present.
+            // Let's use Component for consistency
+            // But I already created div with innerHTML.
+            // Let's just wrap it.
+
+            // Wait, GridLayout.add(comp) -> applyStyle(comp.element or comp)
+            // So I can pass 'div' directly?
+            // "if (component.element) { el = component.element; ... } else { el = component; }"
+            // Yes.
+
+            this.grid.add(div);
         }
     }
 }

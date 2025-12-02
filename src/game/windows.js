@@ -21,12 +21,19 @@ export class Window_Base {
             this.root.className = 'absolute bg-black/80 border border-white';
         }
 
-        if (!this.root) {
-            console.error(`Window_Base: Could not find element with ID '${rectOrId}'`);
+        if (!this.root && typeof rectOrId === 'string') {
+            // If ID not found, just create a disconnected div to prevent crash, but warn
+            // Or maybe the subclass expects to create it.
+            // But Window_Base tries to find it.
+            console.warn(`Window_Base: Could not find element with ID '${rectOrId}'`);
+            this.root = document.createElement('div');
+            this.root.id = rectOrId;
+        } else if (!this.root) {
+            this.root = document.createElement('div');
         }
 
         this._handlers = {};
-        this.layout = null; // Phase 1: Layout Manager integration
+        this.layout = null;
         this.initialize();
     }
 
@@ -35,7 +42,9 @@ export class Window_Base {
             this.root.style.fontSize = `${this.standardFontSize()}px`;
             this.root.style.lineHeight = `${this.lineHeight()}px`;
         }
-        this.defineLayout(); // Phase 1: Initialize layout if defined
+        // Subclasses should call defineLayout() or createLayout() manually if they want to override
+        // But to ensure backward compat with Phase I, we call it here.
+        this.defineLayout();
     }
 
     /**
@@ -44,6 +53,19 @@ export class Window_Base {
      */
     defineLayout() {
         // Example: this.layout = new FlexLayout(this.root, { direction: 'column' });
+    }
+
+    /**
+     * Sets the active layout manager for this window.
+     * Automatically clears the previous layout content.
+     * @param {LayoutManager} layoutInstance - The new layout manager instance.
+     */
+    setLayout(layoutInstance) {
+        if (this.layout) {
+            this.layout.clear();
+        }
+        this.layout = layoutInstance;
+        // Optionally trigger a refresh or redraw
     }
 
     /**
@@ -99,21 +121,11 @@ export class Window_Base {
      * Helper to clear all content from the window.
      */
     clear() {
-        if (this.root) this.root.innerHTML = '';
-    }
-
-    /**
-     * Helper to create and append a DOM element.
-     * @param {string} tag - HTML tag (e.g., 'div').
-     * @param {string} [className] - CSS classes.
-     * @param {HTMLElement} [parent] - Parent to append to (default: this.root).
-     * @returns {HTMLElement} The created element.
-     */
-    createEl(tag, className = '', parent = this.root) {
-        const el = document.createElement(tag);
-        if (className) el.className = className;
-        if (parent) parent.appendChild(el);
-        return el;
+        if (this.layout) {
+            this.layout.clear();
+        } else if (this.root) {
+            this.root.innerHTML = '';
+        }
     }
 }
 
