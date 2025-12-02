@@ -77,12 +77,21 @@ function modifyMaterialWithFog(material, displace = false) {
         shader.uniforms.uFogMap = { value: null };
         shader.uniforms.uMapSize = { value: new THREE.Vector2(1, 1) };
 
-        // Vertex Shader: Calculate UV based on World Position
-        shader.vertexShader = `
+        // --- Vertex Shader Modification ---
+        // Inject uniforms, varyings, and helper function via #include <common>
+        shader.vertexShader = shader.vertexShader.replace(
+            '#include <common>',
+            `
+            #include <common>
             varying vec2 vFogUV;
             uniform vec2 uMapSize;
             ${displace ? 'uniform sampler2D uFogMap;' : ''}
-        ` + shader.vertexShader;
+
+            float getFogNoise(vec2 co){
+                return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+            }
+            `
+        );
 
         shader.vertexShader = shader.vertexShader.replace(
             '#include <project_vertex>',
@@ -106,8 +115,17 @@ function modifyMaterialWithFog(material, displace = false) {
             ${displace ? `
             // Sample fog texture in vertex shader
             float fogValVS = texture2D(uFogMap, vFogUV).r;
-            // Apply vertical displacement: Drop down if hidden
-            worldPos.y -= (1.0 - fogValVS) * 3.0;
+
+            // Random Vertex Warp - Per Tile Logic
+            // Use rounded worldPos to get consistent tile coordinate for all vertices of the block
+            vec2 tilePos = floor(worldPos.xz + 0.5);
+            float r = getFogNoise(tilePos);
+
+            // Direction: +1 or -1
+            float dir = step(0.5, r) * 2.0 - 1.0;
+
+            // Apply displacement: +/- 1.0 unit (1 tile) scaled by invisibility
+            worldPos.y += dir * 1.0 * (1.0 - fogValVS);
             ` : ''}
 
             vec4 mvPosition = viewMatrix * worldPos;
@@ -115,11 +133,17 @@ function modifyMaterialWithFog(material, displace = false) {
             `
         );
 
-        // Fragment Shader: Sample Fog Texture
-        shader.fragmentShader = `
+        // --- Fragment Shader Modification ---
+        // Inject uniforms and varyings via #include <common>
+        // Note: Fragment shader <common> is different, but safe to inject there.
+        shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <common>',
+            `
+            #include <common>
             varying vec2 vFogUV;
             uniform sampler2D uFogMap;
-        ` + shader.fragmentShader;
+            `
+        );
 
         shader.fragmentShader = shader.fragmentShader.replace(
             '#include <dithering_fragment>',
