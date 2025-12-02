@@ -61,11 +61,11 @@ The new architecture decouples **Layout** (positioning) from **Components** (con
 
 ### Phase III: Advanced Features & Full Adoption
 **Goal:** Complete migration and add dynamic features.
-1.  **Migrate `Window_CreatureModal`:** This is the most complex window. Refactor to use nested layouts.
+1.  **Migrate `Window_CreatureModal`:** This is the most complex window. Refactor to use nested layouts. (Complete)
 2.  **Implement Dynamic Layouts:** Allow switching layouts at runtime (e.g., mobile view).
 3.  **Cleanup:** Remove legacy DOM methods from `Window_Base` once all subclasses are migrated.
 
 ## Current Stage
 *   **Phase I:** Complete
-*   **Phase II:** Complete (Refinements in progress: `GridLayout` fixed size cells)
-*   **Phase III:** In Progress
+*   **Phase II:** Complete
+*   **Phase III:** In Progress (Step 1 Complete)
