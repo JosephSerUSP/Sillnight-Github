@@ -190,6 +190,8 @@ export class ExploreSystem {
         this.matWall = null;
 
         this.fogTexture = null;
+        this.fogValues = null;
+        this.fogTarget = null;
         this.fogRadius = 4;
 
         /** @type {Game_Interpreter} */
@@ -268,14 +270,32 @@ export class ExploreSystem {
         const size = width * height;
         const data = new Uint8Array(size); // Initialized to 0 (hidden)
 
+        // Initialize simulation arrays
+        this.fogValues = new Float32Array(size); // For smooth lerping
+        this.fogTarget = new Uint8Array(size);   // Target values
+
         this.fogTexture = new THREE.DataTexture(data, width, height, THREE.LuminanceFormat, THREE.UnsignedByteType);
         this.fogTexture.magFilter = THREE.LinearFilter;
         this.fogTexture.minFilter = THREE.LinearFilter;
         this.fogTexture.needsUpdate = true;
 
-        // Initial visibility update
+        // Initial visibility update (instant)
         window.$gameMap.updateVisibility(window.$gameMap.playerPos.x, window.$gameMap.playerPos.y, this.fogRadius);
-        this.updateFogTexture();
+
+        // Populate target and current values instantly on rebuild
+        const gMap = window.$gameMap;
+        for (let y = 0; y < height; y++) {
+             const texRow = (height - 1) - y;
+             for (let x = 0; x < width; x++) {
+                 const visited = gMap.isVisited(x, y);
+                 const val = visited ? 255 : 0;
+                 const idx = texRow * width + x;
+                 this.fogTarget[idx] = val;
+                 this.fogValues[idx] = val;
+                 data[idx] = val;
+             }
+        }
+        this.fogTexture.needsUpdate = true;
 
         // Update Static Materials
         const updateMat = (mat) => {
@@ -325,25 +345,6 @@ export class ExploreSystem {
                             const mat = new THREE.MeshPhongMaterial({ color: 0x00ffaa, flatShading: true });
                             // Apply fog to stairs too
                             modifyMaterialWithFog(mat);
-                            // We need to set uniform immediately/on compile for this material
-                            // Since it's dynamic here, we'll need to update it in loop or set it now?
-                            // modifyMaterialWithFog sets callback.
-                            // We can manually set the uniform value in the callback.
-                            // But we need to ensure values are current.
-                            // Simplest is to treat these as "dynamic" in the sense that we must update them.
-                            // For now, let's just make sure we set the value when shader compiles.
-                            // We can assign the current fogTexture to the uniform object in the closure if we passed it.
-                            // But modifyMaterialWithFog is generic.
-                            // We'll update it in animate() loop if we track it, or simpler:
-                            // Just ensure standard uniform update covers it?
-                            // No, standard loop only updates matFloor/matWall/Player.
-
-                            // Let's attach this material to a list to be updated or just update userData here.
-                            // Hack: Assign the value directly to the prototype's definition? No.
-
-                            // Let's just create a list of materials to update.
-                            // Or better: pass the texture to the modify function?
-
                             const step = new THREE.Mesh(new THREE.BoxGeometry(0.8, h, sliceW * 0.9), mat);
                             step.position.set(x, yPos, zPos);
 
@@ -386,28 +387,20 @@ export class ExploreSystem {
     }
 
     /** Syncs the fog texture data with the Game_Map visited state. */
-    updateFogTexture() {
+    updateFogTarget() {
         if (!this.fogTexture || !window.$gameMap) return;
         const map = window.$gameMap;
         const w = map.width;
         const h = map.height;
-        const texData = this.fogTexture.image.data;
-
-        // Texture 0,0 is Bottom-Left. Map 0,0 is Top-Left.
-        // We fill texture row by row from bottom up to match map top-down.
-        // Map Row 0 (Top) -> Texture Row (h-1) (Top)
 
         for (let y = 0; y < h; y++) {
             // Target texture row
             const texRow = (h - 1) - y;
             for (let x = 0; x < w; x++) {
                 const visited = map.isVisited(x, y);
-                // Simple on/off visibility or keep distance fade in shader?
-                // User wants persistence. So visited = 255.
-                texData[texRow * w + x] = visited ? 255 : 0;
+                this.fogTarget[texRow * w + x] = visited ? 255 : 0;
             }
         }
-        this.fogTexture.needsUpdate = true;
     }
 
     /**
@@ -499,7 +492,7 @@ export class ExploreSystem {
 
             // Update Visibility
             window.$gameMap.updateVisibility(newX, newY, this.fogRadius);
-            this.updateFogTexture();
+            this.updateFogTarget();
 
             // Trigger Animation
             this.moveLerpStart.copy(this.playerMesh.position);
@@ -565,6 +558,38 @@ export class ExploreSystem {
         }
 
         if (!this.scene || !this.camera) return;
+
+        // --- FOG ANIMATION ---
+        if (this.fogValues && this.fogTarget && this.fogTexture) {
+            let fogChanged = false;
+            const texData = this.fogTexture.image.data;
+            const lerpFactor = 0.1; // Adjust for fade speed
+            const threshold = 1.0;
+
+            for(let i = 0; i < this.fogValues.length; i++) {
+                const target = this.fogTarget[i];
+                let current = this.fogValues[i];
+
+                if (Math.abs(current - target) > 0.1) {
+                    current += (target - current) * lerpFactor;
+                    if (Math.abs(target - current) < threshold) {
+                         current = target;
+                    }
+                    this.fogValues[i] = current;
+                    texData[i] = Math.floor(current);
+                    fogChanged = true;
+                } else if (current !== target) {
+                    current = target;
+                    this.fogValues[i] = current;
+                    texData[i] = current;
+                    fogChanged = true;
+                }
+            }
+            if (fogChanged) {
+                this.fogTexture.needsUpdate = true;
+            }
+        }
+        // ---------------------
 
         // Helper to update uniforms on a material/object
         const updateUniforms = (obj) => {
