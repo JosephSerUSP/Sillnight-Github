@@ -57,8 +57,8 @@ export class Window_Party extends Window_Selectable {
         // Party grid is typically 2 rows of 3 columns (6 slots)
         this.layout = new GridLayout(this.root, {
             columns: 'repeat(3, 1fr)',
-            rows: 'auto',
             gap: '4px'
+            // rows defaults to null, relying on autoRows: 'minmax(0, 1fr)' for equal height
         });
 
         // Ensure root has standard window styles if not already set by Window_Base default
