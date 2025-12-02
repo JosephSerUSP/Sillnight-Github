@@ -314,15 +314,10 @@ export const Systems = {
                 btn.innerText = 'RECRUIT';
                 btn.onclick = () => {
                     const floor = window.$gameMap.floor;
-
-                    // We need to create a Game_Actor instance properly
-                    import('./classes/Game_Actor.js').then(({ Game_Actor }) => {
-                        const unit = new Game_Actor(def.id, floor);
-                        window.$gameParty.addActor(unit);
-                        window.Game.Windows.Party.refresh();
-                        btn.disabled = true;
-                        btn.innerText = 'TAKEN';
-                    });
+                    window.$gameParty.addActor(def.id, floor);
+                    window.Game.Windows.Party.refresh();
+                    btn.disabled = true;
+                    btn.innerText = 'TAKEN';
                 };
                 row.appendChild(btn);
                 container.appendChild(row);
