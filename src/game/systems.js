@@ -33,6 +33,9 @@ export const Systems = {
          * @returns {Object} The converted position.
          */
         convertToEffekseerPosition(position = { x: 0, y: 0, z: 0 }) {
+            if (window.Game && window.Game.ui && window.Game.ui.mode === 'EXPLORE') {
+                return position;
+            }
             const vec = new THREE.Vector3(position.x, position.y, position.z);
             vec.applyMatrix4(this.zToYUpMatrix);
             return { x: vec.x, y: vec.y, z: vec.z };
@@ -140,10 +143,15 @@ export const Systems = {
          */
         update(camera) {
             if (!this.context || !camera) return;
-            const viewMatrix = new THREE.Matrix4().multiplyMatrices(
-                camera.matrixWorldInverse,
-                this.yToZUpMatrix
-            );
+            let viewMatrix;
+            if (window.Game && window.Game.ui && window.Game.ui.mode === 'EXPLORE') {
+                viewMatrix = camera.matrixWorldInverse;
+            } else {
+                viewMatrix = new THREE.Matrix4().multiplyMatrices(
+                    camera.matrixWorldInverse,
+                    this.yToZUpMatrix
+                );
+            }
             this.context.setProjectionMatrix(camera.projectionMatrix.elements);
             this.context.setCameraMatrix(viewMatrix.elements);
             this.context.update();
@@ -277,7 +285,8 @@ export const Systems = {
             const offers = [];
             for (let i = 0; i < count; i++) {
                 const sp = speciesList[Math.floor(Math.random() * speciesList.length)];
-                offers.push(Data.creatures[sp]);
+                // Inject ID into the offer object so Game_Actor can be instantiated
+                offers.push({ id: sp, ...Data.creatures[sp] });
             }
             return offers;
         },
@@ -339,11 +348,13 @@ export const Systems = {
                 u.recoverAll();
             });
             window.Game.Windows.Party.refresh();
-            const msg = document.createElement('div');
-            msg.className = 'text-center space-y-2';
-            msg.innerHTML = `<div class="text-green-500 text-xl">Your party feels rejuvenated.</div><button class="mt-4 border border-gray-600 px-4 py-2 hover:bg-gray-700">Continue</button>`;
-            msg.querySelector('button').onclick = () => { Systems.Events.close(); };
-            return this.show('SHRINE', msg);
+
+            if (window.$gameMap && window.$gameMap.playerPos) {
+                const pos = { x: window.$gameMap.playerPos.x, y: 0.5, z: window.$gameMap.playerPos.y };
+                Systems.Effekseer.play('MAP_Shrine', pos);
+            }
+            Log.add('Your party feels rejuvenated.');
+            return Promise.resolve();
         },
         /** Triggers the trap event. */
         trap() {
@@ -356,11 +367,13 @@ export const Systems = {
             };
             window.$gameParty.activeSlots.forEach(u => { if (u) damage(u); });
             window.Game.Windows.Party.refresh();
-            const msg = document.createElement('div');
-            msg.className = 'text-center space-y-2';
-            msg.innerHTML = `<div class="text-red-500 text-xl">A trap harms your party!</div><button class="mt-4 border border-gray-600 px-4 py-2 hover:bg-gray-700">Continue</button>`;
-            msg.querySelector('button').onclick = () => { Systems.Events.close(); };
-            return this.show('TRAP', msg);
+
+            if (window.$gameMap && window.$gameMap.playerPos) {
+                const pos = { x: window.$gameMap.playerPos.x, y: 0.5, z: window.$gameMap.playerPos.y };
+                Systems.Effekseer.play('MAP_Trap', pos);
+            }
+            Log.add('A trap harms your party!');
+            return Promise.resolve();
         }
     },
 
@@ -379,7 +392,6 @@ export const Systems = {
         textureCache: {},
         spriteScaleFactor: 3,
         cameraState: { angle: -Math.PI / 4, targetAngle: -Math.PI / 4, targetX: 0, targetY: 0 },
-        damageLabels: [], // Track damage numbers
 
         /** Initializes the 3D scene. */
         init() {
@@ -574,9 +586,6 @@ export const Systems = {
                 renderer.render(this.scene, this.camera);
                 Systems.Effekseer.update(this.camera);
             }
-
-            // Update damage labels every frame
-            this.updateDamageLabels();
         },
         /**
          * Projects a 3D object's position to 2D screen coordinates.
@@ -659,7 +668,6 @@ export const Systems = {
             requestAnimationFrame(animateFade);
         },
         
-// Physics-based Damage Numbers (The "Final Fantasy" Bounce)
 /**
  * Shows a bouncing damage number above a unit.
  * @param {string} uid - The unit ID.
@@ -670,118 +678,22 @@ showDamageNumber(uid, val, isCrit = false) {
             if (val === 0) return;
             const sprite = this.sprites[uid];
             if (!sprite) return;
-
-            const valStr = Math.abs(val).toString();
-            const prefix = ''; 
             
-            // 1. Setup Spacing (WIDER)
-            const spacing = 0.35; // Increased from 0.25
-            const totalWidth = (valStr.length - 1) * spacing;
-            const startX = -(totalWidth / 2);
+            // Get screen position of the sprite head/top
+            const headPos = sprite.position.clone();
+            headPos.z += (sprite.userData.baseScale.y * 0.5);
 
-            // 2. Setup Spawn Position (Knee/Waist height)
-            const basePos = sprite.position.clone();
-            basePos.z += (sprite.userData.baseScale.y * 0.25); 
+            // Re-implement toScreen logic inline for vector since toScreen takes object
+            const vec = headPos.clone();
+            vec.project(this.camera);
+            const width = 960;
+            const height = 540;
+            const x = (vec.x * 0.5 + 0.5) * width;
+            const y = (-(vec.y * 0.5) + 0.5) * height;
 
-            // 3. Physics Setup (Subtle)
-            const sharedVelocity = new THREE.Vector3(
-                (Math.random() - 0.5) * 0.01, 
-                (Math.random() - 0.5) * 0.01, 
-                0.06 + (Math.random() * 0.02)
-            );
-
-            for (let i = 0; i < valStr.length; i++) {
-                const char = valStr[i];
-                
-                const el = document.createElement('div');
-                el.className = 'damage-number';
-                el.innerText = (i === 0 ? prefix : '') + char;
-                el.style.opacity = '0'; 
-
-                if (val > 0) {
-                     el.style.color = '#4ade80';
-                } else {
-                    el.style.color = isCrit ? '#ffcc00' : '#ffffff'; 
-                    if (isCrit) el.style.fontSize = '3rem';
-                }
-
-                document.getElementById('battle-ui-overlay').appendChild(el);
-
-                const digitPos = basePos.clone();
-                digitPos.x += startX + (i * spacing);
-
-                this.damageLabels.push({
-                    el: el,
-                    worldPos: digitPos,
-                    offset: new THREE.Vector3(0, 0, 0),
-                    velocity: sharedVelocity.clone(), 
-                    gravity: 0.008, 
-                    elasticity: 0.5,
-                    floorHit: false,
-                    life: 60,
-                    wait: i * 3 
-                });
-            }
-        },
-
-        /** Updates the physics and rendering of active damage labels. */
-        updateDamageLabels() {
-            if (this.damageLabels.length === 0) return;
-
-            for (let i = this.damageLabels.length - 1; i >= 0; i--) {
-                const label = this.damageLabels[i];
-
-                if (label.wait > 0) {
-                    label.wait--;
-                    continue; 
-                } else {
-                    if (label.el.style.opacity === '0') label.el.style.opacity = '1';
-                }
-
-                // Apply velocity to offset
-                label.velocity.z -= label.gravity;
-                label.offset.add(label.velocity);
-
-                // Floor Logic
-                const floorLevel = -1.25; 
-
-                if (label.offset.z <= floorLevel) {
-                    label.offset.z = floorLevel; // Clamp to floor
-                    
-                    if (!label.floorHit) {
-                        // First Bounce: Reverse vertical velocity
-                        label.velocity.z *= -label.elasticity;
-                        label.floorHit = true;
-                    } else {
-                        // Second Hit (Slide): Kill ALL movement (X, Y, Z)
-                        // This stops the drifting immediately.
-                        label.velocity.set(0, 0, 0);
-                        label.gravity = 0; // Disable gravity so it doesn't build up negative Z
-                    }
-                }
-
-                const currentWorldPos = label.worldPos.clone().add(label.offset);
-                currentWorldPos.project(this.camera);
-
-                // Fixed Resolution 960x540
-                const width = 960;
-                const height = 540;
-                
-                const x = (currentWorldPos.x * 0.5 + 0.5) * width;
-                const y = (-(currentWorldPos.y * 0.5) + 0.5) * height;
-
-                label.el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-
-                label.life--;
-                if (label.life < 15) {
-                    label.el.style.opacity = (label.life / 15).toString();
-                }
-
-                if (label.life <= 0) {
-                    label.el.remove();
-                    this.damageLabels.splice(i, 1);
-                }
-            }
+            import('./PopupManager.js').then(({ PopupManager }) => {
+                PopupManager.spawn(x, y, val, isCrit);
+            });
         },
         /**
          * Plays a sequence of animations for a unit.

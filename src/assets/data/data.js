@@ -27,7 +27,10 @@ export const Data = {
         Apocalypse: 'src/assets/effects/Apocalypse.efkefc',
         Curse: 'src/assets/effects/Curse.efkefc',
         IceWind: 'src/assets/effects/IceWind.efkefc',
-        IceSpike: 'src/assets/effects/IceSpike.efkefc'
+        IceSpike: 'src/assets/effects/IceSpike.efkefc',
+        MAP_Find: 'src/assets/effects/MAP_Find.efkefc',
+        MAP_Trap: 'src/assets/effects/MAP_Trap.efkefc',
+        MAP_Shrine: 'src/assets/effects/MAP_Shrine.efkefc'
     },
 
     actionScripts: {
