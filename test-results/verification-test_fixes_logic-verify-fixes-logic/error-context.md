@@ -1,0 +1,49 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic:
+    - generic:
+      - generic:
+        - generic: FLOOR 1
+        - generic: GOLD 0
+    - generic:
+      - generic:
+        - generic: ENCOUNTER
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - generic [ref=e9]:
+          - generic [ref=e10]: LOG
+          - generic [ref=e12]: "> Welcome to Stillnight."
+        - generic [ref=e14]:
+          - button "PARTY (P)" [ref=e15] [cursor=pointer]
+          - button "FORMATION" [ref=e16] [cursor=pointer]
+          - button "BAG (B)" [ref=e17] [cursor=pointer]
+      - generic [ref=e19]:
+        - generic [ref=e21]: PARTY STATUS
+        - generic [ref=e22]:
+          - generic [ref=e23] [cursor=pointer]:
+            - generic [ref=e24]:
+              - generic [ref=e25]: Shiva
+              - generic [ref=e26]: Lv3
+            - generic:
+              - img "Shiva"
+            - generic [ref=e28]: 60/60
+          - generic [ref=e32] [cursor=pointer]:
+            - generic [ref=e33]:
+              - generic [ref=e34]: Inori
+              - generic [ref=e35]: Lv2
+            - generic:
+              - img "Inori"
+            - generic [ref=e37]: 32/32
+          - generic [ref=e41] [cursor=pointer]:
+            - generic [ref=e42]:
+              - generic [ref=e43]: Nurse
+              - generic [ref=e44]: Lv2
+            - generic:
+              - img "Nurse"
+            - generic [ref=e46]: 29/29
+          - generic [ref=e51] [cursor=pointer]: EMPTY
+          - generic [ref=e53] [cursor=pointer]: EMPTY
+          - generic [ref=e55] [cursor=pointer]: EMPTY
+```
