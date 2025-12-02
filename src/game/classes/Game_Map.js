@@ -240,6 +240,27 @@ export class Game_Map {
     }
 
     /**
+     * Updates visibility around a center point.
+     * @param {number} cx - Center X.
+     * @param {number} cy - Center Y.
+     * @param {number} radius - View radius.
+     */
+    updateVisibility(cx, cy, radius) {
+        const r2 = radius * radius;
+        for (let y = cy - radius; y <= cy + radius; y++) {
+            for (let x = cx - radius; x <= cx + radius; x++) {
+                if (x >= 0 && x < this._width && y >= 0 && y < this._height) {
+                    const dx = x - cx;
+                    const dy = y - cy;
+                    if (dx * dx + dy * dy <= r2) {
+                        this.setVisited(x, y, true);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * Adds an event to the map.
      * @param {Game_Event} event
      */
