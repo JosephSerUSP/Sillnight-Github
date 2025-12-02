@@ -125,7 +125,7 @@ function modifyMaterialWithFog(material, displace = false) {
             float dir = step(0.5, r) * 2.0 - 1.0;
 
             // Apply displacement: +/- 1.0 unit (1 tile) scaled by invisibility
-            worldPos.y += dir * 1.0 * (1.0 - fogValVS);
+            worldPos.y += dir * (1.0 - fogValVS);
             ` : ''}
 
             vec4 mvPosition = viewMatrix * worldPos;
@@ -192,7 +192,8 @@ export class ExploreSystem {
         this.fogTexture = null;
         this.fogValues = null;
         this.fogTarget = null;
-        this.fogRadius = 4;
+        this.fogRevealRadius = 2;
+        this.fogFadeRadius = 2;
 
         /** @type {Game_Interpreter} */
         this.interpreter = new Game_Interpreter();
@@ -411,7 +412,8 @@ export class ExploreSystem {
         const px = this.playerMesh.position.x;
         const py = this.playerMesh.position.z; // Z is Y in grid coords
 
-        const r = this.fogRadius;
+        const revealR = this.fogRevealRadius;
+        const fadeR = this.fogFadeRadius;
 
         for (let y = 0; y < h; y++) {
             const texRow = (h - 1) - y;
@@ -421,8 +423,14 @@ export class ExploreSystem {
                 const dy = y - py;
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
-                // Calculate dynamic visibility (1.0 at 0 dist, 0.0 at r dist)
-                let val = 1.0 - (dist / r);
+                // Calculate dynamic visibility
+                let val = 0.0;
+                if (dist <= revealR) {
+                    val = 1.0;
+                } else if (dist < revealR + fadeR) {
+                    val = 1.0 - (dist - revealR) / fadeR;
+                }
+
                 if (val < 0) val = 0;
                 if (val > 1) val = 1;
 
@@ -524,7 +532,7 @@ export class ExploreSystem {
             window.$gameMap._playerPos = { x: newX, y: newY };
 
             // Update Map Visited State (logical only)
-            window.$gameMap.updateVisibility(newX, newY, this.fogRadius);
+            window.$gameMap.updateVisibility(newX, newY, this.fogRevealRadius + this.fogFadeRadius);
 
             // Trigger Animation
             this.moveLerpStart.copy(this.playerMesh.position);
