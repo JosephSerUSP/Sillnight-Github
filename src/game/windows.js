@@ -127,6 +127,20 @@ export class Window_Base {
             this.root.innerHTML = '';
         }
     }
+
+    /**
+     * Helper to create an element with class and optional parent.
+     * @param {string} tag - The HTML tag name.
+     * @param {string} [className] - The class name string.
+     * @param {HTMLElement} [parent] - The parent element to append to.
+     * @returns {HTMLElement} The created element.
+     */
+    createEl(tag, className, parent) {
+        const el = document.createElement(tag);
+        if (className) el.className = className;
+        if (parent) parent.appendChild(el);
+        return el;
+    }
 }
 
 /**

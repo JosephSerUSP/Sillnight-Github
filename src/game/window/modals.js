@@ -43,216 +43,168 @@ export class Window_CreatureModal extends Window_Selectable {
         // Clear root
         this.root.innerHTML = '';
 
-        // Main Window Frame
-        const winComponent = new Component('div', 'rpg-window w-4/5 h-4/5 bg-[#111] relative overflow-hidden');
+        // Main Window Frame: Compact width/height for a denser look
+        const winComponent = new Component('div', 'rpg-window w-2/3 h-3/4 bg-[#111] relative overflow-hidden flex flex-col');
         this.root.appendChild(winComponent.element);
 
-        // Main Layout (Vertical Flex)
-        this.mainLayout = new FlexLayout(winComponent.element, { direction: 'column' });
-
         // Header
-        this.createHeader(this.mainLayout);
+        this.createHeader(winComponent); // Header is now part of the frame layout
 
-        // Content Container (Horizontal Flex)
-        const contentContainer = new Component('div', 'flex-grow relative'); // Wrapper for the row layout
-        this.mainLayout.add(contentContainer, { grow: 1 });
+        // Main Content Container (Row)
+        const contentContainer = new Component('div', 'flex-grow flex flex-row gap-4 p-4 overflow-hidden');
+        winComponent.element.appendChild(contentContainer.element);
 
-        const contentLayout = new FlexLayout(contentContainer.element, { direction: 'row', gap: 16 });
-        contentLayout.container.classList.add('p-4', 'h-full'); // Add padding and height
-
-        // Structure
-        this.createLeftColumn(contentLayout);
-        this.createRightColumn(contentLayout);
+        this.createLeftColumn(contentContainer);
+        this.createRightColumn(contentContainer);
     }
 
-    createHeader(parentLayout) {
-        const headerContainer = new Component('div', 'rpg-header');
-        parentLayout.add(headerContainer, { shrink: 0 }); // Don't shrink header
+    createHeader(parentComponent) {
+        const headerContainer = document.createElement('div');
+        headerContainer.className = 'rpg-header flex justify-between items-center px-2 py-1 shrink-0';
 
-        const headerLayout = new FlexLayout(headerContainer.element, {
-            direction: 'row',
-            justify: 'space-between',
-            align: 'center'
-        });
+        const title = document.createElement('div');
+        title.innerText = 'CREATURE STATUS';
+        title.className = 'tracking-widest';
+        headerContainer.appendChild(title);
 
-        const title = new TextComponent('CREATURE STATUS', 'tracking-widest');
-        headerLayout.add(title);
+        const closeBtn = document.createElement('button');
+        closeBtn.innerText = 'X';
+        closeBtn.className = 'text-red-500 font-bold px-2 hover:text-red-400';
+        closeBtn.onclick = () => this.hide();
+        headerContainer.appendChild(closeBtn);
 
-        const closeBtn = new ButtonComponent('X', () => this.hide(), 'text-red-500 font-bold px-2 border-none hover:bg-transparent hover:text-red-400');
-        headerLayout.add(closeBtn);
+        parentComponent.element.appendChild(headerContainer);
     }
 
-    createLeftColumn(parentLayout) {
-        const leftCol = new Component('div', 'border-r border-gray-800 pr-4');
-        parentLayout.add(leftCol, { width: '40%', shrink: 0 });
-
-        const leftLayout = new FlexLayout(leftCol.element, { direction: 'column', gap: 12 });
+    createLeftColumn(parentComponent) {
+        const leftCol = new Component('div', 'flex flex-col gap-2 w-1/3 shrink-0 border-r border-gray-800 pr-4');
+        parentComponent.element.appendChild(leftCol.element);
 
         // Sprite Box
-        const spriteBox = new Component('div', 'w-full aspect-square border-2 border-dashed border-gray-700 flex items-center justify-center text-7xl bg-black/60 shadow-inner status-sprite-frame');
-        leftLayout.add(spriteBox);
+        const spriteBox = new Component('div', 'w-full aspect-square border-2 border-dashed border-gray-700 flex items-center justify-center bg-black/60 shadow-inner status-sprite-frame relative');
+        leftCol.element.appendChild(spriteBox.element);
+
         this._ui.sprite = document.createElement('span');
         this._ui.sprite.className = 'status-sprite';
         spriteBox.element.appendChild(this._ui.sprite);
 
-        // Info Box
-        const infoBox = new Component('div', 'text-center w-full space-y-1');
-        leftLayout.add(infoBox);
+        // Name & Compact Info
+        const infoBox = new Component('div', 'text-center w-full space-y-0.5');
+        leftCol.element.appendChild(infoBox.element);
 
         this._ui.name = document.createElement('h2');
-        this._ui.name.className = 'text-2xl text-yellow-400 tracking-widest';
+        this._ui.name.className = 'text-xl text-yellow-400 tracking-widest font-bold';
         infoBox.element.appendChild(this._ui.name);
 
-        const lvlDiv = document.createElement('div');
-        lvlDiv.className = 'text-[10px] text-gray-400';
-        lvlDiv.innerText = 'Lv. ';
-        this._ui.lvl = document.createElement('span');
-        lvlDiv.appendChild(this._ui.lvl);
-        infoBox.element.appendChild(lvlDiv);
+        this._ui.details = document.createElement('div');
+        this._ui.details.className = 'text-[10px] text-gray-400 flex justify-center gap-2';
+        infoBox.element.appendChild(this._ui.details); // Holds Lv, Race, Temperament
 
-        this._ui.temperament = document.createElement('div');
-        this._ui.temperament.className = 'text-[10px] text-gray-500';
-        infoBox.element.appendChild(this._ui.temperament);
+        // XP Bar (Visual)
+        const xpContainer = document.createElement('div');
+        xpContainer.className = 'w-full bg-gray-900 h-1.5 mt-1 border border-gray-700 relative';
+        this._ui.xpBar = document.createElement('div');
+        this._ui.xpBar.className = 'bg-blue-500 h-full w-0';
+        xpContainer.appendChild(this._ui.xpBar);
+        infoBox.element.appendChild(xpContainer);
+
+        this._ui.xpText = document.createElement('div');
+        this._ui.xpText.className = 'text-[8px] text-gray-500';
+        infoBox.element.appendChild(this._ui.xpText);
+
+        // Lore (Moved to left column to fill space)
+        const loreBox = new Component('div', 'mt-2 text-[9px] text-gray-400 italic leading-tight border-t border-gray-800 pt-2');
+        this._ui.desc = document.createElement('div');
+        loreBox.element.appendChild(this._ui.desc);
+        leftCol.element.appendChild(loreBox.element);
     }
 
-    createRightColumn(parentLayout) {
-        const rightCol = new Component('div', 'relative');
-        parentLayout.add(rightCol, { width: '60%', grow: 1 });
+    createRightColumn(parentComponent) {
+        const rightCol = new Component('div', 'flex flex-col gap-3 flex-grow relative overflow-y-auto no-scrollbar');
+        parentComponent.element.appendChild(rightCol.element);
 
-        const rightLayout = new FlexLayout(rightCol.element, { direction: 'column', gap: 12 });
+        // Combined Stats Row
+        const statsRow = new Component('div', 'grid grid-cols-2 gap-2');
+        rightCol.element.appendChild(statsRow.element);
 
-        this.createStatsGrid(rightLayout);
-        this.createDetailsGrid(rightLayout);
-        this.createActionsList(rightLayout);
-        this.createEquipmentLibrary(rightLayout);
-    }
-
-    createStatsGrid(parentLayout) {
-        const gridContainer = new Component('div');
-        parentLayout.add(gridContainer);
-
-        const grid = new GridLayout(gridContainer.element, { columns: 'repeat(3, 1fr)', gap: 12 });
-
-        // HP
-        const hpBox = this.createStatBox('HP');
-        grid.add(hpBox);
-        this._ui.hp = document.createElement('div');
-        this._ui.hp.className = 'text-green-400 text-lg';
+        // HP Box
+        const hpBox = new Component('div', 'bg-black/40 border border-gray-700 px-2 py-1 flex justify-between items-center');
+        hpBox.element.innerHTML = '<span class="text-[10px] text-gray-500">HP</span>';
+        this._ui.hp = document.createElement('span');
+        this._ui.hp.className = 'text-green-400 font-mono';
         hpBox.element.appendChild(this._ui.hp);
+        statsRow.element.appendChild(hpBox.element);
 
-        // XP
-        const xpBox = this.createStatBox('XP');
-        grid.add(xpBox);
-        this._ui.xp = document.createElement('div');
-        this._ui.xp.className = 'text-blue-400 text-lg';
-        xpBox.element.appendChild(this._ui.xp);
+        // Elements Box
+        const elemBox = new Component('div', 'bg-black/40 border border-gray-700 px-2 py-1 flex justify-between items-center');
+        elemBox.element.innerHTML = '<span class="text-[10px] text-gray-500">ELM</span>';
+        this._ui.elements = document.createElement('span');
+        this._ui.elements.className = 'text-gray-300 text-[10px]';
+        elemBox.element.appendChild(this._ui.elements);
+        statsRow.element.appendChild(elemBox.element);
 
-        // Equipment Slot
-        const equipBox = this.createStatBox('EQUIPMENT');
-        grid.add(equipBox);
+        // Equipment (Compact)
+        const equipRow = new Component('div', 'bg-black/40 border border-gray-700 px-2 py-1 flex items-center gap-2 cursor-pointer hover:border-yellow-400 transition-colors');
+        equipRow.element.innerHTML = '<span class="text-[10px] text-gray-500 w-10 shrink-0">EQUIP</span>';
+        this._ui.equipSlot = document.createElement('div');
+        this._ui.equipSlot.className = 'flex-grow text-yellow-200 text-sm truncate';
+        equipRow.element.appendChild(this._ui.equipSlot);
+        rightCol.element.appendChild(equipRow.element);
 
-        this._ui.equipSlot = document.createElement('button');
-        this._ui.equipSlot.className = 'mt-1 w-full text-left flex items-center justify-between px-2 py-1 border border-gray-600 bg-gray-900 hover:border-yellow-400 hover:text-yellow-200 transition-colors';
-        equipBox.element.appendChild(this._ui.equipSlot);
-        this._ui.equipSlot.addEventListener('click', () => {
+        equipRow.element.addEventListener('click', () => {
              if (this._unit && this._unit.equipmentId) {
                  this.unequipUnit(this._unit);
              } else if (this._unit) {
                  this.startEquipFlow(null);
              }
         });
+
+        // Passives & Actions
+        this.createCompactActions(rightCol);
+        this.createEquipmentLibrary(rightCol);
     }
 
-    createStatBox(label) {
-        const box = new Component('div', 'rpg-window bg-black/70 px-3 py-2 border border-gray-700');
-        const labelEl = document.createElement('div');
-        labelEl.className = 'text-[10px] text-gray-500';
-        labelEl.innerText = label;
-        box.element.appendChild(labelEl);
-        return box;
-    }
-
-    createDetailsGrid(parentLayout) {
-        const gridContainer = new Component('div');
-        parentLayout.add(gridContainer);
-
-        const grid = new GridLayout(gridContainer.element, { columns: 'repeat(3, 1fr)', gap: 12 });
-
-        // Race
-        const raceBox = this.createStatBox('RACE');
-        grid.add(raceBox);
-        this._ui.race = document.createElement('div');
-        this._ui.race.className = 'text-yellow-200 text-sm';
-        raceBox.element.appendChild(this._ui.race);
-
-        // Elements
-        const elemBox = new Component('div', 'rpg-window bg-black/70 px-3 py-2 border border-gray-700');
-        grid.add(elemBox);
-        const elemHeader = document.createElement('div');
-        elemHeader.className = 'flex items-center justify-between text-[10px] text-gray-500';
-        elemHeader.innerHTML = '<span>ELEMENTS</span><span class="text-[8px] text-gray-600">future feature</span>';
-        elemBox.element.appendChild(elemHeader);
-        this._ui.elements = document.createElement('div');
-        this._ui.elements.className = 'text-sm';
-        elemBox.element.appendChild(this._ui.elements);
-
-        // Passive
-        const passBox = new Component('div', 'rpg-window bg-black/70 px-3 py-2 border border-gray-700');
-        grid.add(passBox);
-        const passHeader = document.createElement('div');
-        passHeader.className = 'flex items-center justify-between text-[10px] text-gray-500';
-        passHeader.innerHTML = '<span>PASSIVE</span><span class="text-[8px] text-gray-600">coming soon</span>';
-        passBox.element.appendChild(passHeader);
+    createCompactActions(parentComponent) {
+        // Passives
+        const passContainer = new Component('div', 'text-[10px]');
+        passContainer.element.innerHTML = '<div class="text-gray-500 mb-0.5">PASSIVE</div>';
         this._ui.passive = document.createElement('div');
-        this._ui.passive.className = 'text-gray-300 text-[10px] leading-tight';
-        passBox.element.appendChild(this._ui.passive);
-    }
+        this._ui.passive.className = 'text-gray-300 bg-black/40 p-1 border border-gray-800 mb-2';
+        passContainer.element.appendChild(this._ui.passive);
+        parentComponent.element.appendChild(passContainer.element);
 
-    createActionsList(parentLayout) {
-        const actionsContainer = new Component('div');
-        parentLayout.add(actionsContainer);
-
-        const actionsHeader = document.createElement('div');
-        actionsHeader.className = 'flex justify-between items-center border-b border-gray-700 pb-1 mb-2';
-        actionsHeader.innerHTML = '<h3 class="text-gray-300 tracking-wide">ACTIONS</h3><span class="text-[10px] text-gray-500">Known skills</span>';
-        actionsContainer.element.appendChild(actionsHeader);
-
+        // Actions
+        const actContainer = new Component('div', 'text-[10px]');
+        actContainer.element.innerHTML = '<div class="text-gray-500 mb-0.5">ACTIONS</div>';
         this._ui.actions = document.createElement('div');
-        this._ui.actions.className = 'grid grid-cols-2 gap-2 text-[10px]';
-        actionsContainer.element.appendChild(this._ui.actions);
-
-        // Lore
-        const loreBox = new Component('div', 'rpg-window bg-black/70 px-3 py-2 text-[10px] text-left border border-gray-700');
-        parentLayout.add(loreBox);
-        loreBox.element.innerHTML = '<div class="text-gray-400 text-[8px] mb-1">LORE</div>';
-        this._ui.desc = document.createElement('div');
-        this._ui.desc.className = 'leading-tight text-gray-300';
-        loreBox.element.appendChild(this._ui.desc);
+        this._ui.actions.className = 'grid grid-cols-2 gap-1';
+        actContainer.element.appendChild(this._ui.actions);
+        parentComponent.element.appendChild(actContainer.element);
     }
 
-    createEquipmentLibrary(parentLayout) {
-        const libBox = new Component('div', 'flex-grow rpg-window bg-black/70 border border-gray-700 p-3 flex flex-col gap-2 overflow-hidden');
-        parentLayout.add(libBox, { grow: 1 });
+    createEquipmentLibrary(parentComponent) {
+        const libBox = new Component('div', 'hidden flex-col gap-2 bg-black/80 border border-gray-700 p-2 absolute inset-0 z-10');
+        parentComponent.element.appendChild(libBox.element);
+        this._ui.libraryBox = libBox.element; // Keep ref to toggle visibility
 
         const libHeader = document.createElement('div');
-        libHeader.className = 'flex justify-between items-center';
-        libHeader.innerHTML = '<h3 class="text-gray-300 tracking-wide">EQUIPMENT LIBRARY</h3>';
+        libHeader.className = 'flex justify-between items-center border-b border-gray-600 pb-1 mb-1';
+        libHeader.innerHTML = '<h3 class="text-gray-300 tracking-wide text-[10px]">EQUIPMENT</h3>';
         libBox.element.appendChild(libHeader);
 
         this._ui.closePicker = document.createElement('button');
-        this._ui.closePicker.className = 'hidden text-[10px] text-gray-400 hover:text-white';
-        this._ui.closePicker.innerText = 'Close Picker';
+        this._ui.closePicker.className = 'text-[10px] text-red-400 hover:text-red-200';
+        this._ui.closePicker.innerText = 'CLOSE';
         this._ui.closePicker.onclick = () => this.endEquipFlow();
         libHeader.appendChild(this._ui.closePicker);
 
-        this._ui.equipHint = document.createElement('div');
-        this._ui.equipHint.className = 'text-[10px] text-gray-500';
-        this._ui.equipHint.innerText = 'Tap the equipment slot above to browse what this creature can wear.';
-        libBox.element.appendChild(this._ui.equipHint);
-
         this._ui.equipOptions = document.createElement('div');
-        this._ui.equipOptions.className = 'grid grid-cols-2 gap-2 overflow-y-auto pr-1 hidden';
+        this._ui.equipOptions.className = 'grid grid-cols-2 gap-2 overflow-y-auto pr-1 flex-grow';
         libBox.element.appendChild(this._ui.equipOptions);
+
+        // No hint needed, flows are explicit
+        this._ui.equipHint = document.createElement('div');
+        this._ui.equipHint.style.display = 'none';
     }
 
     /**
@@ -277,9 +229,10 @@ export class Window_CreatureModal extends Window_Selectable {
     }
 
     startEquipFlow(id) {
-        this._ui.equipHint.classList.add('hidden');
-        this._ui.equipOptions.classList.remove('hidden');
-        this._ui.closePicker.classList.remove('hidden');
+        if (this._ui.libraryBox) {
+            this._ui.libraryBox.classList.remove('hidden');
+            this._ui.libraryBox.classList.add('flex');
+        }
 
         // Populate options
         const list = window.$gameParty.roster.map(u => ({ owner: u, id: u.equipmentId, source: 'unit' })).filter(x => x.id);
@@ -319,9 +272,10 @@ export class Window_CreatureModal extends Window_Selectable {
     }
 
     endEquipFlow() {
-        this._ui.equipHint.classList.remove('hidden');
-        this._ui.equipOptions.classList.add('hidden');
-        this._ui.closePicker.classList.add('hidden');
+        if (this._ui.libraryBox) {
+            this._ui.libraryBox.classList.add('hidden');
+            this._ui.libraryBox.classList.remove('flex');
+        }
     }
 
     // Legacy support if anything calls closeCenterModal
@@ -409,13 +363,18 @@ export class Window_CreatureModal extends Window_Selectable {
 
         // Info
         this._ui.name.innerText = name;
-        this._ui.lvl.innerText = unit.level || 1;
-        this._ui.temperament.innerText = def.temperament;
+        this._ui.details.innerText = `Lv.${unit.level || 1} | ${def.race} | ${def.temperament}`;
+
+        // XP Bar
+        // Simple visual mock for now, assuming next level needs 100 * level
+        const xpNeeded = (unit.level || 1) * 100;
+        const xpCurrent = unit.exp || 0;
+        const xpPct = Math.min(100, Math.max(0, (xpCurrent / xpNeeded) * 100));
+        this._ui.xpBar.style.width = `${xpPct}%`;
+        this._ui.xpText.innerText = `${xpCurrent} / ${xpNeeded} XP`;
 
         // Stats
         this._ui.hp.innerText = `${unit.hp}/${maxhp}`;
-        this._ui.xp.innerText = `${unit.exp ?? 0}`;
-        this._ui.race.innerText = def.race;
         this._ui.elements.innerText = (unit.elements || []).join(', ');
 
         // Passive
