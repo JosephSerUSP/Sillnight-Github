@@ -62,69 +62,43 @@ class ParticleSystem {
     }
 }
 
-function createFogMaterial(color = 0x333333) {
+function createFogMaterial(color = 0x333333, exploreSystem) {
     const baseMat = new THREE.MeshLambertMaterial({ color: color, transparent: true, opacity: 1.0 });
 
     baseMat.onBeforeCompile = (shader) => {
         shader.uniforms.uPlayerPos = { value: new THREE.Vector3() };
         shader.uniforms.uFogRadius = { value: 6.0 };
-        shader.uniforms.uMaxOffset = { value: 5.0 };
+        shader.uniforms.uVisibilityMap = { get value() { return exploreSystem.visibilityTexture; } };
+        shader.uniforms.uMapSize = { get value() {
+            if (!exploreSystem || !exploreSystem.visibilityTexture) return new THREE.Vector2(1, 1);
+            return new THREE.Vector2(exploreSystem.visibilityTexture.image.width, exploreSystem.visibilityTexture.image.height);
+        } };
 
         shader.vertexShader = `
             varying float vVisibility;
             uniform vec3 uPlayerPos;
             uniform float uFogRadius;
-            uniform float uMaxOffset;
-
-            float random(vec2 st) {
-                return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
-            }
+            uniform sampler2D uVisibilityMap;
+            uniform vec2 uMapSize;
         ` + shader.vertexShader;
 
         shader.vertexShader = shader.vertexShader.replace(
             '#include <project_vertex>',
             `
-            // Calculate World Position from InstanceMatrix
             vec4 worldPos = instanceMatrix * vec4(transformed, 1.0);
             float dist = distance(worldPos.xz, uPlayerPos.xz);
 
             float fadeWidth = 4.0;
             float vis = 1.0 - smoothstep(uFogRadius, uFogRadius + fadeWidth, dist);
-            vVisibility = vis;
 
-            // Random offset based on tile position (using worldPos.xz)
-            // Ideally use integer coordinates for stability
-            vec2 tilePos = floor(worldPos.xz + 0.5);
-            float rnd = random(tilePos);
+            // UV for visibility map. Add 0.5 to be in center of the texel.
+            vec2 vUv = (worldPos.xz + 0.5) / uMapSize;
+            float revealed = texture2D(uVisibilityMap, vUv).r;
 
-            // Offset falling from above or below
-            // Let's make it fall from above (-Y is down)
-            // "Initial Z/Y randomly offset"
-            float dir = (rnd - 0.5) * 2.0; // -1 to 1
-            float offset = dir * uMaxOffset * (1.0 - vis);
+            vVisibility = max(vis, revealed);
 
-            // Apply offset to local 'transformed' before projection?
-            // No, we need to apply it to world position.
-            // But standard material expects 'transformed' to be local.
-            // 'mvPosition' is calculated from 'transformed'.
-
-            // For InstancedMesh, the transform is embedded.
-            // We can hack mvPosition.
-
-            vec4 mvPosition = viewMatrix * instanceMatrix * vec4( transformed, 1.0 );
-
-            // Apply View Space offset? No, world space offset is easier conceptually.
-            // But we already calculated offset.
-
-            // Let's modify mvPosition by adding offset projected to view space?
-            // Or better, modify 'transformed' but that doesn't account for instance matrix rotation if we want global Y.
-
-            // Let's assume tiles are flat and Y is Up.
-            // offset is strictly vertical in World Space.
-            // viewMatrix * (worldPos + offset) = viewMatrix * worldPos + viewMatrix * offset
-
-            mvPosition.xyz += (viewMatrix * vec4(0.0, offset, 0.0, 0.0)).xyz;
-
+            // Re-calculating mvPosition and gl_Position from scratch to avoid any side-effects
+            vec4 mvPosition = viewMatrix * worldPos;
             gl_Position = projectionMatrix * mvPosition;
             `
         );
@@ -138,7 +112,7 @@ function createFogMaterial(color = 0x333333) {
             `
             #include <dithering_fragment>
             gl_FragColor.a *= vVisibility;
-            if (gl_FragColor.a < 0.05) discard; // Optional Dither or discard to save fill rate
+            if (gl_FragColor.a < 0.05) discard;
             `
         );
 
@@ -146,6 +120,49 @@ function createFogMaterial(color = 0x333333) {
     };
 
     return baseMat;
+}
+
+function createFogMaterialForEvents(color, exploreSystem) {
+    const mat = new THREE.MeshPhongMaterial({ color, transparent: true });
+    mat.onBeforeCompile = (shader) => {
+        shader.uniforms.uPlayerPos = { value: new THREE.Vector3() };
+        shader.uniforms.uFogRadius = { value: 6.0 };
+        shader.uniforms.uVisibilityMap = { get value() { return exploreSystem.visibilityTexture; } };
+        shader.uniforms.uMapSize = { get value() {
+            if (!exploreSystem || !exploreSystem.visibilityTexture) return new THREE.Vector2(1, 1);
+            return new THREE.Vector2(exploreSystem.visibilityTexture.image.width, exploreSystem.visibilityTexture.image.height);
+        }};
+
+        shader.vertexShader = `
+            varying vec3 vWorldPos;
+        ` + shader.vertexShader.replace('#include <project_vertex>', `
+            vWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+            #include <project_vertex>
+        `);
+
+        shader.fragmentShader = `
+            uniform vec3 uPlayerPos;
+            uniform float uFogRadius;
+            uniform sampler2D uVisibilityMap;
+            uniform vec2 uMapSize;
+            varying vec3 vWorldPos;
+        ` + shader.fragmentShader.replace('vec4 diffuseColor = vec4( diffuse, opacity );', `
+            float dist = distance(vWorldPos.xz, uPlayerPos.xz);
+            float fadeWidth = 4.0;
+            float vis = 1.0 - smoothstep(uFogRadius, uFogRadius + fadeWidth, dist);
+
+            vec2 vUv = (vWorldPos.xz + 0.5) / uMapSize;
+            float revealed = texture2D(uVisibilityMap, vUv).r;
+
+            float finalVisibility = max(vis, revealed);
+            if (finalVisibility < 0.05) discard;
+
+            vec4 diffuseColor = vec4(diffuse, opacity * finalVisibility);
+        `);
+
+        mat.userData.shader = shader;
+    };
+    return mat;
 }
 
 export class ExploreSystem {
@@ -169,6 +186,9 @@ export class ExploreSystem {
         this.matPlayer = null;
         this.matFloor = null;
         this.matWall = null;
+        this.visibility = null;
+        this.visibilityTexture = null;
+        this.visibilityRadius = 4.5;
 
         /** @type {Game_Interpreter} */
         this.interpreter = new Game_Interpreter();
@@ -216,12 +236,11 @@ export class ExploreSystem {
         this.particles = new ParticleSystem(this.scene);
 
         // Initialize Materials with Fog Shader
-        this.matFloor = createFogMaterial(0x333333);
-        this.matWall = createFogMaterial(0x1a1a1a);
+        this.matFloor = createFogMaterial(0x333333, this);
+        this.matWall = createFogMaterial(0x1a1a1a, this);
 
         this.initialized = true;
         this.rebuildLevel();
-        this.animate();
     }
 
     /** Rebuilds the 3D map based on window.$gameMap */
@@ -236,6 +255,12 @@ export class ExploreSystem {
         const height = map.length;
         const width = map[0].length;
         const count = width * height;
+
+        // Init visibility grid
+        this.visibility = new Uint8Array(width * height);
+        this.visibility.fill(0); // 0 = hidden, 1 = revealed
+        this.visibilityTexture = new THREE.DataTexture(this.visibility, width, height, THREE.RedFormat, THREE.UnsignedByteType);
+        this.visibilityTexture.needsUpdate = true;
 
         const geoFloor = new THREE.PlaneGeometry(0.95, 0.95);
         // Reuse materials
@@ -310,6 +335,41 @@ export class ExploreSystem {
         this.cameraLookCurrent.set(startX, 0, startY);
         this.moveLerpProgress = 1;
         this.isAnimating = false;
+
+        this.updateVisibility(startX, startY);
+    }
+
+    /**
+     * Updates the visibility grid around a point.
+     * @param {number} cx - Center X.
+     * @param {number} cy - Center Y.
+     */
+    updateVisibility(cx, cy) {
+        if (!this.visibility || !window.$gameMap) return;
+
+        const width = window.$gameMap.width();
+        const height = window.$gameMap.height();
+        const r = Math.floor(this.visibilityRadius);
+
+        let needsUpdate = false;
+        for (let y = cy - r; y <= cy + r; y++) {
+            for (let x = cx - r; x <= cx + r; x++) {
+                if (x >= 0 && x < width && y >= 0 && y < height) {
+                    const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+                    if (dist < this.visibilityRadius) {
+                        const index = y * width + x;
+                        if (this.visibility[index] === 0) {
+                            this.visibility[index] = 255; // Use 255 for full visibility
+                            needsUpdate = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (needsUpdate) {
+            this.visibilityTexture.needsUpdate = true;
+        }
     }
 
     /**
@@ -337,27 +397,35 @@ export class ExploreSystem {
             const y = event.y;
 
             if (visual) {
+                let mesh;
+                let color;
+
                 if (visual.type === 'ENEMY') {
-                    const mesh = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.6, 4), new THREE.MeshPhongMaterial({ color: 0xff0000 }));
+                    color = 0xff0000;
+                    mesh = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.6, 4), createFogMaterialForEvents(color, this));
                     mesh.position.set(x, 0.3, y);
-                    this.dynamicGroup.add(mesh);
                 } else if (visual.type === 'TREASURE') {
-                    const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), new THREE.MeshPhongMaterial({ color: 0xffd700 }));
+                    color = 0xffd700;
+                    mesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), createFogMaterialForEvents(color, this));
                     mesh.position.set(x, 0.25, y);
-                    this.dynamicGroup.add(mesh);
                 } else if (visual.type === 'SHOP') {
-                    const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 6), new THREE.MeshPhongMaterial({ color: 0x0000ff }));
+                    color = 0x0000ff;
+                    mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 6), createFogMaterialForEvents(color, this));
                     mesh.position.set(x, 0.1, y);
-                    this.dynamicGroup.add(mesh);
                 } else if (visual.type === 'RECRUIT') {
-                    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshPhongMaterial({ color: 0x00ff00 }));
+                    color = 0x00ff00;
+                    mesh = new THREE.Mesh(new THREE.SphereGeometry(0.2), createFogMaterialForEvents(color, this));
                     mesh.position.set(x, 0.3, y);
-                    this.dynamicGroup.add(mesh);
                 } else if (visual.type === 'SHRINE') {
-                    const mesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.2), new THREE.MeshPhongMaterial({ color: 0xffffff }));
+                    color = 0xffffff;
+                    mesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.2), createFogMaterialForEvents(color, this));
                     mesh.position.set(x, 0.3, y);
+                }
+
+                if (mesh) {
                     this.dynamicGroup.add(mesh);
                 }
+
                 // Trap logic: traps might be invisible or visible
                 else if (visual.type === 'TRAP') {
                      // Maybe invisible? Or a spike?
@@ -404,6 +472,7 @@ export class ExploreSystem {
 
             // Trigger events after delay or checkTile handles it
             this.checkTile(newX, newY);
+            this.updateVisibility(newX, newY);
         }
     }
 
@@ -452,11 +521,7 @@ export class ExploreSystem {
      * Main animation loop.
      */
     animate() {
-        if (window.Game.ui.mode === 'EXPLORE') {
-            requestAnimationFrame(() => this.animate());
-        } else {
-            requestAnimationFrame(() => this.animate());
-        }
+        requestAnimationFrame(() => this.animate());
 
         if (!this.scene || !this.camera) return;
 
@@ -470,6 +535,13 @@ export class ExploreSystem {
             if (this.matWall && this.matWall.userData.shader) {
                 this.matWall.userData.shader.uniforms.uPlayerPos.value.copy(p);
             }
+
+            // Update dynamic event materials
+            this.dynamicGroup.children.forEach(mesh => {
+                if (mesh.material && mesh.material.userData.shader) {
+                    mesh.material.userData.shader.uniforms.uPlayerPos.value.copy(p);
+                }
+            });
         }
 
         // Movement Interpolation
@@ -515,7 +587,7 @@ export class ExploreSystem {
         const renderer = window.Game.RenderManager.getRenderer();
         if (renderer && window.Game.ui.mode === 'EXPLORE') {
             renderer.render(this.scene, this.camera);
-            if (window.Game.Systems && window.Game.Systems.Effekseer) {
+            if (window.Game.Systems && window.Game.Systems.Effekseer && window.Game.Systems.Effekseer.context) {
                 window.Game.Systems.Effekseer.update(this.camera);
             }
         }
