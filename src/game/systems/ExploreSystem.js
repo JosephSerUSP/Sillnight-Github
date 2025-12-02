@@ -62,91 +62,78 @@ class ParticleSystem {
     }
 }
 
-function createFogMaterial(color = 0x333333) {
-    const baseMat = new THREE.MeshLambertMaterial({ color: color, transparent: true, opacity: 1.0 });
+/**
+ * Modifies a material to support the Fog of War effect using a texture lookup.
+ * @param {THREE.Material} material
+ * @param {Object} context - Context containing `fogTexture` and map dimensions.
+ */
+function modifyMaterialWithFog(material) {
+    material.transparent = true;
 
-    baseMat.onBeforeCompile = (shader) => {
-        shader.uniforms.uPlayerPos = { value: new THREE.Vector3() };
-        shader.uniforms.uFogRadius = { value: 6.0 };
-        shader.uniforms.uMaxOffset = { value: 5.0 };
+    material.onBeforeCompile = (shader) => {
+        material.userData.shader = shader;
 
+        // Uniforms
+        shader.uniforms.uFogMap = { value: null };
+        shader.uniforms.uMapSize = { value: new THREE.Vector2(1, 1) };
+
+        // Vertex Shader: Calculate UV based on World Position
         shader.vertexShader = `
-            varying float vVisibility;
-            uniform vec3 uPlayerPos;
-            uniform float uFogRadius;
-            uniform float uMaxOffset;
-
-            float random(vec2 st) {
-                return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
-            }
+            varying vec2 vFogUV;
+            uniform vec2 uMapSize;
         ` + shader.vertexShader;
 
         shader.vertexShader = shader.vertexShader.replace(
             '#include <project_vertex>',
             `
-            // Calculate World Position from InstanceMatrix
-            vec4 worldPos = instanceMatrix * vec4(transformed, 1.0);
-            float dist = distance(worldPos.xz, uPlayerPos.xz);
+            vec4 worldPos = modelMatrix * vec4( transformed, 1.0 );
+            #ifdef USE_INSTANCING
+                worldPos = instanceMatrix * worldPos;
+            #endif
 
-            float fadeWidth = 4.0;
-            float vis = 1.0 - smoothstep(uFogRadius, uFogRadius + fadeWidth, dist);
-            vVisibility = vis;
+            // Map World (X, Z) to Texture UV
+            // Map (0,0) is Top-Left. Texture (0,0) is Bottom-Left.
+            // So X maps directly, Z needs inversion relative to map height.
+            // vFogUV.x = (x + 0.5) / width
+            // vFogUV.y = 1.0 - (z + 0.5) / height
 
-            // Random offset based on tile position (using worldPos.xz)
-            // Ideally use integer coordinates for stability
-            vec2 tilePos = floor(worldPos.xz + 0.5);
-            float rnd = random(tilePos);
+            vFogUV = vec2(
+                (worldPos.x + 0.5) / uMapSize.x,
+                1.0 - (worldPos.z + 0.5) / uMapSize.y
+            );
 
-            // Offset falling from above or below
-            // Let's make it fall from above (-Y is down)
-            // "Initial Z/Y randomly offset"
-            float dir = (rnd - 0.5) * 2.0; // -1 to 1
-            float offset = dir * uMaxOffset * (1.0 - vis);
-
-            // Apply offset to local 'transformed' before projection?
-            // No, we need to apply it to world position.
-            // But standard material expects 'transformed' to be local.
-            // 'mvPosition' is calculated from 'transformed'.
-
-            // For InstancedMesh, the transform is embedded.
-            // We can hack mvPosition.
-
-            vec4 mvPosition = viewMatrix * instanceMatrix * vec4( transformed, 1.0 );
-
-            // Apply View Space offset? No, world space offset is easier conceptually.
-            // But we already calculated offset.
-
-            // Let's modify mvPosition by adding offset projected to view space?
-            // Or better, modify 'transformed' but that doesn't account for instance matrix rotation if we want global Y.
-
-            // Let's assume tiles are flat and Y is Up.
-            // offset is strictly vertical in World Space.
-            // viewMatrix * (worldPos + offset) = viewMatrix * worldPos + viewMatrix * offset
-
-            mvPosition.xyz += (viewMatrix * vec4(0.0, offset, 0.0, 0.0)).xyz;
-
+            vec4 mvPosition = viewMatrix * worldPos;
             gl_Position = projectionMatrix * mvPosition;
             `
         );
 
+        // Fragment Shader: Sample Fog Texture
         shader.fragmentShader = `
-            varying float vVisibility;
+            varying vec2 vFogUV;
+            uniform sampler2D uFogMap;
         ` + shader.fragmentShader;
 
         shader.fragmentShader = shader.fragmentShader.replace(
             '#include <dithering_fragment>',
             `
             #include <dithering_fragment>
-            gl_FragColor.a *= vVisibility;
-            if (gl_FragColor.a < 0.05) discard; // Optional Dither or discard to save fill rate
+
+            // Sample the fog texture
+            // R channel contains visited state (0.0 to 1.0)
+            float fogVal = texture2D(uFogMap, vFogUV).r;
+
+            // Apply fog to alpha
+            gl_FragColor.a *= fogVal;
+
+            // Optional: Completely discard if invisible to solve depth sorting issues
+            // if (gl_FragColor.a < 0.01) discard;
             `
         );
-
-        baseMat.userData.shader = shader;
     };
 
-    return baseMat;
+    return material;
 }
+
 
 export class ExploreSystem {
     constructor() {
@@ -169,6 +156,9 @@ export class ExploreSystem {
         this.matPlayer = null;
         this.matFloor = null;
         this.matWall = null;
+
+        this.fogTexture = null;
+        this.fogRadius = 6;
 
         /** @type {Game_Interpreter} */
         this.interpreter = new Game_Interpreter();
@@ -216,8 +206,11 @@ export class ExploreSystem {
         this.particles = new ParticleSystem(this.scene);
 
         // Initialize Materials with Fog Shader
-        this.matFloor = createFogMaterial(0x333333);
-        this.matWall = createFogMaterial(0x1a1a1a);
+        this.matFloor = new THREE.MeshLambertMaterial({ color: 0x333333 });
+        modifyMaterialWithFog(this.matFloor);
+
+        this.matWall = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+        modifyMaterialWithFog(this.matWall);
 
         this.initialized = true;
         this.rebuildLevel();
@@ -237,8 +230,33 @@ export class ExploreSystem {
         const width = map[0].length;
         const count = width * height;
 
+        // --- FOG TEXTURE SETUP ---
+        // Create DataTexture for fog of war
+        // Use LuminanceFormat (1 channel)
+        const size = width * height;
+        const data = new Uint8Array(size); // Initialized to 0 (hidden)
+
+        this.fogTexture = new THREE.DataTexture(data, width, height, THREE.LuminanceFormat, THREE.UnsignedByteType);
+        this.fogTexture.magFilter = THREE.LinearFilter;
+        this.fogTexture.minFilter = THREE.LinearFilter;
+        this.fogTexture.needsUpdate = true;
+
+        // Initial visibility update
+        window.$gameMap.updateVisibility(window.$gameMap.playerPos.x, window.$gameMap.playerPos.y, this.fogRadius);
+        this.updateFogTexture();
+
+        // Update Static Materials
+        const updateMat = (mat) => {
+            if (mat && mat.userData.shader) {
+                mat.userData.shader.uniforms.uFogMap.value = this.fogTexture;
+                mat.userData.shader.uniforms.uMapSize.value.set(width, height);
+            }
+        };
+        updateMat(this.matFloor);
+        updateMat(this.matWall);
+        // -------------------------
+
         const geoFloor = new THREE.PlaneGeometry(0.95, 0.95);
-        // Reuse materials
         this.instancedFloor = new THREE.InstancedMesh(geoFloor, this.matFloor, count);
 
         const geoBlock = new THREE.BoxGeometry(0.95, 1, 0.95);
@@ -264,9 +282,6 @@ export class ExploreSystem {
                     dummy.updateMatrix();
                     this.instancedFloor.setMatrixAt(fIdx++, dummy.matrix);
 
-                    // Special Static Tiles (Stairs) - Not Instanced, keep standard material or apply fog?
-                    // For now, keep standard but maybe we should apply fog manually to them?
-                    // Let's leave them as is, they might pop out which is fine for "special" items
                     if (tile === 3) {
                         const numSteps = 5;
                         const maxH = 0.4;
@@ -275,8 +290,34 @@ export class ExploreSystem {
                             const h = maxH * (numSteps - s) / numSteps;
                             const yPos = h / 2;
                             const zPos = y - 0.4 + (s * sliceW) + (sliceW / 2);
-                            const step = new THREE.Mesh(new THREE.BoxGeometry(0.8, h, sliceW * 0.9), new THREE.MeshPhongMaterial({ color: 0x00ffaa, flatShading: true }));
+                            const mat = new THREE.MeshPhongMaterial({ color: 0x00ffaa, flatShading: true });
+                            // Apply fog to stairs too
+                            modifyMaterialWithFog(mat);
+                            // We need to set uniform immediately/on compile for this material
+                            // Since it's dynamic here, we'll need to update it in loop or set it now?
+                            // modifyMaterialWithFog sets callback.
+                            // We can manually set the uniform value in the callback.
+                            // But we need to ensure values are current.
+                            // Simplest is to treat these as "dynamic" in the sense that we must update them.
+                            // For now, let's just make sure we set the value when shader compiles.
+                            // We can assign the current fogTexture to the uniform object in the closure if we passed it.
+                            // But modifyMaterialWithFog is generic.
+                            // We'll update it in animate() loop if we track it, or simpler:
+                            // Just ensure standard uniform update covers it?
+                            // No, standard loop only updates matFloor/matWall/Player.
+
+                            // Let's attach this material to a list to be updated or just update userData here.
+                            // Hack: Assign the value directly to the prototype's definition? No.
+
+                            // Let's just create a list of materials to update.
+                            // Or better: pass the texture to the modify function?
+
+                            const step = new THREE.Mesh(new THREE.BoxGeometry(0.8, h, sliceW * 0.9), mat);
                             step.position.set(x, yPos, zPos);
+
+                            // Store material for update
+                            step.userData.isFogObject = true;
+
                             this.mapGroup.add(step);
                         }
                     }
@@ -312,6 +353,31 @@ export class ExploreSystem {
         this.isAnimating = false;
     }
 
+    /** Syncs the fog texture data with the Game_Map visited state. */
+    updateFogTexture() {
+        if (!this.fogTexture || !window.$gameMap) return;
+        const map = window.$gameMap;
+        const w = map.width;
+        const h = map.height;
+        const texData = this.fogTexture.image.data;
+
+        // Texture 0,0 is Bottom-Left. Map 0,0 is Top-Left.
+        // We fill texture row by row from bottom up to match map top-down.
+        // Map Row 0 (Top) -> Texture Row (h-1) (Top)
+
+        for (let y = 0; y < h; y++) {
+            // Target texture row
+            const texRow = (h - 1) - y;
+            for (let x = 0; x < w; x++) {
+                const visited = map.isVisited(x, y);
+                // Simple on/off visibility or keep distance fade in shader?
+                // User wants persistence. So visited = 255.
+                texData[texRow * w + x] = visited ? 255 : 0;
+            }
+        }
+        this.fogTexture.needsUpdate = true;
+    }
+
     /**
      * Synchronizes dynamic elements (enemies, loot, etc.) without rebuilding static geometry.
      */
@@ -337,30 +403,34 @@ export class ExploreSystem {
             const y = event.y;
 
             if (visual) {
+                let color = 0xffffff;
+                let geo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+
                 if (visual.type === 'ENEMY') {
-                    const mesh = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.6, 4), new THREE.MeshPhongMaterial({ color: 0xff0000 }));
-                    mesh.position.set(x, 0.3, y);
-                    this.dynamicGroup.add(mesh);
+                    color = 0xff0000;
+                    geo = new THREE.ConeGeometry(0.2, 0.6, 4);
                 } else if (visual.type === 'TREASURE') {
-                    const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), new THREE.MeshPhongMaterial({ color: 0xffd700 }));
-                    mesh.position.set(x, 0.25, y);
-                    this.dynamicGroup.add(mesh);
+                    color = 0xffd700;
+                    geo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
                 } else if (visual.type === 'SHOP') {
-                    const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 6), new THREE.MeshPhongMaterial({ color: 0x0000ff }));
-                    mesh.position.set(x, 0.1, y);
-                    this.dynamicGroup.add(mesh);
+                    color = 0x0000ff;
+                    geo = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 6);
                 } else if (visual.type === 'RECRUIT') {
-                    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshPhongMaterial({ color: 0x00ff00 }));
-                    mesh.position.set(x, 0.3, y);
-                    this.dynamicGroup.add(mesh);
+                    color = 0x00ff00;
+                    geo = new THREE.SphereGeometry(0.2);
                 } else if (visual.type === 'SHRINE') {
-                    const mesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.2), new THREE.MeshPhongMaterial({ color: 0xffffff }));
-                    mesh.position.set(x, 0.3, y);
-                    this.dynamicGroup.add(mesh);
+                    color = 0xffffff;
+                    geo = new THREE.OctahedronGeometry(0.2);
                 }
-                // Trap logic: traps might be invisible or visible
-                else if (visual.type === 'TRAP') {
-                     // Maybe invisible? Or a spike?
+
+                if (visual.type !== 'TRAP') {
+                    const mat = new THREE.MeshPhongMaterial({ color: color });
+                    modifyMaterialWithFog(mat);
+
+                    const mesh = new THREE.Mesh(geo, mat);
+                    mesh.position.set(x, 0.3, y);
+                    mesh.userData.isFogObject = true; // Mark for uniform updates
+                    this.dynamicGroup.add(mesh);
                 }
             }
         }
@@ -394,6 +464,10 @@ export class ExploreSystem {
         if (tile !== 1) { // Not a wall
             // Update Logical Position
             window.$gameMap._playerPos = { x: newX, y: newY };
+
+            // Update Visibility
+            window.$gameMap.updateVisibility(newX, newY, this.fogRadius);
+            this.updateFogTexture();
 
             // Trigger Animation
             this.moveLerpStart.copy(this.playerMesh.position);
@@ -460,15 +534,46 @@ export class ExploreSystem {
 
         if (!this.scene || !this.camera) return;
 
-        // Update Shader Uniforms
-        if (this.playerMesh) {
-            const p = this.playerMesh.position;
-            // Update materials if they are loaded
-            if (this.matFloor && this.matFloor.userData.shader) {
-                this.matFloor.userData.shader.uniforms.uPlayerPos.value.copy(p);
+        // Helper to update uniforms on a material/object
+        const updateUniforms = (obj) => {
+            if (obj && obj.material && obj.material.userData.shader && this.fogTexture) {
+                const s = obj.material.userData.shader;
+                s.uniforms.uFogMap.value = this.fogTexture;
+                // Assuming map size hasn't changed without rebuildLevel
+                if (window.$gameMap) {
+                     s.uniforms.uMapSize.value.set(window.$gameMap.width, window.$gameMap.height);
+                }
             }
-            if (this.matWall && this.matWall.userData.shader) {
-                this.matWall.userData.shader.uniforms.uPlayerPos.value.copy(p);
+        };
+
+        // Update Shader Uniforms for Dynamic Objects
+        // We traverse dynamic group
+        this.dynamicGroup.traverse((child) => {
+            if (child.userData.isFogObject) {
+                updateUniforms(child);
+            }
+        });
+
+        // Also Stairs in mapGroup have isFogObject
+        this.mapGroup.traverse((child) => {
+            if (child.userData.isFogObject) {
+                updateUniforms(child);
+            }
+        });
+
+        // Update Static Floor/Wall Materials (InstancedMesh)
+        // These are not traversed by dynamicGroup or mapGroup traversal above.
+        // We must ensure their uniforms are set once the shader compiles.
+        if (this.matFloor && this.matFloor.userData.shader && this.fogTexture) {
+            this.matFloor.userData.shader.uniforms.uFogMap.value = this.fogTexture;
+            if (window.$gameMap) {
+                this.matFloor.userData.shader.uniforms.uMapSize.value.set(window.$gameMap.width, window.$gameMap.height);
+            }
+        }
+        if (this.matWall && this.matWall.userData.shader && this.fogTexture) {
+            this.matWall.userData.shader.uniforms.uFogMap.value = this.fogTexture;
+            if (window.$gameMap) {
+                this.matWall.userData.shader.uniforms.uMapSize.value.set(window.$gameMap.width, window.$gameMap.height);
             }
         }
 
