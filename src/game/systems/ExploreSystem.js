@@ -65,9 +65,9 @@ class ParticleSystem {
 /**
  * Modifies a material to support the Fog of War effect using a texture lookup.
  * @param {THREE.Material} material
- * @param {Object} context - Context containing `fogTexture` and map dimensions.
+ * @param {boolean} [displace=false] - Whether to apply vertical vertex displacement based on fog.
  */
-function modifyMaterialWithFog(material) {
+function modifyMaterialWithFog(material, displace = false) {
     material.transparent = true;
 
     material.onBeforeCompile = (shader) => {
@@ -81,6 +81,7 @@ function modifyMaterialWithFog(material) {
         shader.vertexShader = `
             varying vec2 vFogUV;
             uniform vec2 uMapSize;
+            ${displace ? 'uniform sampler2D uFogMap;' : ''}
         ` + shader.vertexShader;
 
         shader.vertexShader = shader.vertexShader.replace(
@@ -101,6 +102,13 @@ function modifyMaterialWithFog(material) {
                 (worldPos.x + 0.5) / uMapSize.x,
                 1.0 - (worldPos.z + 0.5) / uMapSize.y
             );
+
+            ${displace ? `
+            // Sample fog texture in vertex shader
+            float fogValVS = texture2D(uFogMap, vFogUV).r;
+            // Apply vertical displacement: Drop down if hidden
+            worldPos.y -= (1.0 - fogValVS) * 3.0;
+            ` : ''}
 
             vec4 mvPosition = viewMatrix * worldPos;
             gl_Position = projectionMatrix * mvPosition;
@@ -158,7 +166,7 @@ export class ExploreSystem {
         this.matWall = null;
 
         this.fogTexture = null;
-        this.fogRadius = 6;
+        this.fogRadius = 4;
 
         /** @type {Game_Interpreter} */
         this.interpreter = new Game_Interpreter();
@@ -207,10 +215,10 @@ export class ExploreSystem {
 
         // Initialize Materials with Fog Shader
         this.matFloor = new THREE.MeshLambertMaterial({ color: 0x333333 });
-        modifyMaterialWithFog(this.matFloor);
+        modifyMaterialWithFog(this.matFloor, false);
 
         this.matWall = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
-        modifyMaterialWithFog(this.matWall);
+        modifyMaterialWithFog(this.matWall, true);
 
         this.initialized = true;
         this.rebuildLevel();
