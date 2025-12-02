@@ -2,6 +2,7 @@ import { Window_Selectable } from '../windows.js';
 import { renderCreaturePanel } from './common.js';
 import { GridLayout } from '../layout/GridLayout.js';
 import { Component } from '../layout/Component.js';
+import { PopupManager } from '../PopupManager.js';
 
 // Custom component for a party slot
 class PartySlotComponent extends Component {
@@ -144,5 +145,35 @@ export class Window_Party extends Window_Selectable {
                 window.Game.Windows.CreatureModal.show();
             }
         }
+    }
+
+    /**
+     * Shows a floating HP/Damage popup for a unit.
+     * @param {Object} unit - The unit that changed HP.
+     * @param {number} diff - The amount changed (positive = heal, negative = damage).
+     */
+    onUnitHpChange(unit, diff) {
+        // Find the slot index
+        const index = window.$gameParty.activeSlots.indexOf(unit);
+        if (index === -1) return;
+
+        // Find the DOM element
+        const component = this.layout.components[index];
+        if (!component || !component.element) return;
+
+        // Calculate screen position of the slot
+        const rect = component.element.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+
+        // Spawn physics popup
+        // Note: diff needs to be the text value.
+        // The manager handles colors based on value if no color provided.
+        // Or we can pass color.
+
+        let displayVal = diff;
+        if (diff > 0) displayVal = `+${diff}`;
+
+        PopupManager.spawn(centerX, centerY, displayVal, false);
     }
 }
