@@ -84,6 +84,17 @@ function modifyMaterialWithFog(material, displace = false) {
             ${displace ? 'uniform sampler2D uFogMap;' : ''}
         ` + shader.vertexShader;
 
+        // Inject helper function in a safer location
+        shader.vertexShader = shader.vertexShader.replace(
+            '#include <common>',
+            `
+            #include <common>
+            float getFogNoise(vec2 co){
+                return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+            }
+            `
+        );
+
         shader.vertexShader = shader.vertexShader.replace(
             '#include <project_vertex>',
             `
@@ -106,8 +117,13 @@ function modifyMaterialWithFog(material, displace = false) {
             ${displace ? `
             // Sample fog texture in vertex shader
             float fogValVS = texture2D(uFogMap, vFogUV).r;
-            // Apply vertical displacement: Drop down if hidden
-            worldPos.y -= (1.0 - fogValVS) * 3.0;
+
+            // Random Vertex Warp
+            float r = getFogNoise(worldPos.xz);
+            float distortion = (r - 0.5) * 2.0; // -1 to 1
+
+            // Apply displacement: random warp scaled by invisibility
+            worldPos.y += distortion * (1.0 - fogValVS) * 5.0;
             ` : ''}
 
             vec4 mvPosition = viewMatrix * worldPos;
