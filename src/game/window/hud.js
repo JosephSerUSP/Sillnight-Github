@@ -1,4 +1,6 @@
 import { Window_Base } from '../windows.js';
+import { FlexLayout } from '../layout/FlexLayout.js';
+import { TextComponent } from '../layout/components.js';
 
 /**
  * Heads-Up Display window.
@@ -9,45 +11,42 @@ export class Window_HUD extends Window_Base {
         super('hud');
     }
 
-    /**
-     * Initializes the HUD window.
-     */
-    initialize() {
-        super.initialize();
-        this._floorEl = document.getElementById('hud-floor');
-        this._goldEl = document.getElementById('hud-gold');
-
-        if (!this._floorEl || !this._goldEl) {
-             this.createLayout();
-        }
-    }
-
-    createLayout() {
+    defineLayout() {
+        // Clear any existing content in the root element (important if attaching to existing DOM)
         this.clear();
-        this.root.className = 'absolute top-0 left-0 w-full flex justify-between p-2 text-yellow-500 font-mono text-lg pointer-events-none z-10';
-        // Wait, text-lg is 1.125rem (18px).
-        // This overrides window base style.
-        // HUD is top level, maybe it SHOULD be larger?
-        // But the user said "all current windows should be impacted".
-        // I should remove text-lg? Or reduce it?
-        // Let's remove text-lg and see.
-        this.root.classList.remove('text-lg');
 
-        const left = this.createEl('div', 'flex gap-4');
-        const floorContainer = this.createEl('div', '', left);
-        floorContainer.innerHTML = 'FLOOR <span id="hud-floor" class="text-white">1</span>';
-        this._floorEl = floorContainer.querySelector('#hud-floor');
+        // Use FlexLayout for the main container
+        // justify: 'space-between' puts floor on left, gold on right
+        this.layout = new FlexLayout(this.root, {
+            direction: 'row',
+            justify: 'space-between',
+            align: 'center',
+            gap: '1rem'
+        });
 
-        const right = this.createEl('div');
-        right.innerHTML = 'GOLD <span id="hud-gold" class="text-white">0</span>';
-        this._goldEl = right.querySelector('#hud-gold');
+        // Ensure root styles for HUD positioning
+        this.root.className = 'absolute top-0 left-0 w-full p-2 text-yellow-500 font-mono text-lg pointer-events-none z-10';
+
+        // Floor Display (Left)
+        this._floorText = new TextComponent('FLOOR 1');
+        this._floorText.setHtml('FLOOR <span class="text-white">1</span>');
+
+        // Gold Display (Right)
+        this._goldText = new TextComponent('GOLD 0');
+        this._goldText.setHtml('GOLD <span class="text-white">0</span>');
+
+        this.layout.add(this._floorText);
+        this.layout.add(this._goldText);
     }
 
     /**
      * Updates the HUD with current game state values.
      */
     refresh() {
-        if (this._floorEl) this._floorEl.innerText = window.$gameMap ? window.$gameMap.floor : 1;
-        if (this._goldEl) this._goldEl.innerText = window.$gameParty ? window.$gameParty.gold : 0;
+        const floor = window.$gameMap ? window.$gameMap.floor : 1;
+        const gold = window.$gameParty ? window.$gameParty.gold : 0;
+
+        if (this._floorText) this._floorText.setHtml(`FLOOR <span class="text-white">${floor}</span>`);
+        if (this._goldText) this._goldText.setHtml(`GOLD <span class="text-white">${gold}</span>`);
     }
 }
