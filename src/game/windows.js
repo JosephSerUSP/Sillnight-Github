@@ -26,6 +26,7 @@ export class Window_Base {
         }
 
         this._handlers = {};
+        this.layout = null; // Phase 1: Layout Manager integration
         this.initialize();
     }
 
@@ -34,6 +35,15 @@ export class Window_Base {
             this.root.style.fontSize = `${this.standardFontSize()}px`;
             this.root.style.lineHeight = `${this.lineHeight()}px`;
         }
+        this.defineLayout(); // Phase 1: Initialize layout if defined
+    }
+
+    /**
+     * Define the layout strategy for this window.
+     * Override this in subclasses to use LayoutManager.
+     */
+    defineLayout() {
+        // Example: this.layout = new FlexLayout(this.root, { direction: 'column' });
     }
 
     /**
