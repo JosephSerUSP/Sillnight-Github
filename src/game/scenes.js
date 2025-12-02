@@ -48,6 +48,7 @@ export class Scene_Explore extends Scene_Base {
     onEnter() {
         window.Game.ui.mode = 'EXPLORE';
         this.switchScene(false);
+        this.systems.Explore.animate();
     }
 
     /**
