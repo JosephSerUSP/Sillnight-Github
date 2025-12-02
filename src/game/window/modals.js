@@ -2,6 +2,10 @@ import { Data } from '../../assets/data/data.js';
 import { Window_Selectable } from '../windows.js';
 import { renderCreaturePanel, spriteMarkup } from './common.js';
 import { Log } from '../log.js';
+import { FlexLayout } from '../layout/FlexLayout.js';
+import { GridLayout } from '../layout/GridLayout.js';
+import { Component } from '../layout/Component.js';
+import { TextComponent, ButtonComponent } from '../layout/components.js';
 
 /**
  * Window for displaying creature details and managing equipment.
@@ -31,7 +35,124 @@ export class Window_CreatureModal extends Window_Selectable {
         this._unit = null;
         this.createLayout();
 
-        // Event Delegation for Equip Slot
+        // Event Delegation for Equip Slot (if still needed, though I'll attach handler directly)
+    }
+
+    createLayout() {
+        // Clear root
+        this.root.innerHTML = '';
+
+        // Main Window Frame
+        const winComponent = new Component('div', 'rpg-window w-4/5 h-4/5 bg-[#111] relative overflow-hidden');
+        this.root.appendChild(winComponent.element);
+
+        // Main Layout (Vertical Flex)
+        this.mainLayout = new FlexLayout(winComponent.element, { direction: 'column' });
+
+        // Header
+        this.createHeader(this.mainLayout);
+
+        // Content Container (Horizontal Flex)
+        const contentContainer = new Component('div', 'flex-grow relative'); // Wrapper for the row layout
+        this.mainLayout.add(contentContainer, { grow: 1 });
+
+        const contentLayout = new FlexLayout(contentContainer.element, { direction: 'row', gap: 16 });
+        contentLayout.container.classList.add('p-4', 'h-full'); // Add padding and height
+
+        // Structure
+        this.createLeftColumn(contentLayout);
+        this.createRightColumn(contentLayout);
+    }
+
+    createHeader(parentLayout) {
+        const headerContainer = new Component('div', 'rpg-header');
+        parentLayout.add(headerContainer, { shrink: 0 }); // Don't shrink header
+
+        const headerLayout = new FlexLayout(headerContainer.element, {
+            direction: 'row',
+            justify: 'space-between',
+            align: 'center'
+        });
+
+        const title = new TextComponent('CREATURE STATUS', 'tracking-widest');
+        headerLayout.add(title);
+
+        const closeBtn = new ButtonComponent('X', () => this.hide(), 'text-red-500 font-bold px-2 border-none hover:bg-transparent hover:text-red-400');
+        headerLayout.add(closeBtn);
+    }
+
+    createLeftColumn(parentLayout) {
+        const leftCol = new Component('div', 'border-r border-gray-800 pr-4');
+        parentLayout.add(leftCol, { width: '40%', shrink: 0 });
+
+        const leftLayout = new FlexLayout(leftCol.element, { direction: 'column', gap: 12 });
+
+        // Sprite Box
+        const spriteBox = new Component('div', 'w-full aspect-square border-2 border-dashed border-gray-700 flex items-center justify-center text-7xl bg-black/60 shadow-inner status-sprite-frame');
+        leftLayout.add(spriteBox);
+        this._ui.sprite = document.createElement('span');
+        this._ui.sprite.className = 'status-sprite';
+        spriteBox.element.appendChild(this._ui.sprite);
+
+        // Info Box
+        const infoBox = new Component('div', 'text-center w-full space-y-1');
+        leftLayout.add(infoBox);
+
+        this._ui.name = document.createElement('h2');
+        this._ui.name.className = 'text-2xl text-yellow-400 tracking-widest';
+        infoBox.element.appendChild(this._ui.name);
+
+        const lvlDiv = document.createElement('div');
+        lvlDiv.className = 'text-[10px] text-gray-400';
+        lvlDiv.innerText = 'Lv. ';
+        this._ui.lvl = document.createElement('span');
+        lvlDiv.appendChild(this._ui.lvl);
+        infoBox.element.appendChild(lvlDiv);
+
+        this._ui.temperament = document.createElement('div');
+        this._ui.temperament.className = 'text-[10px] text-gray-500';
+        infoBox.element.appendChild(this._ui.temperament);
+    }
+
+    createRightColumn(parentLayout) {
+        const rightCol = new Component('div', 'relative');
+        parentLayout.add(rightCol, { width: '60%', grow: 1 });
+
+        const rightLayout = new FlexLayout(rightCol.element, { direction: 'column', gap: 12 });
+
+        this.createStatsGrid(rightLayout);
+        this.createDetailsGrid(rightLayout);
+        this.createActionsList(rightLayout);
+        this.createEquipmentLibrary(rightLayout);
+    }
+
+    createStatsGrid(parentLayout) {
+        const gridContainer = new Component('div');
+        parentLayout.add(gridContainer);
+
+        const grid = new GridLayout(gridContainer.element, { columns: 'repeat(3, 1fr)', gap: 12 });
+
+        // HP
+        const hpBox = this.createStatBox('HP');
+        grid.add(hpBox);
+        this._ui.hp = document.createElement('div');
+        this._ui.hp.className = 'text-green-400 text-lg';
+        hpBox.element.appendChild(this._ui.hp);
+
+        // XP
+        const xpBox = this.createStatBox('XP');
+        grid.add(xpBox);
+        this._ui.xp = document.createElement('div');
+        this._ui.xp.className = 'text-blue-400 text-lg';
+        xpBox.element.appendChild(this._ui.xp);
+
+        // Equipment Slot
+        const equipBox = this.createStatBox('EQUIPMENT');
+        grid.add(equipBox);
+
+        this._ui.equipSlot = document.createElement('button');
+        this._ui.equipSlot.className = 'mt-1 w-full text-left flex items-center justify-between px-2 py-1 border border-gray-600 bg-gray-900 hover:border-yellow-400 hover:text-yellow-200 transition-colors';
+        equipBox.element.appendChild(this._ui.equipSlot);
         this._ui.equipSlot.addEventListener('click', () => {
              if (this._unit && this._unit.equipmentId) {
                  this.unequipUnit(this._unit);
@@ -41,124 +162,96 @@ export class Window_CreatureModal extends Window_Selectable {
         });
     }
 
-    createLayout() {
-        // Clear root
-        this.root.innerHTML = '';
-
-        // Main Window Frame
-        const win = this.createEl('div', 'rpg-window w-4/5 h-4/5 flex flex-col bg-[#111] relative overflow-hidden', this.root);
-
-        // Header
-        const header = this.createEl('div', 'rpg-header flex justify-between items-center', win);
-        this.createEl('span', 'tracking-widest', header).innerText = 'CREATURE STATUS';
-        const closeBtn = this.createEl('button', 'text-red-500 font-bold px-2', header);
-        closeBtn.innerText = 'X';
-        closeBtn.onclick = () => {
-            this.hide();
-        };
-
-        // Content Container
-        const content = this.createEl('div', 'flex flex-row h-full p-4 gap-4 relative', win);
-
-        // Structure
-        const leftCol = this.createEl('div', 'w-2/5 flex flex-col gap-3 border-r border-gray-800 pr-4', content);
-        this.createLeftColumn(leftCol);
-
-        const rightCol = this.createEl('div', 'w-3/5 flex flex-col gap-3 relative', content);
-        this.createRightColumn(rightCol);
+    createStatBox(label) {
+        const box = new Component('div', 'rpg-window bg-black/70 px-3 py-2 border border-gray-700');
+        const labelEl = document.createElement('div');
+        labelEl.className = 'text-[10px] text-gray-500';
+        labelEl.innerText = label;
+        box.element.appendChild(labelEl);
+        return box;
     }
 
-    createLeftColumn(parent) {
-        // Sprite Box
-        const spriteBox = this.createEl('div', 'w-full aspect-square border-2 border-dashed border-gray-700 flex items-center justify-center text-7xl bg-black/60 shadow-inner status-sprite-frame', parent);
-        this._ui.sprite = this.createEl('span', 'status-sprite', spriteBox);
+    createDetailsGrid(parentLayout) {
+        const gridContainer = new Component('div');
+        parentLayout.add(gridContainer);
 
-        // Info Box
-        const infoBox = this.createEl('div', 'text-center w-full space-y-1', parent);
-        this._ui.name = this.createEl('h2', 'text-2xl text-yellow-400 tracking-widest', infoBox);
-
-        const lvlDiv = this.createEl('div', 'text-[10px] text-gray-400', infoBox);
-        lvlDiv.innerText = 'Lv. ';
-        this._ui.lvl = this.createEl('span', '', lvlDiv);
-
-        this._ui.temperament = this.createEl('div', 'text-[10px] text-gray-500', infoBox);
-    }
-
-    createRightColumn(parent) {
-        this.createStatsGrid(parent);
-        this.createDetailsGrid(parent);
-        this.createActionsList(parent);
-        this.createEquipmentLibrary(parent);
-    }
-
-    createStatsGrid(parent) {
-        const statsGrid = this.createEl('div', 'grid grid-cols-3 gap-3 text-base', parent);
-
-        // HP
-        const hpBox = this.createEl('div', 'rpg-window bg-black/70 px-3 py-2 border border-gray-700', statsGrid);
-        this.createEl('div', 'text-[10px] text-gray-500', hpBox).innerText = 'HP';
-        this._ui.hp = this.createEl('div', 'text-green-400 text-lg', hpBox);
-
-        // XP
-        const xpBox = this.createEl('div', 'rpg-window bg-black/70 px-3 py-2 border border-gray-700', statsGrid);
-        this.createEl('div', 'text-[10px] text-gray-500', xpBox).innerText = 'XP';
-        this._ui.xp = this.createEl('div', 'text-blue-400 text-lg', xpBox);
-
-        // Equipment Slot
-        const equipBox = this.createEl('div', 'rpg-window bg-black/70 px-3 py-2 border border-gray-700', statsGrid);
-        this.createEl('div', 'text-[10px] text-gray-500', equipBox).innerText = 'EQUIPMENT';
-        this._ui.equipSlot = this.createEl('button', 'mt-1 w-full text-left flex items-center justify-between px-2 py-1 border border-gray-600 bg-gray-900 hover:border-yellow-400 hover:text-yellow-200 transition-colors', equipBox);
-    }
-
-    createDetailsGrid(parent) {
-        const detailsGrid = this.createEl('div', 'grid grid-cols-3 gap-3 text-[10px]', parent);
+        const grid = new GridLayout(gridContainer.element, { columns: 'repeat(3, 1fr)', gap: 12 });
 
         // Race
-        const raceBox = this.createEl('div', 'rpg-window bg-black/70 px-3 py-2 border border-gray-700', detailsGrid);
-        this.createEl('div', 'text-[10px] text-gray-500', raceBox).innerText = 'RACE';
-        this._ui.race = this.createEl('div', 'text-yellow-200 text-sm', raceBox);
+        const raceBox = this.createStatBox('RACE');
+        grid.add(raceBox);
+        this._ui.race = document.createElement('div');
+        this._ui.race.className = 'text-yellow-200 text-sm';
+        raceBox.element.appendChild(this._ui.race);
 
         // Elements
-        const elemBox = this.createEl('div', 'rpg-window bg-black/70 px-3 py-2 border border-gray-700', detailsGrid);
-        const elemHeader = this.createEl('div', 'flex items-center justify-between text-[10px] text-gray-500', elemBox);
-        this.createEl('span', '', elemHeader).innerText = 'ELEMENTS';
-        this.createEl('span', 'text-[8px] text-gray-600', elemHeader).innerText = 'future feature';
-        this._ui.elements = this.createEl('div', 'text-sm', elemBox);
+        const elemBox = new Component('div', 'rpg-window bg-black/70 px-3 py-2 border border-gray-700');
+        grid.add(elemBox);
+        const elemHeader = document.createElement('div');
+        elemHeader.className = 'flex items-center justify-between text-[10px] text-gray-500';
+        elemHeader.innerHTML = '<span>ELEMENTS</span><span class="text-[8px] text-gray-600">future feature</span>';
+        elemBox.element.appendChild(elemHeader);
+        this._ui.elements = document.createElement('div');
+        this._ui.elements.className = 'text-sm';
+        elemBox.element.appendChild(this._ui.elements);
 
         // Passive
-        const passBox = this.createEl('div', 'rpg-window bg-black/70 px-3 py-2 border border-gray-700', detailsGrid);
-        const passHeader = this.createEl('div', 'flex items-center justify-between text-[10px] text-gray-500', passBox);
-        this.createEl('span', '', passHeader).innerText = 'PASSIVE';
-        this.createEl('span', 'text-[8px] text-gray-600', passHeader).innerText = 'coming soon';
-        this._ui.passive = this.createEl('div', 'text-gray-300 text-[10px] leading-tight', passBox);
+        const passBox = new Component('div', 'rpg-window bg-black/70 px-3 py-2 border border-gray-700');
+        grid.add(passBox);
+        const passHeader = document.createElement('div');
+        passHeader.className = 'flex items-center justify-between text-[10px] text-gray-500';
+        passHeader.innerHTML = '<span>PASSIVE</span><span class="text-[8px] text-gray-600">coming soon</span>';
+        passBox.element.appendChild(passHeader);
+        this._ui.passive = document.createElement('div');
+        this._ui.passive.className = 'text-gray-300 text-[10px] leading-tight';
+        passBox.element.appendChild(this._ui.passive);
     }
 
-    createActionsList(parent) {
-        const actionsContainer = this.createEl('div', '', parent);
-        const actionsHeader = this.createEl('div', 'flex justify-between items-center border-b border-gray-700 pb-1 mb-2', actionsContainer);
-        this.createEl('h3', 'text-gray-300 tracking-wide', actionsHeader).innerText = 'ACTIONS';
-        this.createEl('span', 'text-[10px] text-gray-500', actionsHeader).innerText = 'Known skills';
-        this._ui.actions = this.createEl('div', 'grid grid-cols-2 gap-2 text-[10px]', actionsContainer);
+    createActionsList(parentLayout) {
+        const actionsContainer = new Component('div');
+        parentLayout.add(actionsContainer);
+
+        const actionsHeader = document.createElement('div');
+        actionsHeader.className = 'flex justify-between items-center border-b border-gray-700 pb-1 mb-2';
+        actionsHeader.innerHTML = '<h3 class="text-gray-300 tracking-wide">ACTIONS</h3><span class="text-[10px] text-gray-500">Known skills</span>';
+        actionsContainer.element.appendChild(actionsHeader);
+
+        this._ui.actions = document.createElement('div');
+        this._ui.actions.className = 'grid grid-cols-2 gap-2 text-[10px]';
+        actionsContainer.element.appendChild(this._ui.actions);
 
         // Lore
-        const loreBox = this.createEl('div', 'rpg-window bg-black/70 px-3 py-2 text-[10px] text-left border border-gray-700', parent);
-        this.createEl('div', 'text-gray-400 text-[8px] mb-1', loreBox).innerText = 'LORE';
-        this._ui.desc = this.createEl('div', 'leading-tight text-gray-300', loreBox);
+        const loreBox = new Component('div', 'rpg-window bg-black/70 px-3 py-2 text-[10px] text-left border border-gray-700');
+        parentLayout.add(loreBox);
+        loreBox.element.innerHTML = '<div class="text-gray-400 text-[8px] mb-1">LORE</div>';
+        this._ui.desc = document.createElement('div');
+        this._ui.desc.className = 'leading-tight text-gray-300';
+        loreBox.element.appendChild(this._ui.desc);
     }
 
-    createEquipmentLibrary(parent) {
-        const libBox = this.createEl('div', 'flex-grow rpg-window bg-black/70 border border-gray-700 p-3 flex flex-col gap-2 overflow-hidden', parent);
-        const libHeader = this.createEl('div', 'flex justify-between items-center', libBox);
-        this.createEl('h3', 'text-gray-300 tracking-wide', libHeader).innerText = 'EQUIPMENT LIBRARY';
+    createEquipmentLibrary(parentLayout) {
+        const libBox = new Component('div', 'flex-grow rpg-window bg-black/70 border border-gray-700 p-3 flex flex-col gap-2 overflow-hidden');
+        parentLayout.add(libBox, { grow: 1 });
 
-        this._ui.closePicker = this.createEl('button', 'hidden text-[10px] text-gray-400 hover:text-white', libHeader);
+        const libHeader = document.createElement('div');
+        libHeader.className = 'flex justify-between items-center';
+        libHeader.innerHTML = '<h3 class="text-gray-300 tracking-wide">EQUIPMENT LIBRARY</h3>';
+        libBox.element.appendChild(libHeader);
+
+        this._ui.closePicker = document.createElement('button');
+        this._ui.closePicker.className = 'hidden text-[10px] text-gray-400 hover:text-white';
         this._ui.closePicker.innerText = 'Close Picker';
         this._ui.closePicker.onclick = () => this.endEquipFlow();
+        libHeader.appendChild(this._ui.closePicker);
 
-        this._ui.equipHint = this.createEl('div', 'text-[10px] text-gray-500', libBox);
+        this._ui.equipHint = document.createElement('div');
+        this._ui.equipHint.className = 'text-[10px] text-gray-500';
         this._ui.equipHint.innerText = 'Tap the equipment slot above to browse what this creature can wear.';
+        libBox.element.appendChild(this._ui.equipHint);
 
-        this._ui.equipOptions = this.createEl('div', 'grid grid-cols-2 gap-2 overflow-y-auto pr-1 hidden', libBox);
+        this._ui.equipOptions = document.createElement('div');
+        this._ui.equipOptions.className = 'grid grid-cols-2 gap-2 overflow-y-auto pr-1 hidden';
+        libBox.element.appendChild(this._ui.equipOptions);
     }
 
     /**
