@@ -33,6 +33,9 @@ export const Systems = {
          * @returns {Object} The converted position.
          */
         convertToEffekseerPosition(position = { x: 0, y: 0, z: 0 }) {
+            if (window.Game && window.Game.ui && window.Game.ui.mode === 'EXPLORE') {
+                return { x: position.x, y: position.y, z: position.z };
+            }
             const vec = new THREE.Vector3(position.x, position.y, position.z);
             vec.applyMatrix4(this.zToYUpMatrix);
             return { x: vec.x, y: vec.y, z: vec.z };
@@ -140,10 +143,15 @@ export const Systems = {
          */
         update(camera) {
             if (!this.context || !camera) return;
-            const viewMatrix = new THREE.Matrix4().multiplyMatrices(
-                camera.matrixWorldInverse,
-                this.yToZUpMatrix
-            );
+            let viewMatrix;
+            if (window.Game && window.Game.ui && window.Game.ui.mode === 'EXPLORE') {
+                viewMatrix = camera.matrixWorldInverse;
+            } else {
+                viewMatrix = new THREE.Matrix4().multiplyMatrices(
+                    camera.matrixWorldInverse,
+                    this.yToZUpMatrix
+                );
+            }
             this.context.setProjectionMatrix(camera.projectionMatrix.elements);
             this.context.setCameraMatrix(viewMatrix.elements);
             this.context.update();
