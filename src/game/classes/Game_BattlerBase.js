@@ -30,8 +30,14 @@ export class Game_BattlerBase {
     get hp() { return this._hp; }
     /** @param {number} value - New HP value. Triggers refresh. */
     set hp(value) {
+        const diff = value - this._hp;
         this._hp = value;
         this.refresh();
+        if (diff !== 0 && window.Game && window.Game.ui && window.Game.ui.mode === 'EXPLORE') {
+            if (window.Game.Windows && window.Game.Windows.Party) {
+                window.Game.Windows.Party.onUnitHpChange(this, diff);
+            }
+        }
     }
 
     /**
