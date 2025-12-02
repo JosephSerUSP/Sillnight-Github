@@ -292,10 +292,15 @@ export const Systems = {
             const container = document.createElement('div');
             container.className = 'space-y-2';
 
+            const spriteMarkup = (def, classes = '') => {
+                const path = resolveAssetPath(def.spriteAsset) || '';
+                return path ? `<img src="${path}" class="${classes}" alt="${def.name}">` : `<div class="${classes} flex items-center justify-center bg-gray-800 text-white text-xs">${def.sprite}</div>`;
+            };
+
             offers.forEach(def => {
                 const row = document.createElement('div');
                 row.className = 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700';
-                row.innerHTML = `<div class="flex items-center gap-2">${window.Game.Windows.Party.spriteMarkup(def, 'h-10 w-10 object-contain')}<div><div class="text-yellow-100">${def.name}</div><div class="text-xs text-gray-500">HP ${def.baseHp}</div></div></div>`;
+                row.innerHTML = `<div class="flex items-center gap-2">${spriteMarkup(def, 'h-10 w-10 object-contain')}<div><div class="text-yellow-100">${def.name}</div><div class="text-xs text-gray-500">HP ${def.baseHp}</div></div></div>`;
                 const btn = document.createElement('button');
                 btn.className = 'text-xs border border-gray-600 px-2 py-1 hover:bg-white hover:text-black';
                 btn.innerText = 'RECRUIT';
