@@ -23,7 +23,8 @@ export class DamagePopupManager {
                 el = document.createElement('div');
                 el.id = 'damage-popup-overlay';
                 el.className = 'absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden z-50';
-                document.body.appendChild(el);
+                const parent = document.getElementById('game-container') || document.body;
+                parent.appendChild(el);
             }
             this.container = el;
         }
@@ -40,7 +41,8 @@ export class DamagePopupManager {
      */
     spawn(x, y, value, isCrit = false, color = null) {
         if (value === 0 || value === '0') return;
-        const str = value.toString();
+        const valNum = parseInt(value);
+        const str = Math.abs(valNum).toString();
         const spacing = 18; // px spacing for digits
         const totalWidth = (str.length - 1) * spacing;
         const startX = x - (totalWidth / 2);
@@ -60,21 +62,16 @@ export class DamagePopupManager {
             if (color) {
                 el.style.color = color;
             } else {
-                // Check if it starts with '+' or '-' to determine color for the whole string?
-                // Or just use the passed value.
-                // If value is "+5", parseInt("+5") is 5 -> green.
-                // If value is "-10", parseInt("-10") is -10 -> red.
-                const valNum = parseInt(value);
-                if (valNum > 0) el.style.color = '#4ade80'; // Green
-                else if (valNum < 0) el.style.color = '#ef4444'; // Red
+                if (valNum > 0) el.style.color = '#4ade80'; // Green (Healing)
+                else if (valNum < 0) el.style.color = '#ffffff'; // White (Damage)
                 else el.style.color = '#ffffff';
             }
 
             if (isCrit) {
-                el.style.fontSize = '32px';
+                el.style.fontSize = '40px';
                 el.style.color = '#fbbf24'; // Amber
             } else {
-                el.style.fontSize = '24px';
+                el.style.fontSize = '32px';
             }
             el.style.textShadow = '2px 2px 0 #000';
 

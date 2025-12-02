@@ -481,6 +481,9 @@ export class ExploreSystem {
         const renderer = window.Game.RenderManager.getRenderer();
         if (renderer && window.Game.ui.mode === 'EXPLORE') {
             renderer.render(this.scene, this.camera);
+            if (window.Game.Systems && window.Game.Systems.Effekseer) {
+                window.Game.Systems.Effekseer.update(this.camera);
+            }
         }
     }
 
