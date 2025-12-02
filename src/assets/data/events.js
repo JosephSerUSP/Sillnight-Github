@@ -8,8 +8,8 @@ export const Events = {
             // Pools of items that can appear in the shop.
             // In the future, we could have different pools for different floors.
             pools: {
-                items: ['potion', 'antidote', 'phoenixdown'],
-                equipment: ['sword', 'shield', 'helmet', 'armor']
+                items: ['potionSmall', 'lifeIncense', 'reviveLeaf'],
+                equipment: ['hpBoost1', 'hpBoost2', 'rabbitsFoot', 'charmMagic', 'buckler', 'leatherCap']
             }
         }
     },
