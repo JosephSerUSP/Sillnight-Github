@@ -120,9 +120,22 @@ export class Game_Interpreter {
         const id = params.id;
         const amount = params.amount || 1;
         if (window.$gameParty) {
-            window.$gameParty.gainItem(id, amount);
-            if (window.Game.Windows.Party) window.Game.Windows.Party.refresh();
-            Log.loot(`Received ${amount}x ${id}.`); // Ideally fetch item name
+            import('../../assets/data/data.js').then(({ Data }) => {
+                const item = Data.items[id] || Data.equipment[id];
+                window.$gameParty.gainItem(id, amount);
+                if (window.Game.Windows.Party) window.Game.Windows.Party.refresh();
+
+                if (item) {
+                     Log.loot(`Found ${item.name}!`);
+                } else {
+                     Log.loot(`Received ${amount}x ${id}.`);
+                }
+
+                if (window.$gameMap && window.$gameMap.playerPos && window.Game.Systems.Effekseer) {
+                    const pos = { x: window.$gameMap.playerPos.x, y: 0.5, z: window.$gameMap.playerPos.y };
+                    window.Game.Systems.Effekseer.play('MAP_Find', pos);
+                }
+            });
         }
     }
 
@@ -135,6 +148,11 @@ export class Game_Interpreter {
         if (window.$gameParty) {
             window.$gameParty.gainGold(amount);
             Log.loot(`Found ${amount} Gold!`);
+
+            if (window.$gameMap && window.$gameMap.playerPos && window.Game.Systems.Effekseer) {
+                const pos = { x: window.$gameMap.playerPos.x, y: 0.5, z: window.$gameMap.playerPos.y };
+                window.Game.Systems.Effekseer.play('MAP_Find', pos);
+            }
         }
     }
 
