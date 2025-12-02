@@ -62,6 +62,92 @@ class ParticleSystem {
     }
 }
 
+function createFogMaterial(color = 0x333333) {
+    const baseMat = new THREE.MeshLambertMaterial({ color: color, transparent: true, opacity: 1.0 });
+
+    baseMat.onBeforeCompile = (shader) => {
+        shader.uniforms.uPlayerPos = { value: new THREE.Vector3() };
+        shader.uniforms.uFogRadius = { value: 6.0 };
+        shader.uniforms.uMaxOffset = { value: 5.0 };
+
+        shader.vertexShader = `
+            varying float vVisibility;
+            uniform vec3 uPlayerPos;
+            uniform float uFogRadius;
+            uniform float uMaxOffset;
+
+            float random(vec2 st) {
+                return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+            }
+        ` + shader.vertexShader;
+
+        shader.vertexShader = shader.vertexShader.replace(
+            '#include <project_vertex>',
+            `
+            // Calculate World Position from InstanceMatrix
+            vec4 worldPos = instanceMatrix * vec4(transformed, 1.0);
+            float dist = distance(worldPos.xz, uPlayerPos.xz);
+
+            float fadeWidth = 4.0;
+            float vis = 1.0 - smoothstep(uFogRadius, uFogRadius + fadeWidth, dist);
+            vVisibility = vis;
+
+            // Random offset based on tile position (using worldPos.xz)
+            // Ideally use integer coordinates for stability
+            vec2 tilePos = floor(worldPos.xz + 0.5);
+            float rnd = random(tilePos);
+
+            // Offset falling from above or below
+            // Let's make it fall from above (-Y is down)
+            // "Initial Z/Y randomly offset"
+            float dir = (rnd - 0.5) * 2.0; // -1 to 1
+            float offset = dir * uMaxOffset * (1.0 - vis);
+
+            // Apply offset to local 'transformed' before projection?
+            // No, we need to apply it to world position.
+            // But standard material expects 'transformed' to be local.
+            // 'mvPosition' is calculated from 'transformed'.
+
+            // For InstancedMesh, the transform is embedded.
+            // We can hack mvPosition.
+
+            vec4 mvPosition = viewMatrix * instanceMatrix * vec4( transformed, 1.0 );
+
+            // Apply View Space offset? No, world space offset is easier conceptually.
+            // But we already calculated offset.
+
+            // Let's modify mvPosition by adding offset projected to view space?
+            // Or better, modify 'transformed' but that doesn't account for instance matrix rotation if we want global Y.
+
+            // Let's assume tiles are flat and Y is Up.
+            // offset is strictly vertical in World Space.
+            // viewMatrix * (worldPos + offset) = viewMatrix * worldPos + viewMatrix * offset
+
+            mvPosition.xyz += (viewMatrix * vec4(0.0, offset, 0.0, 0.0)).xyz;
+
+            gl_Position = projectionMatrix * mvPosition;
+            `
+        );
+
+        shader.fragmentShader = `
+            varying float vVisibility;
+        ` + shader.fragmentShader;
+
+        shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <dithering_fragment>',
+            `
+            #include <dithering_fragment>
+            gl_FragColor.a *= vVisibility;
+            if (gl_FragColor.a < 0.05) discard; // Optional Dither or discard to save fill rate
+            `
+        );
+
+        baseMat.userData.shader = shader;
+    };
+
+    return baseMat;
+}
+
 export class ExploreSystem {
     constructor() {
         this.scene = null;
@@ -81,6 +167,8 @@ export class ExploreSystem {
         this.initialized = false;
         this.playerLight = null;
         this.matPlayer = null;
+        this.matFloor = null;
+        this.matWall = null;
 
         /** @type {Game_Interpreter} */
         this.interpreter = new Game_Interpreter();
@@ -127,6 +215,10 @@ export class ExploreSystem {
 
         this.particles = new ParticleSystem(this.scene);
 
+        // Initialize Materials with Fog Shader
+        this.matFloor = createFogMaterial(0x333333);
+        this.matWall = createFogMaterial(0x1a1a1a);
+
         this.initialized = true;
         this.rebuildLevel();
         this.animate();
@@ -146,12 +238,11 @@ export class ExploreSystem {
         const count = width * height;
 
         const geoFloor = new THREE.PlaneGeometry(0.95, 0.95);
-        const matFloor = new THREE.MeshLambertMaterial({ color: 0x333333 });
-        this.instancedFloor = new THREE.InstancedMesh(geoFloor, matFloor, count);
+        // Reuse materials
+        this.instancedFloor = new THREE.InstancedMesh(geoFloor, this.matFloor, count);
 
         const geoBlock = new THREE.BoxGeometry(0.95, 1, 0.95);
-        const matWall = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
-        this.instancedWalls = new THREE.InstancedMesh(geoBlock, matWall, count);
+        this.instancedWalls = new THREE.InstancedMesh(geoBlock, this.matWall, count);
 
         const dummy = new THREE.Object3D();
         let fIdx = 0, wIdx = 0;
@@ -164,14 +255,6 @@ export class ExploreSystem {
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 const tile = map[y][x];
-                // Floor or Event location (that is not a wall)
-                // Note: Events are now separate, but generateFloor creates '0' (floor) for events
-                // EXCEPT Stairs which we kept as '3' in generateFloor for now.
-                // But wait, my modified generateFloor sets stairs to 3.
-                // Other events set to createEvent just use the tile from emptyTiles.
-                // The tile in _data remains 0 for most events now!
-                // So checking 'tile === 0' is correct for floor.
-                // We need to handle 'tile === 3' for stairs.
 
                 if (tile === 0 || tile === 3) {
                     // Floor
@@ -181,7 +264,9 @@ export class ExploreSystem {
                     dummy.updateMatrix();
                     this.instancedFloor.setMatrixAt(fIdx++, dummy.matrix);
 
-                    // Special Static Tiles (Stairs)
+                    // Special Static Tiles (Stairs) - Not Instanced, keep standard material or apply fog?
+                    // For now, keep standard but maybe we should apply fog manually to them?
+                    // Let's leave them as is, they might pop out which is fine for "special" items
                     if (tile === 3) {
                         const numSteps = 5;
                         const maxH = 0.4;
@@ -338,69 +423,7 @@ export class ExploreSystem {
         // Check for dynamic events
         const event = window.$gameMap.eventAt(x, y);
         if (event && !event.isErased) {
-             if (event.trigger === 'TOUCH') {
-                 this.interpreter.setup(event.commands, event.id);
-             }
-             // For 'ACTION' trigger, we would need a separate input handler (e.g. pressing 'Space')
-             // But for now, let's assume 'SHOP' is action, but maybe we just auto-trigger it on bump
-             // to keep existing behavior?
-             // Existing behavior for SHOP was "bump to enter".
-             // Let's check existing code: resolveTile(5) was called from move->checkTile.
-             // So it was "Touch".
-             // Wait, the plan said SHOP is 'ACTION'.
-             // "Shop (5): { type: 'SHOP', trigger: 'ACTION', ... }"
-             // If I set it to ACTION, the player walks on it and nothing happens until they press a button?
-             // The current input system moves the player. It doesn't seem to have a dedicated "Interact" button separate from move.
-             // If I want to maintain existing behavior (bump to interact), I should use 'TOUCH'.
-             // However, shops in RPGs are often "Touch" or "Action".
-             // If I walk ONTO the shop, it should trigger.
-
-             // Let's override the trigger to TOUCH for now to ensure it works like before,
-             // or implement ACTION check.
-             // But my `createEvent` in Game_Map set SHOP to ACTION.
-             // If I want it to trigger on move, I should change it to TOUCH or handle ACTION here.
-
-             // If the player occupies the tile, and we press Enter, that's ACTION.
-             // But we just MOVED there.
-
-             // If I change Game_Map to use TOUCH for everything for now, it's safer.
-             // OR, I treat 'ACTION' as "Trigger when trying to move INTO it but blocked"?
-             // No, Shop is walkable?
-             // In legacy map, Shop was code 5.
-             // In rebuildLevel loop:
-             // if (tile === 0 || tile >= 2) -> Floor.
-             // So Shop was walkable.
-
-             // Let's force execution for now if we walk on it, or update Game_Map to use TOUCH.
-             // I'll update this method to execute if TOUCH.
-             // For SHOP (ACTION), we might need to change Game_Map or implement an interaction listener.
-             // Given the scope, let's assume "Bump" interaction is desired.
-             // I'll update Game_Map to use TOUCH for Shop too?
-             // Or just allow ACTION to trigger on Enter.
-
-             // The problem is `move` logic places player ON the tile.
-             // If it's ACTION, we are standing on it.
-
-             // Let's go with: if we move onto it, and trigger is TOUCH, execute.
-             // If trigger is ACTION, we do nothing yet.
-             // But I don't want to break the game.
-             // I will change SHOP to TOUCH in Game_Map in a follow-up step if needed.
-             // For now, I'll modify checkTile to also trigger ACTION if we just walked on it?
-             // No, that defeats the purpose.
-
-             // Let's check my Game_Map change.
-             // case 'SHOP': trigger: 'ACTION'.
-
-             // I should probably change SHOP to TOUCH to match "bump to interact" unless I implement an Interact button.
-             // The user didn't ask for an Interact button.
-             // I'll change SHOP to TOUCH in Game_Map later.
-             // Actually I can just check if event exists and execute it regardless of trigger for now?
-             // No, that's messy.
-
-             // Let's update Game_Map to TOUCH for Shop to be safe.
-             // I'll do that in a moment.
-
-             if (event.trigger === 'TOUCH' || event.trigger === 'ACTION') { // TEMPORARY: Treat ACTION as TOUCH for migration smoothness
+             if (event.trigger === 'TOUCH' || event.trigger === 'ACTION') {
                   this.interpreter.setup(event.commands, event.id);
              }
         }
@@ -408,7 +431,6 @@ export class ExploreSystem {
         window.Game.Windows.HUD.refresh();
 
         // Post-execution cleanup/sync
-        // We probably want to sync dynamic objects after a delay in case the event erased itself
         setTimeout(() => this.syncDynamic(), 300);
     }
 
@@ -437,6 +459,18 @@ export class ExploreSystem {
         }
 
         if (!this.scene || !this.camera) return;
+
+        // Update Shader Uniforms
+        if (this.playerMesh) {
+            const p = this.playerMesh.position;
+            // Update materials if they are loaded
+            if (this.matFloor && this.matFloor.userData.shader) {
+                this.matFloor.userData.shader.uniforms.uPlayerPos.value.copy(p);
+            }
+            if (this.matWall && this.matWall.userData.shader) {
+                this.matWall.userData.shader.uniforms.uPlayerPos.value.copy(p);
+            }
+        }
 
         // Movement Interpolation
         if (this.moveLerpProgress < 1) {
@@ -489,8 +523,6 @@ export class ExploreSystem {
 
     /**
      * Helper to get generateFloor access if called from outside?
-     * No, callers should use Game_Map then call rebuildLevel.
-     * Or better, this wrapper:
      */
     generateAndRebuild() {
          if (window.$gameMap) {
