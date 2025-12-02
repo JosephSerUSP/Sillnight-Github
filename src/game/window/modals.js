@@ -8,21 +8,157 @@ import { Log } from '../log.js';
  */
 export class Window_CreatureModal extends Window_Selectable {
     constructor() {
-        super('creature-modal');
+        super();
+        this.root.id = 'creature-modal';
+        this.root.className = 'hidden absolute inset-0 bg-black/60 flex items-center justify-center z-50 pointer-events-auto backdrop-blur-sm';
+
+        // Append to game container to ensure it's in the DOM
+        const container = document.getElementById('game-container');
+        if (container) {
+            container.appendChild(this.root);
+        } else {
+             console.warn('Window_CreatureModal: game-container not found');
+        }
+
+        this.root.onclick = (event) => {
+            if(event.target === this.root) this.hide();
+        };
     }
 
     initialize() {
         super.initialize();
+        this._ui = {};
         this._unit = null;
-        this.root.addEventListener('click', (e) => {
-             if (e.target.id === 'modal-equip-slot' || e.target.closest('#modal-equip-slot')) {
-                if (this._unit && this._unit.equipmentId) {
-                    this.unequipUnit(this._unit);
-                } else if (this._unit) {
-                    this.startEquipFlow(null);
-                }
+        this.createLayout();
+
+        // Event Delegation for Equip Slot
+        this._ui.equipSlot.addEventListener('click', () => {
+             if (this._unit && this._unit.equipmentId) {
+                 this.unequipUnit(this._unit);
+             } else if (this._unit) {
+                 this.startEquipFlow(null);
              }
         });
+    }
+
+    createLayout() {
+        // Clear root
+        this.root.innerHTML = '';
+
+        // Main Window Frame
+        const win = this.createEl('div', 'rpg-window w-4/5 h-4/5 flex flex-col bg-[#111] relative overflow-hidden', this.root);
+
+        // Header
+        const header = this.createEl('div', 'rpg-header flex justify-between items-center', win);
+        this.createEl('span', 'tracking-widest', header).innerText = 'CREATURE STATUS';
+        const closeBtn = this.createEl('button', 'text-red-500 font-bold px-2', header);
+        closeBtn.innerText = 'X';
+        closeBtn.onclick = () => {
+            this.hide();
+        };
+
+        // Content Container
+        const content = this.createEl('div', 'flex flex-row h-full p-4 gap-4 relative', win);
+
+        // Structure
+        const leftCol = this.createEl('div', 'w-2/5 flex flex-col gap-3 border-r border-gray-800 pr-4', content);
+        this.createLeftColumn(leftCol);
+
+        const rightCol = this.createEl('div', 'w-3/5 flex flex-col gap-3 relative', content);
+        this.createRightColumn(rightCol);
+    }
+
+    createLeftColumn(parent) {
+        // Sprite Box
+        const spriteBox = this.createEl('div', 'w-full aspect-square border-2 border-dashed border-gray-700 flex items-center justify-center text-7xl bg-black/60 shadow-inner status-sprite-frame', parent);
+        this._ui.sprite = this.createEl('span', 'status-sprite', spriteBox);
+
+        // Info Box
+        const infoBox = this.createEl('div', 'text-center w-full space-y-1', parent);
+        this._ui.name = this.createEl('h2', 'text-2xl text-yellow-400 tracking-widest', infoBox);
+
+        const lvlDiv = this.createEl('div', 'text-[10px] text-gray-400', infoBox);
+        lvlDiv.innerText = 'Lv. ';
+        this._ui.lvl = this.createEl('span', '', lvlDiv);
+
+        this._ui.temperament = this.createEl('div', 'text-[10px] text-gray-500', infoBox);
+    }
+
+    createRightColumn(parent) {
+        this.createStatsGrid(parent);
+        this.createDetailsGrid(parent);
+        this.createActionsList(parent);
+        this.createEquipmentLibrary(parent);
+    }
+
+    createStatsGrid(parent) {
+        const statsGrid = this.createEl('div', 'grid grid-cols-3 gap-3 text-base', parent);
+
+        // HP
+        const hpBox = this.createEl('div', 'rpg-window bg-black/70 px-3 py-2 border border-gray-700', statsGrid);
+        this.createEl('div', 'text-[10px] text-gray-500', hpBox).innerText = 'HP';
+        this._ui.hp = this.createEl('div', 'text-green-400 text-lg', hpBox);
+
+        // XP
+        const xpBox = this.createEl('div', 'rpg-window bg-black/70 px-3 py-2 border border-gray-700', statsGrid);
+        this.createEl('div', 'text-[10px] text-gray-500', xpBox).innerText = 'XP';
+        this._ui.xp = this.createEl('div', 'text-blue-400 text-lg', xpBox);
+
+        // Equipment Slot
+        const equipBox = this.createEl('div', 'rpg-window bg-black/70 px-3 py-2 border border-gray-700', statsGrid);
+        this.createEl('div', 'text-[10px] text-gray-500', equipBox).innerText = 'EQUIPMENT';
+        this._ui.equipSlot = this.createEl('button', 'mt-1 w-full text-left flex items-center justify-between px-2 py-1 border border-gray-600 bg-gray-900 hover:border-yellow-400 hover:text-yellow-200 transition-colors', equipBox);
+    }
+
+    createDetailsGrid(parent) {
+        const detailsGrid = this.createEl('div', 'grid grid-cols-3 gap-3 text-[10px]', parent);
+
+        // Race
+        const raceBox = this.createEl('div', 'rpg-window bg-black/70 px-3 py-2 border border-gray-700', detailsGrid);
+        this.createEl('div', 'text-[10px] text-gray-500', raceBox).innerText = 'RACE';
+        this._ui.race = this.createEl('div', 'text-yellow-200 text-sm', raceBox);
+
+        // Elements
+        const elemBox = this.createEl('div', 'rpg-window bg-black/70 px-3 py-2 border border-gray-700', detailsGrid);
+        const elemHeader = this.createEl('div', 'flex items-center justify-between text-[10px] text-gray-500', elemBox);
+        this.createEl('span', '', elemHeader).innerText = 'ELEMENTS';
+        this.createEl('span', 'text-[8px] text-gray-600', elemHeader).innerText = 'future feature';
+        this._ui.elements = this.createEl('div', 'text-sm', elemBox);
+
+        // Passive
+        const passBox = this.createEl('div', 'rpg-window bg-black/70 px-3 py-2 border border-gray-700', detailsGrid);
+        const passHeader = this.createEl('div', 'flex items-center justify-between text-[10px] text-gray-500', passBox);
+        this.createEl('span', '', passHeader).innerText = 'PASSIVE';
+        this.createEl('span', 'text-[8px] text-gray-600', passHeader).innerText = 'coming soon';
+        this._ui.passive = this.createEl('div', 'text-gray-300 text-[10px] leading-tight', passBox);
+    }
+
+    createActionsList(parent) {
+        const actionsContainer = this.createEl('div', '', parent);
+        const actionsHeader = this.createEl('div', 'flex justify-between items-center border-b border-gray-700 pb-1 mb-2', actionsContainer);
+        this.createEl('h3', 'text-gray-300 tracking-wide', actionsHeader).innerText = 'ACTIONS';
+        this.createEl('span', 'text-[10px] text-gray-500', actionsHeader).innerText = 'Known skills';
+        this._ui.actions = this.createEl('div', 'grid grid-cols-2 gap-2 text-[10px]', actionsContainer);
+
+        // Lore
+        const loreBox = this.createEl('div', 'rpg-window bg-black/70 px-3 py-2 text-[10px] text-left border border-gray-700', parent);
+        this.createEl('div', 'text-gray-400 text-[8px] mb-1', loreBox).innerText = 'LORE';
+        this._ui.desc = this.createEl('div', 'leading-tight text-gray-300', loreBox);
+    }
+
+    createEquipmentLibrary(parent) {
+        const libBox = this.createEl('div', 'flex-grow rpg-window bg-black/70 border border-gray-700 p-3 flex flex-col gap-2 overflow-hidden', parent);
+        const libHeader = this.createEl('div', 'flex justify-between items-center', libBox);
+        this.createEl('h3', 'text-gray-300 tracking-wide', libHeader).innerText = 'EQUIPMENT LIBRARY';
+
+        this._ui.closePicker = this.createEl('button', 'hidden text-[10px] text-gray-400 hover:text-white', libHeader);
+        this._ui.closePicker.innerText = 'Close Picker';
+        this._ui.closePicker.onclick = () => this.endEquipFlow();
+
+        this._ui.equipHint = this.createEl('div', 'text-[10px] text-gray-500', libBox);
+        this._ui.equipHint.innerText = 'Tap the equipment slot above to browse what this creature can wear.';
+
+        this._ui.equipOptions = this.createEl('div', 'grid grid-cols-2 gap-2 overflow-y-auto pr-1 hidden', libBox);
     }
 
     /**
@@ -31,6 +167,7 @@ export class Window_CreatureModal extends Window_Selectable {
      */
     setUnit(unit) {
         this._unit = unit;
+        this.endEquipFlow(); // Reset state
         this.refresh();
     }
 
@@ -45,61 +182,57 @@ export class Window_CreatureModal extends Window_Selectable {
         }
     }
 
-    /**
-     * Opens the equipment selection modal.
-     * @param {string|null} id - Pre-selected equipment ID (optional).
-     */
     startEquipFlow(id) {
-        const box = document.getElementById('center-modal');
-        box.classList.remove('hidden');
-        box.classList.add('pointer-events-auto');
+        this._ui.equipHint.classList.add('hidden');
+        this._ui.equipOptions.classList.remove('hidden');
+        this._ui.closePicker.classList.remove('hidden');
 
+        // Populate options
         const list = window.$gameParty.roster.map(u => ({ owner: u, id: u.equipmentId, source: 'unit' })).filter(x => x.id);
         const inv = Object.keys(window.$gameParty.inventory.equipment).map(key => ({ owner: null, id: key, source: 'inventory' }));
         const options = [...list, ...inv];
 
-        const first = this._unit || window.$gameParty.activeSlots.find(Boolean);
+        const first = this._unit;
         this.equipmentPickerPreset = id ? { id, source: 'inventory' } : null;
 
-        box.innerHTML = '';
-        const card = document.createElement('div');
-        // Reduce size and padding for cleaner look
-        card.className = 'rpg-window w-1/2 bg-black/90 p-3 border border-gray-700 text-sm';
-        card.innerHTML = `<div class="flex justify-between items-center mb-2"><div class="text-base text-yellow-300">Choose a creature to equip ${id ? Data.equipment[id].name : 'item'}</div><button class="text-red-500" id="btn-cancel-equip">Cancel</button></div>`;
-        card.querySelector('#btn-cancel-equip').onclick = () => this.closeCenterModal();
+        this._ui.equipOptions.innerHTML = '';
 
-        const grid = document.createElement('div');
-        grid.className = 'grid grid-cols-2 gap-2';
+        // If empty
+        if (options.length === 0) {
+             const emptyMsg = this.createEl('div', 'col-span-2 text-gray-500 text-center py-4', this._ui.equipOptions);
+             emptyMsg.innerText = 'No equipment available.';
+             return;
+        }
 
         options.forEach(opt => {
             const def = Data.equipment[opt.id];
             const name = typeof opt.owner?.name === 'function' ? opt.owner.name() : opt.owner?.name;
             const subtitle = opt.source === 'unit' ? `Held by ${name}` : 'Inventory';
-            const cardInner = document.createElement('div');
-            // Remove text-xs/text-sm to inherit base size
-            cardInner.className = 'rpg-window bg-black/60 border border-gray-700 p-2 cursor-pointer hover:border-yellow-400';
+
+            const cardInner = this.createEl('div', 'rpg-window bg-black/60 border border-gray-700 p-2 cursor-pointer hover:border-yellow-400', this._ui.equipOptions);
+
             if (this.equipmentPickerPreset && this.equipmentPickerPreset.id === opt.id && this.equipmentPickerPreset.source === opt.source) {
                 cardInner.classList.add('border-yellow-500');
             }
-            // Use inherit font size, smaller subtitle
+
             cardInner.innerHTML = `<div class="flex justify-between items-center"><div class="text-yellow-200">${def.name}</div><span class="text-[10px] text-gray-500 uppercase">${opt.source}</span></div><div class="text-[10px] text-gray-400 leading-tight">${subtitle}</div>`;
             cardInner.addEventListener('click', () => {
-                const target = first;
-                if (!target) return;
-                if (opt.source === 'unit') this.transferEquipment(target, opt.owner, def.id);
-                else this.equipFromInventory(target, def.id);
-                this.closeCenterModal();
+                if (opt.source === 'unit') this.transferEquipment(first, opt.owner, def.id);
+                else this.equipFromInventory(first, def.id);
+                this.endEquipFlow();
             });
-            grid.appendChild(cardInner);
         });
-        card.appendChild(grid);
-        box.appendChild(card);
     }
 
+    endEquipFlow() {
+        this._ui.equipHint.classList.remove('hidden');
+        this._ui.equipOptions.classList.add('hidden');
+        this._ui.closePicker.classList.add('hidden');
+    }
+
+    // Legacy support if anything calls closeCenterModal
     closeCenterModal() {
-        const modal = document.getElementById('center-modal');
-        modal.classList.add('hidden');
-        modal.innerHTML = '';
+        this.endEquipFlow();
     }
 
     equipFromInventory(target, equipmentId) {
@@ -170,9 +303,6 @@ export class Window_CreatureModal extends Window_Selectable {
         const unit = this._unit;
         const def = Data.creatures[unit.speciesId];
 
-        const setText = (sel, txt) => { const el = this.root.querySelector(sel); if(el) el.innerText = txt; };
-        const setHTML = (sel, htm) => { const el = this.root.querySelector(sel); if(el) el.innerHTML = htm; };
-
         let maxhp = 0;
         if (typeof unit.mhp === 'number') maxhp = unit.mhp;
         else if (typeof unit.mhp === 'function') maxhp = unit.mhp();
@@ -180,55 +310,64 @@ export class Window_CreatureModal extends Window_Selectable {
 
         const name = typeof unit.name === 'function' ? unit.name() : unit.name;
 
-        setHTML('#modal-sprite', spriteMarkup(unit, 'h-28 w-28 object-contain', 'status-sprite'));
-        setText('#modal-name', name);
-        // Reduced text sizes
-        setText('#modal-lvl', unit.level || 1);
-        setText('#modal-temperament', def.temperament);
-        setText('#modal-hp', `${unit.hp}/${maxhp}`);
-        setText('#modal-xp', `${unit.exp ?? 0}`);
-        setText('#modal-race', def.race);
-        setText('#modal-elements', (unit.elements || []).join(', '));
+        // Sprite
+        this._ui.sprite.innerHTML = spriteMarkup(unit, 'h-28 w-28 object-contain', 'status-sprite');
 
-        const passiveContainer = this.root.querySelector('#modal-passive');
-        if (passiveContainer) {
+        // Info
+        this._ui.name.innerText = name;
+        this._ui.lvl.innerText = unit.level || 1;
+        this._ui.temperament.innerText = def.temperament;
+
+        // Stats
+        this._ui.hp.innerText = `${unit.hp}/${maxhp}`;
+        this._ui.xp.innerText = `${unit.exp ?? 0}`;
+        this._ui.race.innerText = def.race;
+        this._ui.elements.innerText = (unit.elements || []).join(', ');
+
+        // Passive
+        if (this._ui.passive) {
+            this._ui.passive.innerHTML = '';
             if (def.passives && def.passives.length > 0) {
-                passiveContainer.innerHTML = '';
                 def.passives.forEach(passiveId => {
                     const passive = Data.passives[passiveId];
                     if (passive) {
-                        const passiveEl = document.createElement('div');
-                        // Use inherit size, detail smaller
-                        passiveEl.className = '';
+                        const passiveEl = this.createEl('div', '', this._ui.passive);
                         passiveEl.innerHTML = `<div class="text-yellow-200">${passive.name}</div> <div class="text-[10px] text-gray-400">${passive.description}</div>`;
-                        passiveContainer.appendChild(passiveEl);
                     }
                 });
             } else {
-                passiveContainer.innerText = '—';
+                this._ui.passive.innerText = '—';
             }
         }
 
-        setText('#modal-desc', def.description);
+        this._ui.desc.innerText = def.description;
 
-        const actions = this.root.querySelector('#modal-actions');
-        if (actions) {
-            actions.innerHTML = '';
-            (def.acts || []).forEach(act => {
-                const card = document.createElement('div');
-                card.className = 'rpg-window px-3 py-2 bg-black/70 border border-gray-700';
-                card.innerHTML = `<div class="text-yellow-200">${act.name}</div><div class="text-[10px] text-gray-400">${act.description}</div>`;
-                actions.appendChild(card);
+        // Actions
+        if (this._ui.actions) {
+            this._ui.actions.innerHTML = '';
+            // acts is [[skillId, ...], [skillId, ...]] for Game_Actor/creatures
+            // Flatten unique skills for display
+            const uniqueSkills = new Set();
+            (def.acts || []).flat().forEach(id => {
+                if (id !== 'wait' && id !== 'guard') uniqueSkills.add(id);
+            });
+
+            uniqueSkills.forEach(skillId => {
+                const skill = Data.skills[skillId];
+                if (skill) {
+                    const card = this.createEl('div', 'rpg-window px-3 py-2 bg-black/70 border border-gray-700', this._ui.actions);
+                    card.innerHTML = `<div class="text-yellow-200">${skill.name}</div><div class="text-[10px] text-gray-400">${skill.description || ''}</div>`;
+                }
             });
         }
 
-        const equipBtn = this.root.querySelector('#modal-equip-slot');
-        if (equipBtn) {
+        // Equipment Button
+        if (this._ui.equipSlot) {
             if (unit.equipmentId) {
                 const eq = Data.equipment[unit.equipmentId];
-                equipBtn.innerText = eq ? eq.name : 'Unknown';
+                this._ui.equipSlot.innerText = eq ? eq.name : 'Unknown';
             } else {
-                equipBtn.innerText = '[ Empty ]';
+                this._ui.equipSlot.innerText = '[ Empty ]';
             }
         }
     }
