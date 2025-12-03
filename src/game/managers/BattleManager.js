@@ -360,7 +360,7 @@ export const BattleManager = {
      * Ends the battle and displays the result.
      * @param {boolean} win - True if the player won.
      */
-    end(win) {
+    async end(win) {
          document.getElementById('battle-ui-overlay').innerHTML = '';
             if (win) {
                 window.Game.Windows.BattleLog.showBanner('VICTORY');
@@ -368,23 +368,51 @@ export const BattleManager = {
                 Systems.sceneHooks?.onBattleEnd?.();
                 Systems.Triggers.fire('onBattleEnd', [...this.allies, ...this.enemies].filter(u => u && u.hp > 0));
                 Systems.Battle3D.setFocus('victory');
+
                 const gold = this.enemies.length * Data.config.baseGoldPerEnemy * window.$gameMap.floor;
                 const baseXp = this.enemies.length * Data.config.baseXpPerEnemy * window.$gameMap.floor;
+
                 window.$gameParty.gainGold(gold);
-                let finalXp = baseXp;
+                window.Game.Windows.HUD.refresh();
+
+                // 1. Capture snapshots and Apply XP
+                const levelUps = [];
+                const finalXpMap = new Map();
 
                 this.allies.forEach(p => {
-                    if (p) {
-                        // Use trait getter
-                        finalXp = Math.round(baseXp * (1 + p.xpRate));
+                    if (!p) return;
 
-                        // Game_Actor method
-                        if (typeof p.gainExp === 'function') {
-                             p.gainExp(finalXp);
-                        } else {
-                            // Fallback (Should not happen if all are Game_Actor)
-                            p.exp = (p.exp || 0) + finalXp;
-                        }
+                    const pXp = Math.round(baseXp * (1 + p.xpRate));
+                    finalXpMap.set(p.uid, pXp);
+
+                    // Snapshot stats before XP
+                    const snapshot = {
+                        level: p.level,
+                        mhp: p.mhp, mmp: p.mmp,
+                        atk: p.atk, def: p.def,
+                        mat: p.mat, mdf: p.mdf,
+                        agi: p.agi, luk: p.luk
+                    };
+
+                    const oldLevel = p.level;
+                    if (typeof p.gainExp === 'function') {
+                        p.gainExp(pXp);
+                    } else {
+                        p.exp = (p.exp || 0) + pXp;
+                    }
+
+                    if (p.level > oldLevel) {
+                         levelUps.push({
+                             unit: p,
+                             oldStats: snapshot,
+                             newStats: {
+                                level: p.level,
+                                mhp: p.mhp, mmp: p.mmp,
+                                atk: p.atk, def: p.def,
+                                mat: p.mat, mdf: p.mdf,
+                                agi: p.agi, luk: p.luk
+                             }
+                         });
                     }
                 });
 
@@ -397,13 +425,34 @@ export const BattleManager = {
                     }
                 });
 
-                window.Game.Windows.HUD.refresh();
-                window.Game.Windows.BattleLog.showModal(`
-                    <div class="text-yellow-500 text-2xl mb-4">VICTORY</div>
-                    <div class="text-white">Found ${gold} Gold</div>
-                    <div class="text-white">Party +${finalXp} XP</div>
-                    <button class="mt-4 border border-white px-4 py-2 hover:bg-gray-800" onclick="Game.Windows.BattleLog.closeModal(); Game.SceneManager.changeScene(Game.Scenes.explore);">CONTINUE</button>
-                `);
+                // 2. Show Victory Window
+                await window.Game.Windows.Victory.show({
+                    xp: baseXp, // Show base, maybe note bonuses? Simplicity: base
+                    gold: gold,
+                    drops: [], // Todo: drops
+                    party: this.allies.filter(Boolean)
+                });
+
+                // 3. Process Level Ups
+                for (const ev of levelUps) {
+                    // Focus Camera
+                    Systems.Battle3D.setFocus('unit', ev.unit.uid);
+                    Systems.Battle3D.dimOthers(ev.unit.uid);
+
+                    // Show Window
+                    await window.Game.Windows.LevelUp.show(ev);
+
+                    // Wait a moment for effect
+                    await new Promise(r => setTimeout(r, 500));
+                }
+
+                // Reset Camera
+                Systems.Battle3D.resetVisuals();
+                Systems.Battle3D.setFocus('victory'); // Or neutral? Victory keeps spinning.
+
+                // Exit
+                window.Game.SceneManager.changeScene(window.Game.Scenes.explore);
+
             } else {
                 window.Game.ui.mode = 'EXPLORE';
                 Systems.Battle3D.setFocus('neutral');

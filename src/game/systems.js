@@ -531,23 +531,35 @@ export const Systems = {
         },
         /**
          * Moves the camera focus to a specific target type.
-         * @param {string} type - 'ally', 'enemy', 'victory', or default.
+         * @param {string} type - 'ally', 'enemy', 'victory', 'unit', or default.
+         * @param {string} [targetUid] - The UID of the unit to focus on (if type is 'unit').
          */
-        setFocus(type) {
+        setFocus(type, targetUid) {
             const BASE = -Math.PI / 4;
             const SHIFT = Math.PI / 12;
             if (type === 'ally') {
                 this.cameraState.targetAngle = BASE - SHIFT;
                 this.cameraState.targetX = 0;
                 this.cameraState.targetY = 0;
+                this.cameraState.zoom = false;
             } else if (type === 'enemy') {
                 this.cameraState.targetAngle = BASE + SHIFT;
                 this.cameraState.targetX = 0;
                 this.cameraState.targetY = 0;
+                this.cameraState.zoom = false;
             } else if (type === 'victory') {
                 this.cameraState.targetAngle = this.cameraState.angle + Math.PI * 2;
                 this.cameraState.targetX = 0;
                 this.cameraState.targetY = -3.5;
+                this.cameraState.zoom = false;
+            } else if (type === 'unit' && targetUid) {
+                const sprite = this.sprites[targetUid];
+                if (sprite) {
+                    this.cameraState.targetAngle = this.cameraState.angle + Math.PI * 2; // Continue rotation
+                    this.cameraState.targetX = sprite.position.x;
+                    this.cameraState.targetY = sprite.position.y;
+                    this.cameraState.zoom = true;
+                }
             } else {
                 if (this.cameraState.angle > Math.PI * 2 || this.cameraState.angle < -Math.PI * 2) {
                     this.cameraState.angle = BASE;
@@ -555,8 +567,34 @@ export const Systems = {
                 this.cameraState.targetAngle = BASE;
                 this.cameraState.targetX = 0;
                 this.cameraState.targetY = 0;
+                this.cameraState.zoom = false;
             }
         },
+
+        /**
+         * Dims all sprites except the specified one.
+         * @param {string} exceptUid - The UID of the unit to keep bright.
+         */
+        dimOthers(exceptUid) {
+            Object.values(this.sprites).forEach(sprite => {
+                if (sprite.userData.uid !== exceptUid) {
+                    sprite.material.opacity = 0.2;
+                } else {
+                    sprite.material.opacity = 1.0;
+                }
+            });
+        },
+
+        /**
+         * Resets all visual changes (opacity, etc).
+         */
+        resetVisuals() {
+            Object.values(this.sprites).forEach(sprite => {
+                sprite.material.opacity = 1.0;
+                sprite.material.color.setHex(0xffffff);
+            });
+        },
+
         /**
          * Main animation loop for the 3D scene.
          */
@@ -568,11 +606,21 @@ export const Systems = {
             } else {
                 cs.angle += (cs.targetAngle - cs.angle) * 0.05;
             }
-            const R = 28.28;
-            const Z_HEIGHT = 16;
+
+            // If zooming in (for level up), reduce R and Z height
+            let R = 28.28;
+            let Z_HEIGHT = 16;
+
+            if (cs.zoom) {
+                R = 10.0;
+                Z_HEIGHT = 5.0;
+            }
+
             this.camera.position.x = cs.targetX + Math.cos(cs.angle) * R;
             this.camera.position.y = cs.targetY + Math.sin(cs.angle) * R;
-            this.camera.position.z = Z_HEIGHT;
+            // Smooth Z transition could be added here, but direct assignment for now
+            this.camera.position.z = this.camera.position.z + (Z_HEIGHT - this.camera.position.z) * 0.1;
+
             this.camera.lookAt(cs.targetX, cs.targetY, 2);
             
             const renderer = window.Game.RenderManager.getRenderer();
