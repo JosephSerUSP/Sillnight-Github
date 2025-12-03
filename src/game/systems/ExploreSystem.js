@@ -163,15 +163,15 @@ export class ExploreSystem {
 
         // --- FOG TEXTURE SETUP ---
         // Create DataTexture for fog of war
-        // Use LuminanceFormat (1 channel)
+        // Use RGBAFormat (4 channels) for reliable Vertex Shader sampling
         const size = width * height;
-        const data = new Uint8Array(size); // Initialized to 0 (hidden)
+        const data = new Uint8Array(size * 4); // Initialized to 0 (hidden)
 
-        // Initialize simulation arrays
+        // Initialize simulation arrays (still scalar)
         this.fogValues = new Float32Array(size); // For smooth lerping
         this.fogTarget = new Uint8Array(size);   // Target values
 
-        this.fogTexture = new THREE.DataTexture(data, width, height, THREE.LuminanceFormat, THREE.UnsignedByteType);
+        this.fogTexture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.UnsignedByteType);
         this.fogTexture.magFilter = THREE.LinearFilter;
         this.fogTexture.minFilter = THREE.LinearFilter;
         this.fogTexture.needsUpdate = true;
@@ -199,7 +199,12 @@ export class ExploreSystem {
         // Populate fogValues instantly on rebuild to prevent fade-in on load
         for (let i = 0; i < size; i++) {
             this.fogValues[i] = this.fogTarget[i];
-            data[i] = this.fogTarget[i];
+            const val = this.fogTarget[i];
+            const px = i * 4;
+            data[px] = val;     // R
+            data[px + 1] = val; // G
+            data[px + 2] = val; // B
+            data[px + 3] = 255; // A (Full opacity in texture, though we use R for logic)
         }
         this.fogTexture.needsUpdate = true;
 
@@ -511,12 +516,21 @@ export class ExploreSystem {
                 if (Math.abs(current - target) > 0.1) {
                     current += (target - current) * lerpFactor;
                     this.fogValues[i] = current;
-                    texData[i] = Math.floor(current);
+                    const val = Math.floor(current);
+                    const px = i * 4;
+                    texData[px] = val;      // R
+                    texData[px + 1] = val;  // G
+                    texData[px + 2] = val;  // B
+                    // Alpha (texData[px+3]) remains 255 from initialization
                     fogChanged = true;
                 } else if (current !== target) {
                     current = target;
                     this.fogValues[i] = current;
-                    texData[i] = current;
+                    const val = current;
+                    const px = i * 4;
+                    texData[px] = val;
+                    texData[px + 1] = val;
+                    texData[px + 2] = val;
                     fogChanged = true;
                 }
             }
