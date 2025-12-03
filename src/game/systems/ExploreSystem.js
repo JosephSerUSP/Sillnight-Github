@@ -163,15 +163,15 @@ export class ExploreSystem {
 
         // --- FOG TEXTURE SETUP ---
         // Create DataTexture for fog of war
-        // Use LuminanceFormat (1 channel)
+        // Use RGBAFormat to support WebGL 2 Vertex Shader sampling reliably (Luminance is deprecated/unreliable in VS)
         const size = width * height;
-        const data = new Uint8Array(size); // Initialized to 0 (hidden)
+        const data = new Uint8Array(size * 4); // Initialized to 0 (hidden) - RGBA
 
-        // Initialize simulation arrays
+        // Initialize simulation arrays (Logical Size)
         this.fogValues = new Float32Array(size); // For smooth lerping
         this.fogTarget = new Uint8Array(size);   // Target values
 
-        this.fogTexture = new THREE.DataTexture(data, width, height, THREE.LuminanceFormat, THREE.UnsignedByteType);
+        this.fogTexture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.UnsignedByteType);
         this.fogTexture.magFilter = THREE.LinearFilter;
         this.fogTexture.minFilter = THREE.LinearFilter;
         this.fogTexture.needsUpdate = true;
@@ -199,7 +199,13 @@ export class ExploreSystem {
         // Populate fogValues instantly on rebuild to prevent fade-in on load
         for (let i = 0; i < size; i++) {
             this.fogValues[i] = this.fogTarget[i];
-            data[i] = this.fogTarget[i];
+            // Fill RGBA
+            const base = i * 4;
+            const val = this.fogTarget[i];
+            data[base] = val;
+            data[base + 1] = val;
+            data[base + 2] = val;
+            data[base + 3] = 255;
         }
         this.fogTexture.needsUpdate = true;
 
@@ -511,12 +517,20 @@ export class ExploreSystem {
                 if (Math.abs(current - target) > 0.1) {
                     current += (target - current) * lerpFactor;
                     this.fogValues[i] = current;
-                    texData[i] = Math.floor(current);
+                    const val = Math.floor(current);
+                    texData[i * 4] = val;
+                    texData[i * 4 + 1] = val;
+                    texData[i * 4 + 2] = val;
+                    texData[i * 4 + 3] = 255;
                     fogChanged = true;
                 } else if (current !== target) {
                     current = target;
                     this.fogValues[i] = current;
-                    texData[i] = current;
+                    const val = current;
+                    texData[i * 4] = val;
+                    texData[i * 4 + 1] = val;
+                    texData[i * 4 + 2] = val;
+                    texData[i * 4 + 3] = 255;
                     fogChanged = true;
                 }
             }
