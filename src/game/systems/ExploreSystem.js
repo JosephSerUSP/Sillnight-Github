@@ -428,7 +428,7 @@ export class ExploreSystem {
             window.$gameMap._playerPos = { x: newX, y: newY };
 
             // Update Map Visited State (logical only)
-            window.$gameMap.updateVisibility(newX, newY, this.fogRevealRadius + this.fogFadeRadius);
+            window.$gameMap.updateVisibility(newX, newY, this.fogRevealRadius);
 
             // Trigger Animation
             this.moveLerpStart.copy(this.playerMesh.position);
