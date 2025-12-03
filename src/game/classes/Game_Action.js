@@ -120,11 +120,31 @@ export class Game_Action {
             return 0;
         }
 
+        // Apply stats (ATK/DEF or MAT/MDF)
+        const statType = this.item().stat || 'atk';
+        let attackStat, defenseStat;
+
+        if (statType === 'mat') {
+            attackStat = a.mat;
+            defenseStat = target.mdf;
+        } else {
+            attackStat = a.atk;
+            defenseStat = target.def;
+        }
+
+        // Apply stat scaling (100 = 100%)
+        // Damage = Base * (Atk/Def)
+        // Ensure defense isn't 0 to avoid division by zero
+        defenseStat = Math.max(1, defenseStat);
+
         if (effect.type === 'hp_damage') {
              // 1. Add Power Bonus
              value += a.power;
 
-             // 2. Attacker Element Boost (STAB)
+             // 2. Stat Multiplier
+             value *= (attackStat / defenseStat);
+
+             // 3. Attacker Element Boost (STAB)
              const actionElement = this.item().element;
              let attackMult = 1.0;
              if (actionElement) {
@@ -132,12 +152,12 @@ export class Game_Action {
                  if (subjectElements.includes(actionElement)) attackMult = 1.25;
              }
 
-             // 3. Target Element Resistance
+             // 4. Target Element Resistance
              const defenseMult = this.calcElementRate(target);
 
              value = Math.floor(value * attackMult * defenseMult);
 
-             // 4. Critical Hit
+             // 5. Critical Hit
              const critChance = a.cri;
              if (Math.random() < critChance) {
                  value = Math.floor(value * (Data.config.baseCritMultiplier || 1.5));
@@ -147,11 +167,16 @@ export class Game_Action {
                  this._lastResultIsCrit = false;
              }
 
-             // 5. Guarding
+             // 6. Guarding
              if (target.isStateAffected('guarding') || (target.status && target.status.includes('guarding'))) {
                   value = Math.floor(value / 2);
                   Log.battle('> Guarding!');
              }
+        } else if (effect.type === 'hp_heal') {
+            // For healing, scale by user's MAT/ATK
+            value *= (attackStat / 100);
+            this._lastResultIsCrit = false;
+            value = Math.floor(value);
         } else {
             this._lastResultIsCrit = false;
             value = Math.floor(value);

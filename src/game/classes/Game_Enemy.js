@@ -88,7 +88,12 @@ export class Game_Enemy extends Game_Battler {
         if (paramId === 0) { // mhp
              return Math.floor(def.baseHp * this._levelMultiplier);
         }
-        // Can add other stat scaling here if needed
+        // 2: atk, 3: def, 4: mat, 5: mdf, 6: agi, 7: luk
+        if (paramId >= 2 && paramId <= 7) {
+            const keys = [null, null, 'atk', 'def', 'mat', 'mdf', 'agi', 'luk'];
+            const key = keys[paramId];
+            return def[key] !== undefined ? def[key] : 100;
+        }
         return 0;
     }
 
