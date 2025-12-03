@@ -14,6 +14,17 @@ export function modifyMaterialWithFog(material, displace = false) {
         material.extensions.shaderTextureLOD = true;
     }
 
+    // Define a custom cache key to ensure materials with different 'displace' settings
+    // generate unique shader programs.
+    const baseKey = material.customProgramCacheKey
+        ? material.customProgramCacheKey()
+        : '';
+    const displaceFlag = displace ? 'displace1' : 'displace0';
+
+    material.customProgramCacheKey = () => {
+        return `${baseKey}|fogOfWar|${displaceFlag}`;
+    };
+
     material.onBeforeCompile = (shader) => {
         material.userData.shader = shader;
 
