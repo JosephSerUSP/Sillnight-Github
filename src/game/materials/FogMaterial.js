@@ -36,7 +36,9 @@ export function modifyMaterialWithFog(material, displace = false) {
             }
 
             float getFogValVS(sampler2D map, vec2 uv) {
-                #ifdef GL_EXT_shader_texture_lod
+                #if __VERSION__ >= 300
+                    return textureLod(map, uv, 0.0).r;
+                #elif defined(GL_EXT_shader_texture_lod)
                     return texture2DLodEXT(map, uv, 0.0).r;
                 #else
                     // Fallback for environments where texture2D in VS is supported implicitly (e.g. WebGL 2 or some WebGL 1 implementations)
