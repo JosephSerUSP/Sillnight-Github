@@ -178,5 +178,16 @@ export const Data = {
     items: Items,
     party: Party,
     skills: Skills,
-    passives: Passives
+    passives: Passives,
+
+    // Create an index by ID for faster lookups
+    equipmentById: Object.values(Equipment).reduce((acc, val) => {
+        acc[val.id] = val;
+        return acc;
+    }, {}),
+
+    itemsById: Object.values(Items).reduce((acc, val) => {
+        acc[val.id] = val;
+        return acc;
+    }, {})
 };

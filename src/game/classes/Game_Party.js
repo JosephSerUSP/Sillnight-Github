@@ -39,6 +39,48 @@ export class Game_Party {
     }
 
     /**
+     * Checks if the party has a specific item.
+     * @param {string} itemId - The item ID.
+     * @returns {boolean}
+     */
+    hasItem(itemId) {
+        return this._inventory.items[itemId] > 0;
+    }
+
+    /**
+     * Removes an item from the inventory.
+     * @param {string} itemId - The item ID.
+     * @param {number} [amount=1] - Quantity to remove.
+     */
+    loseItem(itemId, amount = 1) {
+        this._inventory.items[itemId] = Math.max(0, (this._inventory.items[itemId] || 0) - amount);
+        if (this._inventory.items[itemId] === 0) {
+            delete this._inventory.items[itemId];
+        }
+    }
+
+    /**
+     * Checks if the party has a specific piece of equipment.
+     * @param {string} equipId - The equipment ID.
+     * @returns {boolean}
+     */
+    hasEquipment(equipId) {
+        return this._inventory.equipment[equipId] > 0;
+    }
+
+    /**
+     * Removes a piece of equipment from the inventory.
+     * @param {string} equipId - The equipment ID.
+     * @param {number} [amount=1] - Quantity to remove.
+     */
+    loseEquipment(equipId, amount = 1) {
+        this._inventory.equipment[equipId] = Math.max(0, (this._inventory.equipment[equipId] || 0) - amount);
+        if (this._inventory.equipment[equipId] === 0) {
+            delete this._inventory.equipment[equipId];
+        }
+    }
+
+    /**
      * Removes gold from the party.
      * @param {number} amount - Amount to remove.
      */

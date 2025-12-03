@@ -19,6 +19,7 @@ export class DataManager {
         window.$gameMap.setup(1); // Floor 1
 
         this.populateInitialParty();
+        this.populateInitialInventory();
     }
 
     /**
@@ -62,6 +63,34 @@ export class DataManager {
             for (const creature of selectedCreatures.slice(0, count)) {
                 const level = creature.minLevel + Math.floor(Math.random() * (creature.maxLevel - creature.minLevel + 1));
                 window.$gameParty.addActor(creature.species, level);
+            }
+        }
+    }
+
+    /**
+     * Populates the player's inventory with a random selection of starting items and equipment.
+     * The selection is based on the configuration in `Data.party.initial.inventory`.
+     * @static
+     */
+    static populateInitialInventory() {
+        const setup = Data.party.initial.inventory;
+        if (!setup) return;
+
+        const { items, equipment } = setup;
+
+        if (items) {
+            for (const item of items) {
+                if (Math.random() < item.chance) {
+                    window.$gameParty.gainItem(item.id, item.quantity);
+                }
+            }
+        }
+
+        if (equipment) {
+            for (const equip of equipment) {
+                if (Math.random() < equip.chance) {
+                    window.$gameParty.gainEquipment(equip.id, equip.quantity);
+                }
             }
         }
     }
