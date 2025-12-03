@@ -36,7 +36,9 @@ export function modifyMaterialWithFog(material, displace = false) {
             }
 
             float getFogValVS(sampler2D map, vec2 uv) {
-                #ifdef GL_EXT_shader_texture_lod
+                #if __VERSION__ >= 300
+                    return textureLod(map, uv, 0.0).r;
+                #elif defined(GL_EXT_shader_texture_lod)
                     return texture2DLodEXT(map, uv, 0.0).r;
                 #else
                     // Fallback for environments where texture2D in VS is supported implicitly (e.g. WebGL 2 or some WebGL 1 implementations)
@@ -51,7 +53,7 @@ export function modifyMaterialWithFog(material, displace = false) {
             `
             #include <begin_vertex>
 
-            // Re-calculate World Position for Fog UVs
+            // Re-calculate World Position for Fog UVs (Logic Check)
             vec4 fogWorldPos = modelMatrix * vec4(transformed, 1.0);
             #ifdef USE_INSTANCING
                 fogWorldPos = modelMatrix * instanceMatrix * vec4(transformed, 1.0);
@@ -64,21 +66,38 @@ export function modifyMaterialWithFog(material, displace = false) {
             );
 
             ${displace ? `
-            // Apply Displacement
+            // Store offset data for project_vertex
             float fogValVS = getFogValVS(uFogMap, vFogUV);
 
             // Random Vertex Warp - Per Tile Logic
             vec2 tilePos = floor(fogWorldPos.xz + 0.5);
             float r = getFogNoise(tilePos);
             float dir = step(0.5, r) * 2.0 - 1.0;
-
-            // Apply displacement to local 'transformed'
-            // 1.0 (Visible) -> 0 displacement
-            // 0.0 (Hidden) -> Full displacement
-            transformed.y += dir * (1.0 - fogValVS);
+            float fogOffset = dir * (1.0 - fogValVS);
             ` : ''}
             `
         );
+
+        if (displace) {
+            shader.vertexShader = shader.vertexShader.replace(
+                '#include <project_vertex>',
+                `
+                // Standard project_vertex logic first (calculate mvPosition)
+                vec4 mvPosition = viewMatrix * modelMatrix * vec4( transformed, 1.0 );
+                #ifdef USE_INSTANCING
+                    mvPosition = viewMatrix * instanceMatrix * vec4( transformed, 1.0 );
+                #endif
+
+                // Apply View-Space Offset derived from World-Space Up (0, offset, 0)
+                // This matches the "Older Approach" logic exactly:
+                // mvPosition.xyz += (viewMatrix * vec4(0.0, offset, 0.0, 0.0)).xyz;
+
+                mvPosition.xyz += (viewMatrix * vec4(0.0, fogOffset, 0.0, 0.0)).xyz;
+
+                gl_Position = projectionMatrix * mvPosition;
+                `
+            );
+        }
 
         // --- Fragment Shader Modification ---
         shader.fragmentShader = shader.fragmentShader.replace(
