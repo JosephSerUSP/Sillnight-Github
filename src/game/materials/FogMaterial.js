@@ -20,6 +20,7 @@ export function modifyMaterialWithFog(material, displace = false) {
         // Uniforms
         shader.uniforms.uFogMap = { value: new THREE.Texture() };
         shader.uniforms.uMapSize = { value: new THREE.Vector2(1, 1) };
+        shader.uniforms.uMaxOffset = { value: 5.0 };
 
         // --- Vertex Shader Modification ---
 
@@ -29,7 +30,7 @@ export function modifyMaterialWithFog(material, displace = false) {
             #include <common>
             varying vec2 vFogUV;
             uniform vec2 uMapSize;
-            ${displace ? 'uniform sampler2D uFogMap;' : ''}
+            ${displace ? 'uniform sampler2D uFogMap; uniform float uMaxOffset;' : ''}
 
             float getFogNoise(vec2 co){
                 return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
@@ -75,7 +76,7 @@ export function modifyMaterialWithFog(material, displace = false) {
             // Apply displacement to local 'transformed'
             // 1.0 (Visible) -> 0 displacement
             // 0.0 (Hidden) -> Full displacement
-            transformed.y += dir * (1.0 - fogValVS);
+            transformed.y += dir * uMaxOffset * (1.0 - fogValVS);
             ` : ''}
             `
         );
