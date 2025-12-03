@@ -252,7 +252,7 @@ export class Window_CreatureModal extends Window_Selectable {
         }
 
         options.forEach(opt => {
-            const def = Data.equipment[opt.id];
+            const def = Data.equipmentById[opt.id];
             const name = typeof opt.owner?.name === 'function' ? opt.owner.name() : opt.owner?.name;
             const subtitle = opt.source === 'unit' ? `Held by ${name}` : 'Inventory';
 
@@ -284,21 +284,21 @@ export class Window_CreatureModal extends Window_Selectable {
     }
 
     equipFromInventory(target, equipmentId) {
-        if (!window.$gameParty.hasItem(equipmentId)) return;
+        if (!window.$gameParty.hasEquipment(equipmentId)) return;
         const previous = target.equipmentId;
 
         // Remove item from inventory
-        window.$gameParty.loseItem(equipmentId, 1);
+        window.$gameParty.loseEquipment(equipmentId, 1);
 
         if (previous) {
-            window.$gameParty.gainItem(previous, 1);
+            window.$gameParty.gainEquipment(previous, 1);
         }
 
         target.equipmentId = equipmentId;
         this.recomputeHp(target);
 
         const name = typeof target.name === 'function' ? target.name() : target.name;
-        Log.add(`${name} equipped ${Data.equipment[equipmentId].name}.`);
+        Log.add(`${name} equipped ${Data.equipmentById[equipmentId].name}.`);
         if (window.Game.Windows.Party) window.Game.Windows.Party.refresh();
         this.refresh();
     }
@@ -307,7 +307,7 @@ export class Window_CreatureModal extends Window_Selectable {
         const previous = target.equipmentId;
         if (previous === equipmentId && owner.uid === target.uid) return;
         if (previous) {
-            window.$gameParty.gainItem(previous, 1);
+            window.$gameParty.gainEquipment(previous, 1);
         }
         if (owner && owner.equipmentId === equipmentId) {
             owner.equipmentId = null;
@@ -317,7 +317,7 @@ export class Window_CreatureModal extends Window_Selectable {
         this.recomputeHp(target);
         const name = typeof target.name === 'function' ? target.name() : target.name;
         const ownerName = typeof owner.name === 'function' ? owner.name() : owner.name;
-        Log.add(`${name} borrowed ${Data.equipment[equipmentId].name} from ${ownerName}.`);
+        Log.add(`${name} borrowed ${Data.equipmentById[equipmentId].name} from ${ownerName}.`);
         if (window.Game.Windows.Party) window.Game.Windows.Party.refresh();
         this.refresh();
     }
@@ -326,10 +326,10 @@ export class Window_CreatureModal extends Window_Selectable {
         if (!unit.equipmentId) return;
         const previous = unit.equipmentId;
         unit.equipmentId = null;
-        window.$gameParty.gainItem(previous, 1);
+        window.$gameParty.gainEquipment(previous, 1);
         this.recomputeHp(unit);
         const name = typeof unit.name === 'function' ? unit.name() : unit.name;
-        Log.add(`${name} removed ${Data.equipment[previous].name}.`);
+        Log.add(`${name} removed ${Data.equipmentById[previous].name}.`);
         if (window.Game.Windows.Party) window.Game.Windows.Party.refresh();
         this.refresh();
     }
@@ -417,7 +417,7 @@ export class Window_CreatureModal extends Window_Selectable {
         // Equipment Button
         if (this._ui.equipSlot) {
             if (unit.equipmentId) {
-                const eq = Data.equipment[unit.equipmentId];
+                const eq = Data.equipmentById[unit.equipmentId];
                 this._ui.equipSlot.innerText = eq ? eq.name : 'Unknown';
             } else {
                 this._ui.equipSlot.innerText = '[ Empty ]';
@@ -490,7 +490,7 @@ export class Window_Inventory extends Window_Selectable {
 
             eqKeys.forEach(id => {
                 const count = window.$gameParty.inventory.equipment[id];
-                const def = Data.equipment[id];
+                const def = Data.equipmentById[id];
                 const row = new Component('div', 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1');
                 row.element.innerHTML = `<div><span class="text-yellow-100">${def.name}</span> <span class="text-[10px] text-gray-400">x${count}</span><div class="text-[10px] text-gray-500">${def.description}</div></div>`;
 
@@ -511,7 +511,7 @@ export class Window_Inventory extends Window_Selectable {
 
             itemKeys.forEach(id => {
                 const count = window.$gameParty.inventory.items[id];
-                const def = Data.items[id];
+                const def = Data.itemsById[id];
                 const row = new Component('div', 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1');
                 row.element.innerHTML = `<div><span class="text-yellow-100">${def.name}</span> <span class="text-[10px] text-gray-400">x${count}</span><div class="text-[10px] text-gray-500">${def.description}</div></div>`;
 
