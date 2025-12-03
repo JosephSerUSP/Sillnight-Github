@@ -36,7 +36,9 @@ export function modifyMaterialWithFog(material, displace = false) {
             }
 
             float getFogValVS(sampler2D map, vec2 uv) {
-                #ifdef GL_EXT_shader_texture_lod
+                #if __VERSION__ >= 300
+                    return textureLod(map, uv, 0.0).r;
+                #elif defined(GL_EXT_shader_texture_lod)
                     return texture2DLodEXT(map, uv, 0.0).r;
                 #else
                     // Fallback for environments where texture2D in VS is supported implicitly (e.g. WebGL 2 or some WebGL 1 implementations)
@@ -64,7 +66,7 @@ export function modifyMaterialWithFog(material, displace = false) {
             );
 
             ${displace ? `
-            // Apply Displacement
+            // Apply Displacement logic to World Position
             float fogValVS = getFogValVS(uFogMap, vFogUV);
 
             // Random Vertex Warp - Per Tile Logic
@@ -72,13 +74,24 @@ export function modifyMaterialWithFog(material, displace = false) {
             float r = getFogNoise(tilePos);
             float dir = step(0.5, r) * 2.0 - 1.0;
 
-            // Apply displacement to local 'transformed'
-            // 1.0 (Visible) -> 0 displacement
-            // 0.0 (Hidden) -> Full displacement
-            transformed.y += dir * (1.0 - fogValVS);
+            // Apply displacement directly to World Y
+            fogWorldPos.y += dir * (1.0 - fogValVS);
             ` : ''}
             `
         );
+
+        // Replace project_vertex to use our modified fogWorldPos directly
+        // bypassing the standard re-calculation from 'transformed'
+        if (displace) {
+            shader.vertexShader = shader.vertexShader.replace(
+                '#include <project_vertex>',
+                `
+                // Bypass standard project_vertex
+                vec4 mvPosition = viewMatrix * fogWorldPos;
+                gl_Position = projectionMatrix * mvPosition;
+                `
+            );
+        }
 
         // --- Fragment Shader Modification ---
         shader.fragmentShader = shader.fragmentShader.replace(
