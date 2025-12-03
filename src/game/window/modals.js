@@ -7,6 +7,7 @@ import { FlexLayout } from '../layout/FlexLayout.js';
 import { GridLayout } from '../layout/GridLayout.js';
 import { Component } from '../layout/Component.js';
 import { TextComponent, ButtonComponent, WindowFrameComponent } from '../layout/components.js';
+import { Game_Action } from '../classes/Game_Action.js';
 
 /**
  * Window for displaying creature details and managing equipment.
@@ -202,6 +203,11 @@ export class Window_CreatureModal extends Window_Selectable {
         this._ui.equipOptions.className = 'grid grid-cols-2 gap-2 overflow-y-auto pr-1 flex-grow';
         libBox.element.appendChild(this._ui.equipOptions);
 
+        // Preview Pane (Bottom)
+        this._ui.previewPane = document.createElement('div');
+        this._ui.previewPane.className = 'border-t border-gray-600 pt-2 hidden flex-col gap-1 text-[10px] text-gray-300';
+        libBox.element.appendChild(this._ui.previewPane);
+
         // No hint needed, flows are explicit
         this._ui.equipHint = document.createElement('div');
         this._ui.equipHint.style.display = 'none';
@@ -232,6 +238,12 @@ export class Window_CreatureModal extends Window_Selectable {
         if (this._ui.libraryBox) {
             this._ui.libraryBox.classList.remove('hidden');
             this._ui.libraryBox.classList.add('flex');
+            // Reset preview
+            if (this._ui.previewPane) {
+                this._ui.previewPane.innerHTML = '';
+                this._ui.previewPane.classList.add('hidden');
+                this._ui.previewPane.classList.remove('flex');
+            }
         }
 
         // Populate options
@@ -264,11 +276,69 @@ export class Window_CreatureModal extends Window_Selectable {
 
             cardInner.innerHTML = `<div class="flex justify-between items-center"><div class="text-yellow-200">${def.name}</div><span class="text-[10px] text-gray-500 uppercase">${opt.source}</span></div><div class="text-[10px] text-gray-400 leading-tight">${subtitle}</div>`;
             cardInner.addEventListener('click', () => {
-                if (opt.source === 'unit') this.transferEquipment(first, opt.owner, def.id);
-                else this.equipFromInventory(first, def.id);
-                this.endEquipFlow();
+                this.showEquipPreview(first, opt, def);
             });
         });
+    }
+
+    showEquipPreview(target, option, equipmentDef) {
+        const pane = this._ui.previewPane;
+        pane.innerHTML = '';
+        pane.classList.remove('hidden');
+        pane.classList.add('flex');
+
+        // Logic to preview stats
+        // We clone the unit roughly to see diff
+        // But cloning game objects is hard.
+        // Better to just calculate expected changes or list traits.
+
+        // Show Traits
+        const traits = equipmentDef.traits || [];
+        const traitsHtml = traits.map(t => {
+            if (t.type === 'hp_bonus_percent') return `Max HP +${Math.round(parseFloat(t.formula)*100)}%`;
+            if (t.type === 'xp_bonus_percent') return `XP Gain +${Math.round(parseFloat(t.formula)*100)}%`;
+            if (t.type === 'power_bonus') return `Power +${t.formula}`;
+            if (t.type === 'speed_bonus') return `Speed +${t.formula}`;
+            return t.type.replace(/_/g, ' ');
+        }).join(', ');
+
+        const info = document.createElement('div');
+        info.className = 'text-yellow-100 font-bold mb-1';
+        info.innerText = `Preview: ${equipmentDef.name}`;
+        pane.appendChild(info);
+
+        const desc = document.createElement('div');
+        desc.className = 'italic text-gray-400 mb-2';
+        desc.innerText = equipmentDef.description || traitsHtml;
+        pane.appendChild(desc);
+
+        // Warning if held
+        if (option.source === 'unit' && option.owner) {
+            const warn = document.createElement('div');
+            warn.className = 'text-red-400 mb-2 border border-red-900 bg-red-900/20 p-1';
+            const ownerName = typeof option.owner.name === 'function' ? option.owner.name() : option.owner.name;
+            warn.innerText = `Currently held by ${ownerName}. Swap?`;
+            pane.appendChild(warn);
+        }
+
+        // Buttons
+        const btnRow = document.createElement('div');
+        btnRow.className = 'flex gap-2 justify-end mt-1';
+        pane.appendChild(btnRow);
+
+        const btnCancel = new ButtonComponent('CANCEL', () => {
+            pane.classList.add('hidden');
+            pane.classList.remove('flex');
+        }, 'text-gray-400 border border-gray-600 px-2 py-1 text-[10px] hover:text-white').element;
+
+        const btnConfirm = new ButtonComponent('EQUIP', () => {
+             if (option.source === 'unit') this.transferEquipment(target, option.owner, equipmentDef.id);
+             else this.equipFromInventory(target, equipmentDef.id);
+             this.endEquipFlow();
+        }, 'text-black bg-yellow-500 border border-yellow-600 px-2 py-1 text-[10px] hover:bg-yellow-400').element;
+
+        btnRow.appendChild(btnCancel);
+        btnRow.appendChild(btnConfirm);
     }
 
     endEquipFlow() {
@@ -466,6 +536,10 @@ export class Window_Inventory extends Window_Selectable {
         // Content
         this.listContainer = new Component('div', 'flex-grow p-4 overflow-y-auto no-scrollbar');
         this.layout.add(this.listContainer, { grow: 1 });
+
+        // Target Picker (Hidden by default)
+        this.targetPicker = new Component('div', 'hidden absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-20');
+        this.frame.element.appendChild(this.targetPicker.element);
     }
 
     toggle() {
@@ -480,6 +554,11 @@ export class Window_Inventory extends Window_Selectable {
     refresh() {
         if (!this.listContainer) return;
         this.listContainer.element.innerHTML = '';
+
+        if (this.targetPicker) {
+            this.targetPicker.element.classList.add('hidden');
+            this.targetPicker.element.innerHTML = '';
+        }
 
         const eqKeys = Object.keys(window.$gameParty.inventory.equipment);
 
@@ -515,10 +594,125 @@ export class Window_Inventory extends Window_Selectable {
                 const row = new Component('div', 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1');
                 row.element.innerHTML = `<div><span class="text-yellow-100">${def.name}</span> <span class="text-[10px] text-gray-400">x${count}</span><div class="text-[10px] text-gray-500">${def.description}</div></div>`;
 
-                const btn = new ButtonComponent('USE', () => alert('Item usage coming soon'), 'text-[10px] border border-gray-600 px-2 py-1 hover:bg-white hover:text-black');
+                const btn = new ButtonComponent('USE', () => {
+                     this.showTargetPicker(id, def);
+                }, 'text-[10px] border border-gray-600 px-2 py-1 hover:bg-white hover:text-black');
                 row.element.appendChild(btn.element);
                 this.listContainer.element.appendChild(row.element);
             });
+        }
+    }
+
+    showTargetPicker(itemId, itemDef) {
+        if (!this.targetPicker) return;
+        const picker = this.targetPicker.element;
+        picker.innerHTML = '';
+        picker.classList.remove('hidden');
+        picker.classList.add('flex');
+
+        const label = document.createElement('div');
+        label.className = 'text-yellow-200 mb-4 text-sm';
+        label.innerText = `Use ${itemDef.name} on whom?`;
+        picker.appendChild(label);
+
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-2 gap-2 w-full px-8';
+        picker.appendChild(grid);
+
+        window.$gameParty.activeSlots.forEach(unit => {
+             if (!unit) return;
+
+             const btn = document.createElement('button');
+             btn.className = 'bg-gray-800 border border-gray-600 p-2 text-left hover:border-yellow-400 flex justify-between items-center';
+
+             const name = typeof unit.name === 'function' ? unit.name() : unit.name;
+             const hpPct = Math.round((unit.hp / unit.mhp) * 100);
+
+             btn.innerHTML = `<span>${name}</span> <span class="text-[10px] text-gray-400">HP ${unit.hp}/${unit.mhp}</span>`;
+
+             btn.onclick = () => {
+                 this.useItem(unit, itemId);
+                 picker.classList.add('hidden');
+             };
+
+             grid.appendChild(btn);
+        });
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'mt-4 text-red-400 text-xs hover:text-white';
+        cancelBtn.innerText = 'CANCEL';
+        cancelBtn.onclick = () => picker.classList.add('hidden');
+        picker.appendChild(cancelBtn);
+    }
+
+    useItem(target, itemId) {
+        if (!window.$gameParty.hasItem(itemId)) return;
+        const itemDef = Data.itemsById[itemId];
+
+        // Execute Action
+        const action = new Game_Action(target);
+        action._subject = target;
+        action.setItem(itemDef);
+
+        // Check conditions
+        const effects = itemDef.effects || [];
+        const isRevive = effects.some(e => e.type === 'revive');
+        const isHeal = effects.some(e => e.type.includes('heal'));
+
+        if (target.hp === 0 && !isRevive) {
+            Log.add(`${target.name} is incapacitated.`);
+            return;
+        }
+        if (target.hp === target.mhp && isHeal && !isRevive) {
+             Log.add(`${target.name} is already healthy.`);
+             return;
+        }
+        if (target.hp > 0 && isRevive) {
+             Log.add(`${target.name} is not incapacitated.`);
+             return;
+        }
+
+        const results = action.apply(target);
+
+        // Apply results
+        let used = false;
+        results.forEach(res => {
+            if (res.effect.type.includes('heal') || res.effect.type === 'revive' || res.effect.type === 'increase_max_hp' || res.effect.type === 'increase_level') {
+                const oldHp = target.hp;
+
+                if (res.effect.type === 'revive' && target.hp === 0) {
+                     target.hp += res.value;
+                     target.removeState('ko');
+                } else if (res.effect.type === 'increase_max_hp') {
+                     target.maxHpBonus = (target.maxHpBonus || 0) + res.value;
+                     target.hp += res.value;
+                     Log.add(`${target.name}'s Max HP increased!`);
+                } else if (res.effect.type === 'increase_level') {
+                     target.levelUp();
+                     Log.add(`${target.name} leveled up!`);
+                } else {
+                     target.hp += res.value;
+                }
+
+                if (target.hp > target.mhp) target.hp = target.mhp;
+
+                if (target.hp !== oldHp || res.effect.type === 'increase_max_hp' || res.effect.type === 'increase_level') {
+                    used = true;
+                    const diff = target.hp - oldHp;
+                    if (diff > 0) {
+                         if (window.Game.Windows.Party) window.Game.Windows.Party.onUnitHpChange(target, diff);
+                    }
+                }
+            }
+        });
+
+        if (used) {
+            window.$gameParty.loseItem(itemId, 1);
+            Log.add(`Used ${itemDef.name} on ${target.name}.`);
+            this.refresh();
+            if (window.Game.Windows.Party) window.Game.Windows.Party.refresh();
+        } else {
+             Log.add('No effect.');
         }
     }
 }
@@ -701,20 +895,6 @@ export class Window_PartyMenu extends Window_Selectable {
                     div.style.visibility = 'hidden';
                  }
             }
-            // Use Component wrapper to add to Grid
-            const comp = new Component('div'); // Wrapper not needed if we just append, but LayoutManager expects Component or Element
-            // But GridLayout.add appends the element.
-            // Let's make a generic Component wrapper
-            // Or since div IS an element, GridLayout.add(div) works if it checks for .element or raw element
-            // GridLayout.add calls .element if present.
-            // Let's use Component for consistency
-            // But I already created div with innerHTML.
-            // Let's just wrap it.
-
-            // Wait, GridLayout.add(comp) -> applyStyle(comp.element or comp)
-            // So I can pass 'div' directly?
-            // "if (component.element) { el = component.element; ... } else { el = component; }"
-            // Yes.
 
             this.grid.add(div);
         }

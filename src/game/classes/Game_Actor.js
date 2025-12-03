@@ -81,7 +81,7 @@ export class Game_Actor extends Game_Battler {
         }
         // 3. Equipment
         if (this._equipmentId) {
-            const equip = Data.equipment[this._equipmentId];
+            const equip = Data.equipmentById[this._equipmentId];
             if (equip) objects.push(equip);
         }
         return objects;
