@@ -71,6 +71,36 @@ export class Game_BattlerBase {
     get mmp() { return this.param(1); }
 
     /**
+     * @returns {number} Attack Power.
+     */
+    get atk() { return this.param(2); }
+
+    /**
+     * @returns {number} Defense.
+     */
+    get def() { return this.param(3); }
+
+    /**
+     * @returns {number} Magic Attack.
+     */
+    get mat() { return this.param(4); }
+
+    /**
+     * @returns {number} Magic Defense.
+     */
+    get mdf() { return this.param(5); }
+
+    /**
+     * @returns {number} Agility.
+     */
+    get agi() { return this.param(6); }
+
+    /**
+     * @returns {number} Luck.
+     */
+    get luk() { return this.param(7); }
+
+    /**
      * Checks if the battler is alive.
      * @returns {boolean} True if HP > 0.
      */

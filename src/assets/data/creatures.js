@@ -14,6 +14,7 @@ export const Creatures = {
         race: 'Fey',
         elements: ['G', 'G'],
         passives: ['soothingBreeze'],
+        atk: 80, def: 80, mat: 120, mdf: 120,
         acts: [
             ['attack'],
             ['cure']
@@ -34,6 +35,7 @@ export const Creatures = {
         race: 'Unknown',
         elements: [],
         passives: ['devilLeech'],
+        atk: 105, def: 95, mat: 80, mdf: 80,
         acts: [
             ['attack', 'wait'],
             ['guard']
@@ -54,6 +56,7 @@ export const Creatures = {
         race: 'Undead',
         elements: [],
         passives: [],
+        atk: 110, def: 90, mat: 80, mdf: 80,
         acts: [
             ['attack'],
             ['guard', 'attack']
@@ -74,6 +77,7 @@ export const Creatures = {
         race: 'Celestial',
         elements: [],
         passives: [],
+        atk: 100, def: 100, mat: 115, mdf: 120,
         acts: [
             ['cure'],
             ['ray', 'attack']
@@ -94,6 +98,7 @@ export const Creatures = {
         race: 'Fey',
         elements: ['G'],
         passives: ['soothingBreeze'],
+        atk: 90, def: 100, mat: 130, mdf: 130,
         acts: [
             ['tornado', 'cure'],
             ['thunder']
@@ -114,6 +119,7 @@ export const Creatures = {
         race: 'Construct',
         elements: ['R'],
         passives: ['highVitality'],
+        atk: 120, def: 140, mat: 60, mdf: 80,
         acts: [
             ['wait'],
             ['attackRow']
@@ -134,6 +140,7 @@ export const Creatures = {
         race: 'Undead',
         elements: ['K'],
         passives: [],
+        atk: 90, def: 100, mat: 140, mdf: 120,
         acts: [
             ['curse'],
             ['attack']
@@ -154,6 +161,7 @@ export const Creatures = {
         race: 'Eldritch',
         elements: ['B'],
         passives: [],
+        atk: 100, def: 100, mat: 120, mdf: 120,
         // Front: single-target snipe; Back: slower AoE control
         acts: [
             ['cosmicRay', 'ray'],
@@ -176,6 +184,7 @@ export const Creatures = {
         race: 'Undead',
         elements: [],
         passives: [],
+        atk: 105, def: 95, mat: 95, mdf: 105,
         // Front: row bash; Back: double-duty healer
         acts: [
             ['silverTray', 'attack'],
@@ -198,6 +207,7 @@ export const Creatures = {
         race: 'Human',
         elements: ['W'],
         passives: ['highVitality'],
+        atk: 90, def: 110, mat: 120, mdf: 120,
         // Front: premium heals; Back: holy nukes
         acts: [
             ['latexPrayer', 'cure'],
@@ -220,6 +230,7 @@ export const Creatures = {
         race: 'Eldritch',
         elements: ['G'],
         passives: [],
+        atk: 80, def: 90, mat: 135, mdf: 120,
         // Front: dreamy AoE caster; Back: wind + healing
         acts: [
             ['sleepMist', 'wait'],
@@ -242,6 +253,7 @@ export const Creatures = {
         race: 'Elemental',
         elements: ['B'],
         passives: [],
+        atk: 100, def: 110, mat: 140, mdf: 120,
         // Row-freeze plus huge all-enemy finisher
         acts: [
             ['diamondDust', 'wait'],
@@ -264,6 +276,7 @@ export const Creatures = {
         race: 'Undead',
         elements: ['K'],
         passives: [],
+        atk: 115, def: 95, mat: 115, mdf: 100,
         // Heavy ST physical plus dark nuke
         acts: [
             ['shadowSpike', 'anvil'],
@@ -286,6 +299,7 @@ export const Creatures = {
         race: 'Elemental',
         elements: ['R'],
         passives: ['exploder'],
+        atk: 130, def: 110, mat: 120, mdf: 90,
         // Row pressure and huge fire AoE
         acts: [
             ['attackRow', 'hellfire'],
@@ -308,6 +322,7 @@ export const Creatures = {
         race: 'Human',
         elements: ['W'],
         passives: [],
+        atk: 105, def: 95, mat: 105, mdf: 100,
         // Front: poke & pressure; Back: fast heals
         acts: [
             ['injection', 'attack'],
@@ -330,6 +345,7 @@ export const Creatures = {
         race: 'Human',
         elements: ['G'],
         passives: ['flyHigh'],
+        atk: 125, def: 100, mat: 80, mdf: 90,
         // Always aggressive, very fast row DPS
         acts: [
             ['windBlades', 'attack'],
@@ -352,6 +368,7 @@ export const Creatures = {
         race: 'Unknown',
         elements: ['K'],
         passives: [],
+        atk: 100, def: 100, mat: 120, mdf: 110,
         // Dark single-target pressure + curse
         acts: [
             ['maskTear', 'ray'],
@@ -374,6 +391,7 @@ export const Creatures = {
         race: 'Beast',
         elements: ['R'],
         passives: [],
+        atk: 135, def: 120, mat: 70, mdf: 80,
         // Big row/ ST damage and greedy self-heal
         acts: [
             ['attackRow', 'anvil'],

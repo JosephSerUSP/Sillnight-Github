@@ -11,6 +11,7 @@
         element: null,
         script: 'flash',
         repeat: 1,
+        stat: 'atk',
         effects: []
     };
 
@@ -20,12 +21,12 @@
         guard:  { id: 'guard',  name: 'Guard',       category: 'effect', target: 'self',         speed: 2,  effects: [{ type: 'add_status', status: 'guarding', chance: 1 }] },
 
         attackRow: { id: 'attackRow', name: 'Attack Row', target: 'enemy-row', script: 'attackRow', effects: [{ type: 'hp_damage', formula: '3 + 1.5 * a.level' }] },
-        cure:      { id: 'cure',      name: 'Cure',       category: 'heal',   target: 'ally-single', speed: 1,  element: 'W', script: 'cure', effects: [{ type: 'hp_heal', formula: '4 + 2 * a.level' }] },
+        cure:      { id: 'cure',      name: 'Cure',       category: 'heal',   target: 'ally-single', speed: 1,  element: 'W', script: 'cure', stat: 'mat', effects: [{ type: 'hp_heal', formula: '4 + 2 * a.level' }] },
 
-        tornado:   { id: 'tornado',   name: 'Tornado',    target: 'enemy-all',   speed: -1, element: 'G', script: 'tornado', effects: [{ type: 'hp_damage', formula: '4 + a.level' }] },
-        thunder:   { id: 'thunder',   name: 'Thunder',   speed: 1,  element: 'G', script: 'thunder', effects: [{ type: 'hp_damage', formula: '6 + 2 * a.level' }] },
-        ray:       { id: 'ray',       name: 'Ray',        repeat: 3,   element: 'W', script: 'ray', effects: [{ type: 'hp_damage', formula: '2 + a.level' }] },
-        curse:     { id: 'curse',     name: 'Curse',      element: 'K', script: 'curse', effects: [{ type: 'hp_damage', formula: '16 + 2 * a.level' }] },
+        tornado:   { id: 'tornado',   name: 'Tornado',    target: 'enemy-all',   speed: -1, element: 'G', script: 'tornado', stat: 'mat', effects: [{ type: 'hp_damage', formula: '4 + a.level' }] },
+        thunder:   { id: 'thunder',   name: 'Thunder',   speed: 1,  element: 'G', script: 'thunder', stat: 'mat', effects: [{ type: 'hp_damage', formula: '6 + 2 * a.level' }] },
+        ray:       { id: 'ray',       name: 'Ray',        repeat: 3,   element: 'W', script: 'ray', stat: 'mat', effects: [{ type: 'hp_damage', formula: '2 + a.level' }] },
+        curse:     { id: 'curse',     name: 'Curse',      element: 'K', script: 'curse', stat: 'mat', effects: [{ type: 'hp_damage', formula: '16 + 2 * a.level' }] },
 
         apocalypse: {
             id: 'apocalypse',
@@ -34,6 +35,7 @@
             speed: -2,               // Very slow, very strong
             element: 'K',
             script: 'apocalypse',
+            stat: 'mat',
             effects: [{ type: 'hp_damage', formula: '8 + 2.5 * a.level' }]
         },
         anvil: {
@@ -51,6 +53,7 @@
             speed: 1,                // Snappy snipe
             element: 'W',
             script: 'cosmicRay',
+            stat: 'mat',
             effects: [{ type: 'hp_damage', formula: '5 + 2 * a.level' }]
         },
         gravityWell: {
@@ -60,6 +63,7 @@
             speed: -1,
             element: 'B',
             script: 'gravityWell',
+            stat: 'mat',
             effects: [{ type: 'hp_damage', formula: '3 + 1.8 * a.level' }]
         },
 
@@ -80,6 +84,7 @@
             speed: 1,
             element: 'W',
             script: 'serveDrink',
+            stat: 'mat',
             effects: [{ type: 'hp_heal', formula: '3 + 1.5 * a.level' }]
         },
 
@@ -91,6 +96,7 @@
             target: 'ally-single',
             element: 'W',
             script: 'latexPrayer',
+            stat: 'mat',
             effects: [{ type: 'hp_heal', formula: '6 + 2.5 * a.level' }]
         },
         divineBolt: {
@@ -99,6 +105,7 @@
             speed: 1,
             element: 'W',
             script: 'divineBolt',
+            stat: 'mat',
             effects: [{ type: 'hp_damage', formula: '6 + 2.2 * a.level' }]
         },
 
@@ -109,6 +116,7 @@
             target: 'enemy-all',
             element: 'B',
             script: 'sleepMist',
+            stat: 'mat',
             effects: [
                 { type: 'hp_damage', formula: '3 + 1.6 * a.level' },
                 { type: 'add_status', status: 'sleep', chance: 0.3 }
@@ -122,6 +130,7 @@
             target: 'enemy-row',
             element: 'B',
             script: 'diamondDust',
+            stat: 'mat',
             effects: [{ type: 'hp_damage', formula: '5 + 2.0 * a.level' }]
         },
 
@@ -131,6 +140,7 @@
             name: 'Shadow Spike',
             element: 'K',
             script: 'shadowSpike',
+            stat: 'atk', // Dark physical nuke
             effects: [{ type: 'hp_damage', formula: '7 + 2.0 * a.level' }]
         },
 
@@ -142,6 +152,7 @@
             speed: -1,
             element: 'R',
             script: 'hellfire',
+            stat: 'mat',
             effects: [{ type: 'hp_damage', formula: '5 + 2.0 * a.level' }]
         },
 
@@ -161,6 +172,7 @@
             speed: 2,
             element: 'W',
             script: 'triage',
+            stat: 'mat',
             effects: [{ type: 'hp_heal', formula: '4 + 2.0 * a.level' }]
         },
 
@@ -182,6 +194,7 @@
             name: 'Mask Tear',
             element: 'K',
             script: 'maskTear',
+            stat: 'atk', // Physical tear
             effects: [{ type: 'hp_damage', formula: '6 + 2.0 * a.level' }]
         },
 
@@ -193,6 +206,7 @@
             target: 'self',
             element: 'R',
             script: 'feast',
+            stat: 'atk', // Physical biting
             effects: [{ type: 'hp_heal', formula: '5 + 1.5 * a.level' }]
         }
     };
