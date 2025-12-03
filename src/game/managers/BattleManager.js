@@ -147,7 +147,7 @@ export const BattleManager = {
     processNextTurn() {
          window.Game.Windows.Party.refresh();
             if (this.turnIndex >= this.queue.length) {
-                setTimeout(() => this.nextRound(), 1000);
+                setTimeout(() => this.nextRound(), Data.config.battle?.postTurnDelay || 1000);
                 return;
             }
             const unit = this.queue[this.turnIndex++];
@@ -159,6 +159,22 @@ export const BattleManager = {
             Systems.Triggers.fire('onTurnStart', unit);
             const isAlly = this.allies.some(a => a.uid === unit.uid);
             Systems.Battle3D.setFocus(isAlly ? 'ally' : 'enemy');
+
+            // --- PACING DELAY & HIGHLIGHT ---
+            // Wait for camera to settle and flash the actor
+            setTimeout(() => {
+                Systems.Battle3D.playAnim(unit.uid, [{
+                    type: 'feedback', bind: 'self',
+                    color: 0xffffff, duration: Data.config.battle?.flashDuration || 300,
+                    shake: 0
+                }]);
+
+                // Then proceed with action logic
+                setTimeout(() => this.executeAction(unit, isAlly), Data.config.battle?.turnStartDelay || 600);
+            }, Data.config.battle?.actionWait || 300); // Small initial pause for camera pan start
+    },
+
+    executeAction(unit, isAlly) {
             const enemies = isAlly ? this.enemies : this.allies;
             const friends = isAlly ? this.allies : this.enemies;
             const possibleActs = [...unit.acts[0], ...(unit.acts[1] || [])];
@@ -252,8 +268,15 @@ export const BattleManager = {
                             }
                             if (target.hp <= 0) {
                                 Log.battle(`> ${target.name} was defeated!`);
-                                Systems.Battle3D.playDeathFade(target.uid);
                                 Systems.Triggers.fire('onUnitDeath', target);
+
+                                // Delayed Death Fade
+                                setTimeout(() => {
+                                    // Check if still dead (revive might have happened instantly via trait? Unlikely but safe)
+                                    if (target.hp <= 0) {
+                                        Systems.Battle3D.playDeathFade(target.uid);
+                                    }
+                                }, Data.config.battle?.deathDelay || 500);
 
                                 // Revive check
                                 const reviveChance = target.traitsSum('revive_on_ko_chance');
@@ -323,7 +346,7 @@ export const BattleManager = {
             Systems.Battle3D.playAnim(unit.uid, script, {
                 targets,
                 onApply: applyResults,
-                onComplete: () => setTimeout(() => this.processNextTurn(), 600)
+                onComplete: () => setTimeout(() => this.processNextTurn(), Data.config.battle?.postTurnDelay || 1000)
             });
     },
 
