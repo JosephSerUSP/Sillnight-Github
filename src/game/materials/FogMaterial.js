@@ -31,7 +31,7 @@ export function modifyMaterialWithFog(material, displace = false) {
         // Uniforms
         shader.uniforms.uFogMap = { value: new THREE.Texture() };
         shader.uniforms.uMapSize = { value: new THREE.Vector2(1, 1) };
-        shader.uniforms.uMaxOffset = { value: 5.0 };
+        shader.uniforms.uMaxOffset = { value: 1.5 };
 
         // --- Vertex Shader Modification ---
 
@@ -79,15 +79,10 @@ export function modifyMaterialWithFog(material, displace = false) {
             // Apply Displacement
             float fogValVS = getFogValVS(uFogMap, vFogUV);
 
-            // Random Vertex Warp - Per Tile Logic
-            vec2 tilePos = floor(fogWorldPos.xz + 0.5);
-            float r = getFogNoise(tilePos);
-            float dir = step(0.5, r) * 2.0 - 1.0;
-
             // Apply displacement to local 'transformed'
             // 1.0 (Visible) -> 0 displacement
-            // 0.0 (Hidden) -> Full displacement
-            transformed.y += dir * uMaxOffset * (1.0 - fogValVS);
+            // 0.0 (Hidden) -> Full displacement (downwards)
+            transformed.y -= uMaxOffset * (1.0 - fogValVS);
             ` : ''}
             `
         );
