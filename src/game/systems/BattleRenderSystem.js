@@ -18,8 +18,8 @@ export class BattleRenderSystem {
          // Get shared renderer
          if (window.Game && window.Game.RenderManager) {
             // Ensure Effekseer init works.
-            if (Systems.Effekseer) {
-                Systems.Effekseer.init(window.Game.RenderManager.getRenderer());
+            if (window.Game.Systems.Effekseer) {
+                window.Game.Systems.Effekseer.init(window.Game.RenderManager.getRenderer());
             }
         }
 
@@ -254,8 +254,8 @@ export class BattleRenderSystem {
         const renderer = window.Game.RenderManager.getRenderer();
         if (renderer && (window.Game.ui.mode === 'BATTLE' || window.Game.ui.mode === 'BATTLE_WIN')) {
             renderer.render(this.scene, this.camera);
-            if (Systems.Effekseer) {
-                Systems.Effekseer.update(this.camera);
+            if (window.Game.Systems.Effekseer) {
+                window.Game.Systems.Effekseer.update(this.camera);
             }
         }
     }
@@ -518,7 +518,7 @@ export class BattleRenderSystem {
                     const zOffset = sp.position.z - sp.userData.baseZ;
                     const zPos = zOffset + (sp.userData.baseScale.y * anchor);
                     const pos = { x: sp.position.x, y: sp.position.y, z: zPos };
-                    return Systems.Effekseer.play(step.effect, pos);
+                    return window.Game.Systems.Effekseer.play(step.effect, pos);
                 });
                 const hold = step.hold ?? 300;
                 return Promise.all(plays).then(() => wait(hold));

@@ -1,5 +1,5 @@
 import { resolveAssetPath } from '../core.js';
-import { Systems } from '../systems.js';
+// Systems import removed
 
 /**
  * Generates the HTML markup for a unit's sprite.
@@ -12,7 +12,7 @@ import { Systems } from '../systems.js';
  */
 export function spriteMarkup(unit, sizeClasses = 'h-10 w-10 object-contain', extraClasses = '', textClass = 'text-xl') {
     // Handle both class instance and raw object
-    const name = typeof unit?.name === 'function' ? unit.name() : unit?.name;
+    const name = typeof unit?.name === 'function' ? unit.name() : unit?.name; // Method Call if function
     const sprite = typeof unit?.sprite === 'function' ? unit.sprite() : unit?.sprite;
     const spriteAsset = typeof unit?.spriteAsset === 'function' ? unit.spriteAsset() : unit?.spriteAsset;
 
@@ -33,12 +33,24 @@ export function renderCreaturePanel(unit) {
     if (!unit) return '';
 
     // Handle class vs raw object
-    const name = typeof unit.name === 'function' ? unit.name() : unit.name;
+    // If it's a class instance with a name getter, accessing .name calls the getter.
+    // If it's a raw object, .name is a property.
+    // If it's a class instance with a name() method (not getter), we need to call it.
+    // However, Game_Battler defines `get name()`. So unit.name works for both.
+    // The previous code `typeof unit.name === 'function'` was checking if the property itself is a function.
+    // For a getter, `unit.name` returns the value, so it's a string.
+    // For a method, `unit.name` is a function.
+
+    let name = unit.name;
+    if (typeof unit.name === 'function') {
+        name = unit.name();
+    }
+
     const level = unit.level || 1;
     const hp = unit.hp;
-    // Use Systems.Battle.getMaxHp for now as it handles bonuses, or unit.mhp if class
+    // Use unit.mhp if class or property
     let maxhp = 0;
-    if (typeof unit.mhp === 'number') maxhp = unit.mhp; // Getter
+    if (typeof unit.mhp === 'number') maxhp = unit.mhp; // Getter/Prop
     else if (typeof unit.mhp === 'function') maxhp = unit.mhp(); // Method
     else maxhp = 1; // Fallback
 
@@ -52,13 +64,6 @@ export function renderCreaturePanel(unit) {
     const xpInCurrentLvl = (unit.exp || 0) - currentLvlXp;
     const xpForThisLvl = nextLvlXp - currentLvlXp;
     const xpPct = (xpInCurrentLvl / xpForThisLvl) * 100;
-
-    // Reduced sizes and removed explicit text-xs/text-sm where appropriate to inherit Window_Base style
-    // But specific small text like Lv/HP might need to remain relatively small or just inherit standardFontSize (12px).
-    // Let's use inherit where possible, but for "smaller" text use explicit scaling or classes.
-    // Window_Base sets 12px.
-    // text-xs is 0.75rem (12px).
-    // text-[10px] is smaller.
 
     return `
         <div class="flex justify-between text-gray-300">

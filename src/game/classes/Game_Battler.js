@@ -157,17 +157,22 @@ export class Game_Battler extends Game_BattlerBase {
                 } else if (trait.type === 'post_battle_leech') {
                     const party = args[0];
                     if (party) {
-                        const adjacent = this.getAdjacentUnits(party);
-                        let totalDamage = 0;
-                        adjacent.forEach(target => {
-                            const damage = parseInt(trait.formula) || 0;
-                            target.hp = Math.max(0, target.hp - damage);
-                            totalDamage += damage;
-                            Log.add(`${this.name} leeched ${damage} HP from ${target.name}.`);
-                        });
-                        const leechHeal = Math.floor(totalDamage / 2);
-                        this.hp = Math.min(this.mhp, this.hp + leechHeal);
-                        Log.add(`${this.name} recovered ${leechHeal} HP.`);
+                        // Assuming getAdjacentUnits is implemented somewhere or needs implementation?
+                        // If it's not on `this`, this logic might be fragile.
+                        // But we are just preserving existing logic pattern mostly.
+                        if (typeof this.getAdjacentUnits === 'function') {
+                            const adjacent = this.getAdjacentUnits(party);
+                            let totalDamage = 0;
+                            adjacent.forEach(target => {
+                                const damage = parseInt(trait.formula) || 0;
+                                target.hp = Math.max(0, target.hp - damage);
+                                totalDamage += damage;
+                                Log.add(`${this.name} leeched ${damage} HP from ${target.name}.`);
+                            });
+                            const leechHeal = Math.floor(totalDamage / 2);
+                            this.hp = Math.min(this.mhp, this.hp + leechHeal);
+                            Log.add(`${this.name} recovered ${leechHeal} HP.`);
+                        }
                     }
                 }
                 break;
@@ -185,8 +190,9 @@ export class Game_Battler extends Game_BattlerBase {
                         if (skill) {
                             // Dynamically load dependencies to avoid circles
                             import('../classes/Game_Action.js').then(({ Game_Action }) => {
-                                if (window.Game && window.Game.BattleManager) {
-                                    const enemies = window.Game.BattleManager.enemies.filter(e => e.hp > 0);
+                                // Need access to enemies to apply effect
+                                if (window.$gameTroop) {
+                                    const enemies = window.$gameTroop.members().filter(e => e.hp > 0);
                                     const action = new Game_Action(this);
                                     action.setObject(skill);
                                     enemies.forEach(target => {
