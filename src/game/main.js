@@ -8,6 +8,7 @@ import { Window_HUD } from './window/hud.js';
 import { Window_Party } from './window/party.js';
 import { Window_CreatureModal, Window_Inventory, Window_PartyMenu } from './window/modals.js';
 import { Window_BattleLog } from './window/battle_log.js';
+import { Window_Victory, Window_LevelUp } from './window/victory.js';
 
 /**
  * Core game bootstrapper; keeps entrypoint slim while delegating to managers/scenes.
@@ -52,6 +53,8 @@ export const Game = {
         this.Windows.Inventory = new Window_Inventory();
         this.Windows.PartyMenu = new Window_PartyMenu();
         this.Windows.BattleLog = new Window_BattleLog();
+        this.Windows.Victory = new Window_Victory();
+        this.Windows.LevelUp = new Window_LevelUp();
 
         // Initial map generation (already done in setupNewGame, but need to render)
         // Systems.Map.generateFloor(); // Moved to DataManager
