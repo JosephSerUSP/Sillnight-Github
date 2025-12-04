@@ -43,6 +43,15 @@ export class LayoutManager {
     }
 
     /**
+     * Adds a raw HTMLElement to the layout (alias for add with element).
+     * @param {HTMLElement} element
+     * @param {Object} [options]
+     */
+    addRaw(element, options = {}) {
+        this.add(element, options);
+    }
+
+    /**
      * Clears all components from the layout.
      */
     clear() {

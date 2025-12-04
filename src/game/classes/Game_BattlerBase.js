@@ -256,4 +256,29 @@ export class Game_BattlerBase {
     traitsSum(type) {
         return this.traitsSet(type).reduce((r, trait) => r + (trait.formula !== undefined ? parseFloat(trait.formula) : 0), 0);
     }
+
+    /**
+     * Gets adjacent units in the formation.
+     * @param {Array<Object>} party - The party array.
+     * @returns {Array<Object>} List of adjacent units.
+     */
+    getAdjacentUnits(party) {
+        if (!party) return [];
+        const adjacent = [];
+        const index = this.slotIndex;
+        if(index === -1) return [];
+        const potentialAdjacent = [
+            index - 1,
+            index + 1,
+            index - 3,
+            index + 3
+        ];
+        potentialAdjacent.forEach(adjIndex => {
+            if(index % 3 === 0 && adjIndex === index-1) return;
+            if(index % 3 === 2 && adjIndex === index+1) return;
+            const adjacentUnit = party.find(u => u && u.slotIndex === adjIndex);
+            if(adjacentUnit) adjacent.push(adjacentUnit);
+        });
+        return adjacent;
+    }
 }
