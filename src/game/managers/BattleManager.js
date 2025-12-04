@@ -1,6 +1,6 @@
 import { Data } from '../../assets/data/data.js';
 import { Log } from '../log.js';
-import { Systems } from '../systems.js';
+import * as Systems from '../systems.js';
 import { Game_Enemy } from '../classes/Game_Enemy.js';
 import { Game_Action } from '../classes/Game_Action.js';
 
@@ -16,7 +16,7 @@ export const BattleManager = {
     enemies: [],
     /** @type {Array<Object>} Turn order queue. */
     queue: [],
-    /** @type {number} Current turn index within the round. */
+    /** @type {number} Turn index within the round. */
     turnIndex: 0,
     /** @type {number} Current round number. */
     roundCount: 0,
@@ -51,7 +51,7 @@ export const BattleManager = {
      * Generates a random encounter based on the current floor and starts it.
      */
     async startEncounter() {
-        Systems.sceneHooks?.onBattleStart?.();
+        // Systems.sceneHooks is removed. Use direct calls or Observer if needed.
         window.Game.ui.mode = 'BATTLE';
         // Wait for scene switch (handles DOM race conditions)
         await window.Game.Scenes.battle.switchScene(true);
@@ -108,9 +108,6 @@ export const BattleManager = {
         [...this.allies, ...this.enemies].forEach(u => {
              // Remove 'guarding' state
              if (typeof u.removeState === 'function') {
-                 // We don't have a fixed ID for guarding yet, using string 'guarding' in _states
-                 // Game_Action logic checks for 'guarding' string in _states.
-                 // So we filter it out.
                  if (u.isStateAffected && u.isStateAffected('guarding')) {
                      u.removeState('guarding');
                  }
@@ -156,7 +153,10 @@ export const BattleManager = {
                 this.processNextTurn();
                 return;
             }
-            Systems.Triggers.fire('onTurnStart', unit);
+
+            // Replaces Systems.Triggers.fire
+            if (Systems.Observer) Systems.Observer.fire('onTurnStart', unit);
+
             const isAlly = this.allies.some(a => a.uid === unit.uid);
             Systems.Battle3D.setFocus(isAlly ? 'ally' : 'enemy');
             const enemies = isAlly ? this.enemies : this.allies;
@@ -253,7 +253,9 @@ export const BattleManager = {
                             if (target.hp <= 0) {
                                 Log.battle(`> ${target.name} was defeated!`);
                                 Systems.Battle3D.playDeathFade(target.uid);
-                                Systems.Triggers.fire('onUnitDeath', target);
+
+                                // Replaces Systems.Triggers.fire
+                                if (Systems.Observer) Systems.Observer.fire('onUnitDeath', target);
 
                                 // Revive check
                                 const reviveChance = target.traitsSum('revive_on_ko_chance');
@@ -365,8 +367,10 @@ export const BattleManager = {
             if (win) {
                 window.Game.Windows.BattleLog.showBanner('VICTORY');
                 window.Game.ui.mode = 'BATTLE_WIN';
-                Systems.sceneHooks?.onBattleEnd?.();
-                Systems.Triggers.fire('onBattleEnd', [...this.allies, ...this.enemies].filter(u => u && u.hp > 0));
+
+                // Replaces Systems.Triggers.fire
+                if (Systems.Observer) Systems.Observer.fire('onBattleEnd', [...this.allies, ...this.enemies].filter(u => u && u.hp > 0));
+
                 Systems.Battle3D.setFocus('victory');
 
                 const gold = this.enemies.length * Data.config.baseGoldPerEnemy * window.$gameMap.floor;
