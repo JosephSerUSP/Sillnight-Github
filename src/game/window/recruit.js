@@ -68,6 +68,8 @@ export class Window_Recruit extends Window_Selectable {
     }
 
     createOfferElement(def, index) {
+        if (!def) return document.createElement('div');
+
         const row = document.createElement('div');
         row.className = 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700';
 
@@ -76,8 +78,8 @@ export class Window_Recruit extends Window_Selectable {
         info.innerHTML = `
             ${spriteMarkup(def, 'h-10 w-10 object-contain')}
             <div>
-                <div class="text-yellow-100">${def.name}</div>
-                <div class="text-xs text-gray-500">HP ${def.baseHp}</div>
+                <div class="text-yellow-100">${def.name || 'Unknown'}</div>
+                <div class="text-xs text-gray-500">HP ${def.baseHp || '???'}</div>
             </div>
         `;
         row.appendChild(info);
@@ -88,7 +90,7 @@ export class Window_Recruit extends Window_Selectable {
         btn.onclick = () => {
             const floor = window.$gameMap ? window.$gameMap.floor : 1;
             window.$gameParty.addActor(def.id, floor);
-            window.Game.Windows.Party.refresh();
+            if (window.Game.Windows.Party) window.Game.Windows.Party.refresh();
 
             btn.disabled = true;
             btn.innerText = 'TAKEN';

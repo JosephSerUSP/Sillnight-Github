@@ -1,9 +1,9 @@
 import { Data } from '../assets/data/data.js';
-import { Log } from './log.js';
 import { resolveAssetPath } from './core.js';
 import { ExploreSystem } from './systems/ExploreSystem.js';
 import { BattleRenderSystem } from './systems/BattleRenderSystem.js';
 import { EventSystem } from './systems/EventSystem.js';
+import { BattleObserver } from './systems/BattleObserver.js';
 
 // ------------------- SYSTEMS DEFINITIONS -------------------
 
@@ -151,178 +151,12 @@ const EffekseerSystem = {
     }
 };
 
-/**
- * A collection of game systems handling various aspects of gameplay.
- * @namespace Systems
- */
-export const Systems = {
-    /**
-     * Hooks for triggering scene transitions.
-     */
-    sceneHooks: { onBattleStart: null, onBattleEnd: null },
+export const Explore = new ExploreSystem();
+export const Battle3D = new BattleRenderSystem();
+export const Event = new EventSystem();
+export const Observer = new BattleObserver();
+export const Effekseer = EffekseerSystem;
 
-    /**
-     * The Effekseer particle system wrapper.
-     */
-    Effekseer: EffekseerSystem,
-
-    /**
-     * System for handling the 3D exploration view and rendering.
-     * @type {ExploreSystem}
-     */
-    Explore: new ExploreSystem(),
-
-    /**
-     * System for handling in-game event modals (Shop, Recruit, etc.).
-     * @namespace Events
-     */
-    Events: {
-        _resolve: null,
-
-        /**
-         * Displays an event modal and waits for it to close.
-         * @param {string} title - The title of the event.
-         * @param {string|HTMLElement} content - The content to display.
-         * @returns {Promise<void>} Resolves when the modal is closed.
-         */
-        show(title, content) {
-            return new Promise(resolve => {
-                this._resolve = resolve;
-                const modal = document.getElementById('event-modal');
-                const tEl = document.getElementById('event-title');
-                const cEl = document.getElementById('event-content');
-                tEl.innerText = title;
-                cEl.innerHTML = '';
-                if (typeof content === 'string') cEl.innerHTML = content;
-                else cEl.appendChild(content);
-                modal.classList.remove('hidden');
-            });
-        },
-        /** Closes the event modal. */
-        close() {
-            document.getElementById('event-modal').classList.add('hidden');
-            if (this._resolve) {
-                this._resolve();
-                this._resolve = null;
-            }
-        },
-
-        /**
-         * Generates random shop stock.
-         */
-        generateShopStock: () => Systems.Event.generateShopStock(),
-
-        /**
-         * Displays the shop UI.
-         */
-        showShop(stock) {
-            Log.add('You discover a mysterious merchant.');
-            if (window.Game && window.Game.Windows && window.Game.Windows.Shop) {
-                return window.Game.Windows.Shop.show(stock);
-            } else {
-                console.error("Window_Shop is not initialized.");
-                return Promise.resolve();
-            }
-        },
-
-        /** Triggers the shop event (legacy/default). */
-        shop(stock) {
-            return this.showShop(stock || this.generateShopStock());
-        },
-
-        /**
-         * Generates random recruit offers.
-         */
-        generateRecruitOffers: () => Systems.Event.generateRecruitOffers(),
-
-        /**
-         * Displays the recruit UI.
-         */
-        showRecruit(offers) {
-            Log.add('You encounter a wandering soul.');
-            if (window.Game && window.Game.Windows && window.Game.Windows.Recruit) {
-                return window.Game.Windows.Recruit.show(offers);
-            } else {
-                console.error("Window_Recruit is not initialized.");
-                return Promise.resolve();
-            }
-        },
-
-        /** Triggers the recruit event (legacy). */
-        recruit(offers) {
-            return this.showRecruit(offers || this.generateRecruitOffers());
-        },
-
-        /** Triggers the shrine event (heal). */
-        shrine() {
-            Log.add('You find a glowing shrine.');
-            window.$gameParty.roster.forEach(u => {
-                u.recoverAll();
-            });
-            window.Game.Windows.Party.refresh();
-
-            if (window.$gameMap && window.$gameMap.playerPos) {
-                const pos = { x: window.$gameMap.playerPos.x, y: 0.5, z: window.$gameMap.playerPos.y };
-                Systems.Effekseer.play('MAP_Shrine', pos);
-            }
-            Log.add('Your party feels rejuvenated.');
-            return Promise.resolve();
-        },
-        /** Triggers the trap event. */
-        trap() {
-            Log.add('A hidden trap triggers!');
-            const damage = (u) => {
-                const maxhp = u.mhp;
-                const dmg = Math.ceil(maxhp * 0.2);
-                u.hp = Math.max(0, u.hp - dmg);
-                if (u.hp === 0) Log.battle(`${u.name} was knocked out by the trap!`);
-            };
-            window.$gameParty.activeSlots.forEach(u => { if (u) damage(u); });
-            window.Game.Windows.Party.refresh();
-
-            if (window.$gameMap && window.$gameMap.playerPos) {
-                const pos = { x: window.$gameMap.playerPos.x, y: 0.5, z: window.$gameMap.playerPos.y };
-                Systems.Effekseer.play('MAP_Trap', pos);
-            }
-            Log.add('A trap harms your party!');
-            return Promise.resolve();
-        }
-    },
-
-    /**
-     * System for rendering the 3D battle scene.
-     * Uses Three.js and Effekseer.
-     * @type {BattleRenderSystem}
-     */
-    Battle3D: new BattleRenderSystem(),
-
-    /**
-     * System for handling passive triggers and traits.
-     * @namespace Triggers
-     */
-    Triggers: {
-        /**
-         * Fires an event to all units, triggering any relevant traits.
-         * @param {string} eventName - The name of the event (e.g., 'onBattleEnd').
-         * @param {...any} args - Additional arguments to pass to the handler.
-         */
-        fire(eventName, ...args) {
-            import('./managers.js').then(({ BattleManager }) => {
-                const allUnits = [...(BattleManager.allies || []), ...(BattleManager.enemies || [])];
-                allUnits.forEach(unit => {
-                    if (unit.hp <= 0) return;
-                    if (typeof unit.triggerTraits === 'function') {
-                        unit.triggerTraits(eventName, ...args);
-                    }
-                });
-            });
-        }
-    },
-
-    /**
-     * System for global event management.
-     * @type {EventSystem}
-     */
-    Event: new EventSystem()
-
-};
+// Exports used to be in a Systems object, but now we export them individually.
+// The main.js will need to aggregate them if it expects a single object,
+// or import * as Systems.
