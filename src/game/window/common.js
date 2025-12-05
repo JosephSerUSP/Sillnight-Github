@@ -1,5 +1,4 @@
 import { resolveAssetPath } from '../core.js';
-import { Systems } from '../systems.js';
 
 /**
  * Generates the HTML markup for a unit's sprite.

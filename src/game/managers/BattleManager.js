@@ -1,6 +1,6 @@
 import { Data } from '../../assets/data/data.js';
 import { Log } from '../log.js';
-import { Systems } from '../systems.js';
+import * as Systems from '../systems.js';
 import { Game_Enemy } from '../classes/Game_Enemy.js';
 import { Game_Action } from '../classes/Game_Action.js';
 
@@ -156,7 +156,7 @@ export const BattleManager = {
                 this.processNextTurn();
                 return;
             }
-            Systems.Triggers.fire('onTurnStart', unit);
+            if (Systems.Observer) Systems.Observer.fire('onTurnStart', unit);
             const isAlly = this.allies.some(a => a.uid === unit.uid);
             Systems.Battle3D.setFocus(isAlly ? 'ally' : 'enemy');
             const enemies = isAlly ? this.enemies : this.allies;
@@ -253,7 +253,7 @@ export const BattleManager = {
                             if (target.hp <= 0) {
                                 Log.battle(`> ${target.name} was defeated!`);
                                 Systems.Battle3D.playDeathFade(target.uid);
-                                Systems.Triggers.fire('onUnitDeath', target);
+                                if (Systems.Observer) Systems.Observer.fire('onUnitDeath', target);
 
                                 // Revive check
                                 const reviveChance = target.traitsSum('revive_on_ko_chance');
@@ -366,7 +366,7 @@ export const BattleManager = {
                 window.Game.Windows.BattleLog.showBanner('VICTORY');
                 window.Game.ui.mode = 'BATTLE_WIN';
                 Systems.sceneHooks?.onBattleEnd?.();
-                Systems.Triggers.fire('onBattleEnd', [...this.allies, ...this.enemies].filter(u => u && u.hp > 0));
+                if (Systems.Observer) Systems.Observer.fire('onBattleEnd', [...this.allies, ...this.enemies].filter(u => u && u.hp > 0));
                 Systems.Battle3D.setFocus('victory');
 
                 const gold = this.enemies.length * Data.config.baseGoldPerEnemy * window.$gameMap.floor;
