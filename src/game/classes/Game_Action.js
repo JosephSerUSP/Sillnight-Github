@@ -101,32 +101,6 @@ export class Game_Action {
     }
 
     /**
-     * Evaluates the damage formula and calculates final damage/healing.
-     * Note: This method is kept for backward compatibility if called directly,
-     * but logic is delegated to the EffectRegistry helper.
-     * @param {Game_Battler} target - The target battler.
-     * @param {Object} effect - The specific effect being applied.
-     * @returns {number} The final calculated value.
-     */
-    evalDamageFormula(target, effect) {
-        // Delegate to registry logic
-        // We use the helper directly, but need to construct the logic if we want to return just the value.
-        // However, EffectRegistry.apply returns the full result.
-        // For compatibility, we'll use evaluateValue + partial logic replication or just rely on apply() usage.
-
-        // Since this method was mostly internal to apply(), let's see if we can just wrap the registry.
-        // The registry's default handler logic mirrors the old evalDamageFormula.
-
-        // However, evalDamageFormula returns a NUMBER. EffectRegistry.apply returns an OBJECT.
-        // To support legacy calls, we might need to manually run the calculation or extract it from the registry result.
-
-        // For now, let's use the registry's apply and return the value.
-        const res = EffectRegistry.apply(this, target, effect);
-        this._lastResultIsCrit = res.isCrit;
-        return res.value;
-    }
-
-    /**
      * Applies the action to the target.
      * @param {Game_Battler} target - The target battler.
      * @returns {Array<Object>} List of results { target, value, effect, isCrit, isMiss }.
@@ -152,9 +126,18 @@ export class Game_Action {
         }
 
         item.effects.forEach(effect => {
-            const res = EffectRegistry.apply(this, target, effect);
-            this._lastResultIsCrit = res.isCrit;
-            results.push(res);
+            const result = EffectRegistry.process(this, target, effect);
+
+            // Sync local crit state (legacy support)
+            this._lastResultIsCrit = !!result.isCrit;
+
+            results.push({
+                target,
+                value: result.value,
+                effect,
+                isCrit: result.isCrit,
+                isMiss: result.isMiss
+            });
         });
 
         return results;

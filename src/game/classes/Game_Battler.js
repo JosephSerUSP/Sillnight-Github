@@ -105,10 +105,6 @@ export class Game_Battler extends Game_BattlerBase {
     onBattleEnd(party) {
         this._result = null;
         this.removeBattleStates();
-
-        // Reset specific battle variables
-        if (this.evadeBonus) this.evadeBonus = 0;
-
         this.triggerTraits('onBattleEnd', party);
     }
 
@@ -143,12 +139,16 @@ export class Game_Battler extends Game_BattlerBase {
 
     /**
      * Handles a specific trait trigger.
-     * Delegates to the TraitRegistry.
      * @param {string} eventName - The event name.
      * @param {Object} trait - The trait object.
      * @param {...any} args - Additional arguments.
      */
     handleTrait(eventName, trait, ...args) {
-        TraitRegistry.handle(eventName, this, trait, ...args);
+        // Cleanup transient props on battle end regardless of traits
+        if (eventName === 'onBattleEnd' && this.evadeBonus) {
+            this.evadeBonus = 0;
+        }
+
+        TraitRegistry.execute(eventName, this, trait, ...args);
     }
 }
