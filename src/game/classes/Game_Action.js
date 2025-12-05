@@ -2,6 +2,7 @@ import { Data } from '../../assets/data/data.js';
 import { Game_Battler } from './Game_Battler.js';
 import { Log } from '../log.js';
 import * as Systems from '../systems.js';
+import { FormulaParser } from '../utils/FormulaParser.js';
 
 /**
  * Handles the execution of battle actions (skills/items).
@@ -10,9 +11,13 @@ import * as Systems from '../systems.js';
 export class Game_Action {
     /**
      * @param {Game_Battler} subject - The battler performing the action.
+     * @param {Game_Party} [gameParty] - The game party instance (DI).
+     * @param {Game_Troop} [gameTroop] - The game troop instance (DI).
      */
-    constructor(subject) {
+    constructor(subject, gameParty, gameTroop) {
         this._subject = subject;
+        this._gameParty = gameParty || window.$gameParty; // Fallback to global if not injected
+        this._gameTroop = gameTroop || window.$gameTroop;
         this._item = null;
         this._skill = null;
         this._lastResultIsCrit = false;
@@ -110,11 +115,17 @@ export class Game_Action {
 
         const a = this._subject;
         const b = target;
+        const context = {
+            a: a,
+            b: b,
+            v: {} // Placeholder for variables if needed in future
+        };
+
         let value = 0;
 
         try {
             // Evaluates the formula string (e.g. "4 + 2 * a.level")
-            value = Math.max(0, eval(effect.formula));
+            value = Math.max(0, FormulaParser.evaluate(effect.formula, context));
         } catch (e) {
             console.error('Error evaluating formula:', effect.formula, e);
             return 0;
