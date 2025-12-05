@@ -2,6 +2,7 @@ import { Data } from '../../assets/data/data.js';
 import { Game_Battler } from './Game_Battler.js';
 import { Log } from '../log.js';
 import * as Systems from '../systems.js';
+import { EffectRegistry } from '../registries/EffectRegistry.js';
 
 /**
  * Handles the execution of battle actions (skills/items).
@@ -101,88 +102,28 @@ export class Game_Action {
 
     /**
      * Evaluates the damage formula and calculates final damage/healing.
+     * Note: This method is kept for backward compatibility if called directly,
+     * but logic is delegated to the EffectRegistry helper.
      * @param {Game_Battler} target - The target battler.
      * @param {Object} effect - The specific effect being applied.
      * @returns {number} The final calculated value.
      */
     evalDamageFormula(target, effect) {
-        if (!effect.formula) return 0;
+        // Delegate to registry logic
+        // We use the helper directly, but need to construct the logic if we want to return just the value.
+        // However, EffectRegistry.apply returns the full result.
+        // For compatibility, we'll use evaluateValue + partial logic replication or just rely on apply() usage.
 
-        const a = this._subject;
-        const b = target;
-        let value = 0;
+        // Since this method was mostly internal to apply(), let's see if we can just wrap the registry.
+        // The registry's default handler logic mirrors the old evalDamageFormula.
 
-        try {
-            // Evaluates the formula string (e.g. "4 + 2 * a.level")
-            value = Math.max(0, eval(effect.formula));
-        } catch (e) {
-            console.error('Error evaluating formula:', effect.formula, e);
-            return 0;
-        }
+        // However, evalDamageFormula returns a NUMBER. EffectRegistry.apply returns an OBJECT.
+        // To support legacy calls, we might need to manually run the calculation or extract it from the registry result.
 
-        // Apply stats (ATK/DEF or MAT/MDF)
-        const statType = this.item().stat || 'atk';
-        let attackStat, defenseStat;
-
-        if (statType === 'mat') {
-            attackStat = a.mat;
-            defenseStat = target.mdf;
-        } else {
-            attackStat = a.atk;
-            defenseStat = target.def;
-        }
-
-        // Apply stat scaling (100 = 100%)
-        // Damage = Base * (Atk/Def)
-        // Ensure defense isn't 0 to avoid division by zero
-        defenseStat = Math.max(1, defenseStat);
-
-        if (effect.type === 'hp_damage') {
-             // 1. Add Power Bonus
-             value += a.power;
-
-             // 2. Stat Multiplier
-             value *= (attackStat / defenseStat);
-
-             // 3. Attacker Element Boost (STAB)
-             const actionElement = this.item().element;
-             let attackMult = 1.0;
-             if (actionElement) {
-                 const subjectElements = a.elements || [];
-                 if (subjectElements.includes(actionElement)) attackMult = 1.25;
-             }
-
-             // 4. Target Element Resistance
-             const defenseMult = this.calcElementRate(target);
-
-             value = Math.floor(value * attackMult * defenseMult);
-
-             // 5. Critical Hit
-             const critChance = a.cri;
-             if (Math.random() < critChance) {
-                 value = Math.floor(value * (Data.config.baseCritMultiplier || 1.5));
-                 this._lastResultIsCrit = true;
-                 Log.battle('> Critical Hit!');
-             } else {
-                 this._lastResultIsCrit = false;
-             }
-
-             // 6. Guarding
-             if (target.isStateAffected('guarding') || (target.status && target.status.includes('guarding'))) {
-                  value = Math.floor(value / 2);
-                  Log.battle('> Guarding!');
-             }
-        } else if (effect.type === 'hp_heal') {
-            // For healing, scale by user's MAT/ATK
-            value *= (attackStat / 100);
-            this._lastResultIsCrit = false;
-            value = Math.floor(value);
-        } else {
-            this._lastResultIsCrit = false;
-            value = Math.floor(value);
-        }
-
-        return Math.max(0, value);
+        // For now, let's use the registry's apply and return the value.
+        const res = EffectRegistry.apply(this, target, effect);
+        this._lastResultIsCrit = res.isCrit;
+        return res.value;
     }
 
     /**
@@ -211,17 +152,9 @@ export class Game_Action {
         }
 
         item.effects.forEach(effect => {
-            let value = 0;
-            if (effect.type === 'hp_heal_ratio') {
-                const ratio = parseFloat(effect.formula);
-                value = Math.floor(target.mhp * ratio);
-            } else if (effect.type === 'revive') {
-                 const ratio = parseFloat(effect.formula);
-                 value = Math.floor(target.mhp * ratio);
-            } else if (effect.type !== 'add_status') {
-                value = this.evalDamageFormula(target, effect);
-            }
-            results.push({ target, value, effect, isCrit: this._lastResultIsCrit });
+            const res = EffectRegistry.apply(this, target, effect);
+            this._lastResultIsCrit = res.isCrit;
+            results.push(res);
         });
 
         return results;
