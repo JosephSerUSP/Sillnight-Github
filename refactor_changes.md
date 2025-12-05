@@ -31,3 +31,4 @@
     * Fixed exports in `src/game/layout/index.js`.
 * **Bug Fixes:**
     * Added null checks in `Window_Shop` to prevent crashes when looking up invalid item IDs.
+    * Fixed circular dependency and invalid import in `src/game/systems/BattleRenderSystem.js` by removing the unused `Systems` import.
