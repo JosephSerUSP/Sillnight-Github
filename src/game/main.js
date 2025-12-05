@@ -12,7 +12,6 @@ import { Window_Victory, Window_LevelUp } from './window/victory.js';
 import { Window_Shop } from './window/shop.js';
 import { Window_Recruit } from './window/recruit.js';
 import { Config } from './Config.js';
-import { GameContext } from './GameContext.js';
 
 /**
  * Core game bootstrapper; keeps entrypoint slim while delegating to managers/scenes.
@@ -30,7 +29,6 @@ export const Game = {
     data: Data,
     log: Log,
     config: Config,
-    context: new GameContext(),
     Scenes: {},
     SceneManager: new SceneManager(),
     BattleManager: BattleManager,
@@ -52,11 +50,6 @@ export const Game = {
         // Initialize Data (Create Party, Map, etc.)
         DataManager.setupNewGame();
 
-        // Populate Context
-        this.context.party = window.$gameParty;
-        this.context.map = window.$gameMap;
-        this.context.troop = window.$gameTroop;
-
         // Create windows
         this.Windows.HUD = new Window_HUD();
         this.Windows.Party = new Window_Party();
@@ -72,7 +65,7 @@ export const Game = {
         // Initial map generation (already done in setupNewGame, but need to render)
         // Systems.Map.generateFloor(); // Moved to DataManager
         this.RenderManager.init();
-        Systems.Explore.init(this.context);
+        Systems.Explore.init();
         Systems.Battle3D.init();
         await Systems.Effekseer.preload();
 
