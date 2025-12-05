@@ -1,5 +1,4 @@
 import { resolveAssetPath } from '../core.js';
-import { Systems } from '../systems.js';
 
 export class BattleRenderSystem {
     constructor() {
