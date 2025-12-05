@@ -1,7 +1,7 @@
 import { Data } from '../../assets/data/data.js';
 import { Game_Battler } from './Game_Battler.js';
 import { Log } from '../log.js';
-import { Systems } from '../systems.js';
+import * as Systems from '../systems.js';
 
 /**
  * Handles the execution of battle actions (skills/items).
@@ -203,7 +203,7 @@ export class Game_Action {
             const chanceToHit = Math.max(0, hitRate - evaRate);
 
             if (Math.random() > chanceToHit) {
-                Systems.Triggers.fire('onUnitEvade', target);
+                if (Systems.Observer) Systems.Observer.fire('onUnitEvade', target);
                 Log.battle('> Miss!');
                 results.push({ target, value: 0, effect: { type: 'miss' }, isMiss: true });
                 return results;

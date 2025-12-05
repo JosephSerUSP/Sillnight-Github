@@ -1,4 +1,5 @@
 import { Log } from '../log.js';
+import * as Systems from '../systems.js';
 
 /**
  * Interpreter for executing event commands.
@@ -39,10 +40,6 @@ export class Game_Interpreter {
             const method = this[`command_${command.code}`];
             if (typeof method === 'function') {
                 try {
-                    // If the command returns false, it means "wait" or "break" logic might be needed,
-                    // but since we are using async/await, we can just await the command.
-                    // If the command is synchronous, it returns undefined or value immediately.
-                    // If async, we await it.
                     await method.call(this, command);
                 } catch (e) {
                     console.error(`Error executing command ${command.code} in event ${this._eventId}:`, e);
@@ -64,35 +61,38 @@ export class Game_Interpreter {
      */
     async command_MESSAGE(params) {
         const text = params.text;
-        // For now, we use the existing Systems.Events.show for simple messages,
-        // or Log if it's not a modal.
-        // If it's a modal message that requires user input/closure:
+        // Temporary implementation until Window_Message is fully integrated
+        // Using a basic DOM overlay
 
-        // We need a way to wait for the message to close.
-        // Currently Systems.Events.show just shows it and returns.
-        // We might need to promisify the UI interaction.
+        return new Promise((resolve) => {
+            const modalId = 'interpreter-message-modal';
+            let modal = document.getElementById(modalId);
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = modalId;
+                modal.className = 'absolute inset-0 bg-black/80 flex items-center justify-center z-50';
+                document.getElementById('game-container').appendChild(modal);
+            } else {
+                modal.classList.remove('hidden');
+            }
 
-        if (window.Game && window.Game.Systems && window.Game.Systems.Events) {
-             return new Promise((resolve) => {
-                 // Create a custom content with a button that resolves the promise
-                 const container = document.createElement('div');
-                 container.className = 'space-y-2';
-                 container.innerHTML = `<div class="text-lg">${text}</div>`;
+            modal.innerHTML = '';
 
-                 const btn = document.createElement('button');
-                 btn.className = 'mt-4 border border-gray-600 px-4 py-2 hover:bg-gray-700 w-full';
-                 btn.innerText = 'Continue';
-                 btn.onclick = () => {
-                     window.Game.Systems.Events.close();
-                     resolve();
-                 };
+            const container = document.createElement('div');
+            container.className = 'bg-gray-900 border border-white p-4 max-w-md w-full flex flex-col gap-4';
+            container.innerHTML = `<div class="text-white text-lg">${text}</div>`;
 
-                 container.appendChild(btn);
-                 window.Game.Systems.Events.show('MESSAGE', container);
-             });
-        } else {
-            Log.add(text);
-        }
+            const btn = document.createElement('button');
+            btn.className = 'border border-gray-600 px-4 py-2 text-white hover:bg-gray-700 w-full';
+            btn.innerText = 'Continue';
+            btn.onclick = () => {
+                modal.classList.add('hidden');
+                resolve();
+            };
+
+            container.appendChild(btn);
+            modal.appendChild(container);
+        });
     }
 
     /**
@@ -131,9 +131,9 @@ export class Game_Interpreter {
                      Log.loot(`Received ${amount}x ${id}.`);
                 }
 
-                if (window.$gameMap && window.$gameMap.playerPos && window.Game.Systems.Effekseer) {
+                if (window.$gameMap && window.$gameMap.playerPos && Systems.Effekseer) {
                     const pos = { x: window.$gameMap.playerPos.x, y: 0.5, z: window.$gameMap.playerPos.y };
-                    window.Game.Systems.Effekseer.play('MAP_Find', pos);
+                    Systems.Effekseer.play('MAP_Find', pos);
                 }
             });
         }
@@ -149,9 +149,9 @@ export class Game_Interpreter {
             window.$gameParty.gainGold(amount);
             Log.loot(`Found ${amount} Gold!`);
 
-            if (window.$gameMap && window.$gameMap.playerPos && window.Game.Systems.Effekseer) {
+            if (window.$gameMap && window.$gameMap.playerPos && Systems.Effekseer) {
                 const pos = { x: window.$gameMap.playerPos.x, y: 0.5, z: window.$gameMap.playerPos.y };
-                window.Game.Systems.Effekseer.play('MAP_Find', pos);
+                Systems.Effekseer.play('MAP_Find', pos);
             }
         }
     }
@@ -171,15 +171,19 @@ export class Game_Interpreter {
      * { code: 'SHOP', stock: [...] }
      */
     async command_SHOP(params) {
-        if (window.Game && window.Game.Systems && window.Game.Systems.Events) {
-            const events = window.Game.Systems.Events;
-            // Use provided stock or generate random stock
-            let stock = params.stock;
-            if (!stock) {
-                stock = events.generateShopStock();
-            }
-            // Await the UI interaction
-            await events.showShop(stock);
+        Log.add('You discover a mysterious merchant.');
+
+        // Generate stock if needed
+        let stock = params.stock;
+        if (!stock) {
+            stock = Systems.Event.generateShopStock();
+        }
+
+        // Direct call to Window
+        if (window.Game && window.Game.Windows && window.Game.Windows.Shop) {
+            await window.Game.Windows.Shop.show(stock);
+        } else {
+            console.error("Window_Shop not found.");
         }
     }
 
@@ -188,13 +192,17 @@ export class Game_Interpreter {
      * { code: 'RECRUIT', offers: [...] }
      */
     async command_RECRUIT(params) {
-        if (window.Game && window.Game.Systems && window.Game.Systems.Events) {
-            const events = window.Game.Systems.Events;
-            let offers = params.offers;
-            if (!offers) {
-                offers = events.generateRecruitOffers();
-            }
-            await events.showRecruit(offers);
+        Log.add('You encounter a wandering soul.');
+
+        let offers = params.offers;
+        if (!offers) {
+            offers = Systems.Event.generateRecruitOffers();
+        }
+
+        if (window.Game && window.Game.Windows && window.Game.Windows.Recruit) {
+            await window.Game.Windows.Recruit.show(offers);
+        } else {
+            console.error("Window_Recruit not found.");
         }
     }
 
@@ -202,18 +210,45 @@ export class Game_Interpreter {
      * Trigger Shrine.
      */
     async command_SHRINE(params) {
-        if (window.Game && window.Game.Systems && window.Game.Systems.Events) {
-            await window.Game.Systems.Events.shrine();
+        Log.add('You find a glowing shrine.');
+
+        // Logic moved inline or to EventSystem methods if complex
+        if (window.$gameParty) {
+            window.$gameParty.roster.forEach(u => u.recoverAll());
+            if (window.Game.Windows.Party) window.Game.Windows.Party.refresh();
         }
+
+        if (window.$gameMap && window.$gameMap.playerPos && Systems.Effekseer) {
+            const pos = { x: window.$gameMap.playerPos.x, y: 0.5, z: window.$gameMap.playerPos.y };
+            Systems.Effekseer.play('MAP_Shrine', pos);
+        }
+
+        Log.add('Your party feels rejuvenated.');
     }
 
     /**
      * Trigger Trap.
      */
     async command_TRAP(params) {
-        if (window.Game && window.Game.Systems && window.Game.Systems.Events) {
-            await window.Game.Systems.Events.trap();
+        Log.add('A hidden trap triggers!');
+
+        if (window.$gameParty) {
+            const damage = (u) => {
+                const maxhp = u.mhp;
+                const dmg = Math.ceil(maxhp * 0.2);
+                u.hp = Math.max(0, u.hp - dmg);
+                if (u.hp === 0) Log.battle(`${u.name} was knocked out by the trap!`);
+            };
+            window.$gameParty.activeSlots.forEach(u => { if (u) damage(u); });
+            if (window.Game.Windows.Party) window.Game.Windows.Party.refresh();
         }
+
+        if (window.$gameMap && window.$gameMap.playerPos && Systems.Effekseer) {
+            const pos = { x: window.$gameMap.playerPos.x, y: 0.5, z: window.$gameMap.playerPos.y };
+            Systems.Effekseer.play('MAP_Trap', pos);
+        }
+
+        Log.add('A trap harms your party!');
     }
 
     /**
@@ -224,15 +259,7 @@ export class Game_Interpreter {
         if (window.$gameMap && this._eventId) {
             const event = window.$gameMap.events.find(e => e.id === this._eventId);
             if (event) {
-                // If it's a one-time event, we might want to remove it from the map completely.
-                // Or just 'erase' it until map reload.
-                // The current Game_Map logic for removeEvent expects the object.
-                // Game_Event has .erase() which sets _erased = true.
                 event.erase();
-                // We should also trigger a visual update in ExploreSystem?
-                // ExploreSystem.syncDynamic() should handle it if it checks .isErased
-                // But we might want to remove it from the map's active event list if it's permanently gone?
-                // For now, let's just use event.erase() and rely on renderer to hide it.
             }
         }
     }

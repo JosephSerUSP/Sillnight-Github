@@ -1,7 +1,7 @@
 import { Data } from '../assets/data/data.js';
 import { DataManager } from './DataManager.js';
 import { Log } from './log.js';
-import { Systems } from './systems.js';
+import * as Systems from './systems.js';
 import { SceneManager, InputManager, BattleManager, RenderManager } from './managers.js';
 import { Scene_Explore, Scene_Battle } from './scenes.js';
 import { Window_HUD } from './window/hud.js';
@@ -11,6 +11,7 @@ import { Window_BattleLog } from './window/battle_log.js';
 import { Window_Victory, Window_LevelUp } from './window/victory.js';
 import { Window_Shop } from './window/shop.js';
 import { Window_Recruit } from './window/recruit.js';
+import { Config } from './Config.js';
 
 /**
  * Core game bootstrapper; keeps entrypoint slim while delegating to managers/scenes.
@@ -27,6 +28,7 @@ export const Game = {
     Systems,
     data: Data,
     log: Log,
+    config: Config,
     Scenes: {},
     SceneManager: new SceneManager(),
     BattleManager: BattleManager,
@@ -98,8 +100,8 @@ function scaleGameContainer() {
     const container = document.getElementById('game-container');
     if (!container) return;
 
-    const targetWidth = 960;
-    const targetHeight = 540;
+    const targetWidth = Config.Resolution.LogicWidth;
+    const targetHeight = Config.Resolution.LogicHeight;
 
     const scaleX = window.innerWidth / targetWidth;
     const scaleY = window.innerHeight / targetHeight;
@@ -111,8 +113,6 @@ function scaleGameContainer() {
 window.addEventListener('resize', () => {
     scaleGameContainer();
     Game.RenderManager.resize();
-    // Systems.Explore.resize(); // Deprecated: RenderManager handles it
-    // Systems.Battle3D.resize(); // Deprecated: RenderManager handles it
 });
 
 window.addEventListener('load', async () => {

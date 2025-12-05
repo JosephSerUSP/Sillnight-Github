@@ -1,5 +1,6 @@
 import { resolveAssetPath } from '../core.js';
-import { Systems } from '../systems.js';
+import * as Systems from '../systems.js';
+import { Config } from '../Config.js';
 
 export class BattleRenderSystem {
     constructor() {
@@ -27,8 +28,8 @@ export class BattleRenderSystem {
         this.scene.background = new THREE.Color(0x0a0a0a);
 
         // Fixed Resolution 480x270
-        const targetW = 480;
-        const targetH = 270;
+        const targetW = Config.Resolution.RenderWidth;
+        const targetH = Config.Resolution.RenderHeight;
         const aspect = targetW / targetH;
 
         this.camera = new THREE.PerspectiveCamera(28, aspect, 0.1, 1000);
@@ -54,8 +55,8 @@ export class BattleRenderSystem {
     /** Resizes the renderer and camera aspect ratio. */
     resize() {
         if (!this.camera) return;
-        const targetW = 480;
-        const targetH = 270;
+        const targetW = Config.Resolution.RenderWidth;
+        const targetH = Config.Resolution.RenderHeight;
         const aspect = targetW / targetH;
 
         this.camera.aspect = aspect;
@@ -235,6 +236,11 @@ export class BattleRenderSystem {
             cs.angle += (cs.targetAngle - cs.angle) * 0.05;
         }
 
+        // Drive Scene Updates
+        if (window.Game && window.Game.SceneManager) {
+            window.Game.SceneManager.update();
+        }
+
         // If zooming in (for level up), reduce R and Z height
         let R = 28.28;
         let Z_HEIGHT = 16;
@@ -272,9 +278,9 @@ export class BattleRenderSystem {
         vec.setFromMatrixPosition(obj.matrixWorld);
         vec.project(this.camera);
 
-        // Map 0..1 coordinates to the UI container size (960x540)
-        const width = 960;
-        const height = 540;
+        // Map 0..1 coordinates to the UI container size
+        const width = Config.Resolution.LogicWidth;
+        const height = Config.Resolution.LogicHeight;
 
         return {
             x: (vec.x * 0.5 + 0.5) * width,
@@ -284,7 +290,7 @@ export class BattleRenderSystem {
 
     /**
      * Resets a sprite's visual state (color, opacity, scale, position).
-     * @param {string} uid - The unique ID of the unit/sprite.
+     * @param {string} uid - The unit ID.
      */
     resetSprite(uid) {
         const sprite = this.sprites[uid];
@@ -301,7 +307,7 @@ export class BattleRenderSystem {
 
     /**
      * Plays a death fade animation for a unit.
-     * @param {string} uid - The unique ID of the unit.
+     * @param {string} uid - The unit ID.
      */
     playDeathFade(uid) {
         const sprite = this.sprites[uid];
@@ -361,8 +367,8 @@ export class BattleRenderSystem {
         // Re-implement toScreen logic inline for vector since toScreen takes object
         const vec = headPos.clone();
         vec.project(this.camera);
-        const width = 960;
-        const height = 540;
+        const width = Config.Resolution.LogicWidth;
+        const height = Config.Resolution.LogicHeight;
         const x = (vec.x * 0.5 + 0.5) * width;
         const y = (-(vec.y * 0.5) + 0.5) * height;
 

@@ -2,6 +2,8 @@ import { Data } from '../../assets/data/data.js';
 import { Log } from '../log.js';
 import { Game_Interpreter } from '../classes/Game_Interpreter.js';
 import { modifyMaterialWithFog } from '../materials/FogMaterial.js';
+import { Config } from '../Config.js';
+import * as Systems from '../systems.js';
 
 class ParticleSystem {
     constructor(scene) {
@@ -106,9 +108,9 @@ export class ExploreSystem {
         this.scene.background = new THREE.Color(0x050510);
         this.scene.fog = new THREE.FogExp2(0x051015, 0.05);
 
-        // Fixed PS1 Style Resolution (480x270)
-        const targetW = 480;
-        const targetH = 270;
+        // Config Resolution
+        const targetW = Config.Resolution.RenderWidth;
+        const targetH = Config.Resolution.RenderHeight;
         const aspect = targetW / targetH;
 
         this.camera = new THREE.PerspectiveCamera(50, aspect, 0.1, 100);
@@ -407,8 +409,8 @@ export class ExploreSystem {
     resize() {
         // Handled by RenderManager mostly, but we update camera aspect
         if (!this.camera) return;
-        const targetW = 480;
-        const targetH = 270;
+        const targetW = Config.Resolution.RenderWidth;
+        const targetH = Config.Resolution.RenderHeight;
         const aspect = targetW / targetH;
 
         this.camera.aspect = aspect;
@@ -496,6 +498,11 @@ export class ExploreSystem {
             requestAnimationFrame(() => this.animate());
         } else {
             requestAnimationFrame(() => this.animate());
+        }
+
+        // DRIVE SCENE UPDATE LOOP HERE
+        if (window.Game && window.Game.SceneManager) {
+            window.Game.SceneManager.update();
         }
 
         if (!this.scene || !this.camera) return;
@@ -626,8 +633,8 @@ export class ExploreSystem {
         const renderer = window.Game.RenderManager.getRenderer();
         if (renderer && window.Game.ui.mode === 'EXPLORE') {
             renderer.render(this.scene, this.camera);
-            if (window.Game.Systems && window.Game.Systems.Effekseer) {
-                window.Game.Systems.Effekseer.update(this.camera);
+            if (Systems.Effekseer) {
+                Systems.Effekseer.update(this.camera);
             }
         }
     }
