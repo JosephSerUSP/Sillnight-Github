@@ -1,7 +1,5 @@
 # Refactor Phase 1: Structural Cleanup
 
-**Status: COMPLETED**
-
 **Goal:** Eliminate the "God Object" anti-pattern in `src/game/systems.js` and unify the Event handling architecture.
 **Complexity:** Medium
 **Risk:** Medium (Changes core wiring)
@@ -15,49 +13,57 @@ The current `systems.js` file is a confused mix of system exports (Explore, Batt
 The `Window_Shop` and `Window_Recruit` classes already exist but are not fully utilized by the legacy `Systems.Events` calls.
 
 1.  **Modify `Window_Shop` (`src/game/window/shop.js`):**
-    *   [x] Ensure it can handle "Buy" logic autonomously.
-    *   [x] Ensure it emits a signal or callback when closed, or returns a Promise.
+    *   Ensure it can handle "Buy" logic autonomously (it seems to do this already).
+    *   Ensure it emits a signal or callback when closed, or returns a Promise (already implemented).
 2.  **Modify `Window_Recruit` (`src/game/window/recruit.js`):**
-    *   [x] Ensure robust error handling if data is missing.
+    *   Ensure robust error handling if data is missing.
 3.  **Delete Legacy UI Code:**
-    *   [x] Remove `Systems.Events.showShop` and `Systems.Events.showRecruit` from `src/game/systems.js`.
-    *   [x] Remove the generic `Systems.Events.show` modal logic.
+    *   Remove `Systems.Events.showShop` and `Systems.Events.showRecruit` from `src/game/systems.js`.
+    *   Remove the generic `Systems.Events.show` modal logic if it's no longer used, or move it to a `Window_Message` class.
 
 ### Step 2: Unify Event Handling
 Currently, `Game_Interpreter` calls `Systems.Events.shop()`, which wraps `Window_Shop`. We will cut out the middleman.
 
 1.  **Refactor `EventSystem.js` (`src/game/systems/EventSystem.js`):**
-    *   [x] Import `Window_Shop` and `Window_Recruit` (via `Game.Windows` global).
-    *   [x] Move the `generateShopStock` and `generateRecruitOffers` logic from `Systems.Events` to `EventSystem`.
+    *   Import `Window_Shop` and `Window_Recruit` (via `Game.Windows` global to avoid circular deps).
+    *   Move the `generateShopStock` and `generateRecruitOffers` logic from `Systems.Events` (in `systems.js`) to `EventSystem` class methods.
 2.  **Update `Game_Interpreter.js`:**
-    *   [x] Update `command_SHOP`: Call `window.Game.Windows.Shop.show(stock)` directly.
-    *   [x] Update `command_RECRUIT`: Call `window.Game.Windows.Recruit.show(offers)` directly.
-    *   [x] Use `EventSystem` methods to generate data if missing.
+    *   Update `command_SHOP`: Call `window.Game.Windows.Shop.show(stock)` directly.
+    *   Update `command_RECRUIT`: Call `window.Game.Windows.Recruit.show(offers)` directly.
+    *   Use `EventSystem` methods to generate data if missing.
 
 ### Step 3: Extract Triggers
 `Systems.Triggers` is a global event bus used for "Passive Traits" (e.g., heal on turn start).
 
 1.  **Create `BattleObserver` Class (`src/game/systems/BattleObserver.js`):**
-    *   [x] Move the `fire(eventName, ...args)` logic here.
+    *   Move the `fire(eventName, ...args)` logic here.
+    *   This class will iterate over `BattleManager.allies` and `$gameTroop.members()` to call `triggerTraits`.
 2.  **Update `Game_Battler.js`:**
-    *   [x] Ensure `triggerTraits` is robust.
+    *   Ensure `triggerTraits` is robust.
 3.  **Update `systems.js`:**
-    *   [x] Replace `Triggers` object with an instance of `BattleObserver`.
+    *   Replace `Triggers` object with an instance of `BattleObserver`.
 
 ### Step 4: Dismantle `systems.js`
 1.  **Refactor `src/game/systems.js`:**
-    *   [x] Remove the `Systems` object literal.
-    *   [x] Change the file to strictly export instances.
+    *   Remove the `Systems` object literal.
+    *   Change the file to strictly export instances:
+        ```javascript
+        export const Explore = new ExploreSystem();
+        export const Battle3D = new BattleRenderSystem();
+        export const Events = new EventSystem();
+        export const Observer = new BattleObserver(); // or similar
+        export const Effekseer = EffekseerSystem;
+        ```
 2.  **Update `src/game/main.js`:**
-    *   [x] Update imports to `import * as Systems from './systems.js'`.
-    *   [x] Ensure `Game.Systems` is populated correctly.
+    *   Update imports to `import * as Systems from './systems.js'`.
+    *   Ensure `Game.Systems` is populated correctly from this namespace object.
 
 ## 3. Verification
-*   [x] **Shop Test:** Shop UI opens, items can be bought, window closes.
-*   [x] **Battle Test:** Passive traits fire correctly.
-*   [x] **Map Test:** `ExploreSystem` functions correctly.
+*   **Shop Test:** Trigger a shop event via console or map interaction. Verify the UI opens, items can be bought, and the window closes.
+*   **Battle Test:** Trigger a battle. Verify that passive traits (if any exist) still fire.
+*   **Map Test:** Ensure `ExploreSystem` still functions (fog, movement).
 
 ## 4. Definition of Done
-*   [x] `src/game/systems.js` contains NO logic, only exports.
-*   [x] `Systems.Events` (legacy object) no longer exists.
-*   [x] `Game_Interpreter` interacts directly with `Game.Windows`.
+*   `src/game/systems.js` contains NO logic, only exports.
+*   `Systems.Events` (legacy object) no longer exists.
+*   `Game_Interpreter` interacts directly with `Game.Windows`.

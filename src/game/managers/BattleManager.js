@@ -186,7 +186,7 @@ export const BattleManager = {
             else actionData = Data.skills['attack'];
 
             // Create Game_Action instance
-            const action = new Game_Action(unit, window.$gameParty, window.$gameTroop);
+            const action = new Game_Action(unit);
             action.setObject(actionData);
 
             let targets = [];

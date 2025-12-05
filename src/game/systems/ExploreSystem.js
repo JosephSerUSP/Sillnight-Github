@@ -97,8 +97,16 @@ export class ExploreSystem {
         this.interpreter = new Game_Interpreter();
     }
 
-    /** Initializes the exploration system. */
-    init() {
+    /**
+     * Initializes the exploration system.
+     * @param {Object} [context] - The game context containing dependencies.
+     */
+    init(context) {
+        if (context) {
+            this.map = context.map;
+            this.party = context.party;
+        }
+
         // Get shared renderer
         if (window.Game && window.Game.RenderManager) {
             window.Game.RenderManager.attachTo('explore-container');
@@ -154,9 +162,11 @@ export class ExploreSystem {
     rebuildLevel() {
         if (!this.scene) return;
         this.mapGroup.clear();
-        // Access Game_Map data directly
-        if (!window.$gameMap) return;
-        const mapData = window.$gameMap._data;
+
+        // Use injected map or fallback to global
+        const gMap = this.map || window.$gameMap;
+        if (!gMap) return;
+        const mapData = gMap._data;
 
         const map = mapData;
         const height = map.length;
@@ -181,7 +191,6 @@ export class ExploreSystem {
         // Populate initial fogTarget based on map visited state
         // This ensures saving/loading preserves "fully visited" tiles,
         // though partial analog states are reset to 0 or 255.
-        const gMap = window.$gameMap;
         for (let y = 0; y < height; y++) {
              const texRow = (height - 1) - y;
              for (let x = 0; x < width; x++) {
@@ -290,8 +299,8 @@ export class ExploreSystem {
         // Initial dynamic sync
         this.syncDynamic();
 
-        const startX = window.$gameMap.playerPos.x;
-        const startY = window.$gameMap.playerPos.y;
+        const startX = gMap.playerPos.x;
+        const startY = gMap.playerPos.y;
         this.playerMesh.position.set(startX, 0.5, startY);
         this.playerTarget.set(startX, 0.5, startY);
         this.cameraLookCurrent.set(startX, 0, startY);
