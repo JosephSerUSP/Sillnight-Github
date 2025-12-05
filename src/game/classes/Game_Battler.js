@@ -1,6 +1,6 @@
 import { Game_BattlerBase } from './Game_BattlerBase.js';
 import { Data } from '../../assets/data/data.js';
-import { Log } from '../log.js';
+import { TraitRegistry } from '../registries/TraitRegistry.js';
 
 /**
  * Superclass for actors and enemies.
@@ -105,6 +105,10 @@ export class Game_Battler extends Game_BattlerBase {
     onBattleEnd(party) {
         this._result = null;
         this.removeBattleStates();
+
+        // Reset specific battle variables
+        if (this.evadeBonus) this.evadeBonus = 0;
+
         this.triggerTraits('onBattleEnd', party);
     }
 
@@ -139,79 +143,12 @@ export class Game_Battler extends Game_BattlerBase {
 
     /**
      * Handles a specific trait trigger.
+     * Delegates to the TraitRegistry.
      * @param {string} eventName - The event name.
      * @param {Object} trait - The trait object.
      * @param {...any} args - Additional arguments.
      */
     handleTrait(eventName, trait, ...args) {
-        switch (eventName) {
-            case 'onBattleEnd':
-                if (this.evadeBonus) this.evadeBonus = 0;
-                if (trait.type === 'post_battle_heal') {
-                    let amount = 0;
-                    if (trait.formula === 'level') amount = Math.floor(Math.pow(Math.random(), 2) * this.level) + 1;
-                    else amount = parseInt(trait.formula) || 0;
-
-                    this.hp = Math.min(this.mhp, this.hp + amount);
-                    Log.add(`${this.name} was healed by Soothing Breeze.`);
-                } else if (trait.type === 'post_battle_leech') {
-                    const party = args[0];
-                    if (party) {
-                        const adjacent = this.getAdjacentUnits(party);
-                        let totalDamage = 0;
-                        adjacent.forEach(target => {
-                            const damage = parseInt(trait.formula) || 0;
-                            target.hp = Math.max(0, target.hp - damage);
-                            totalDamage += damage;
-                            Log.add(`${this.name} leeched ${damage} HP from ${target.name}.`);
-                        });
-                        const leechHeal = Math.floor(totalDamage / 2);
-                        this.hp = Math.min(this.mhp, this.hp + leechHeal);
-                        Log.add(`${this.name} recovered ${leechHeal} HP.`);
-                    }
-                }
-                break;
-            case 'onTurnStart':
-                if (trait.type === 'turn_heal') {
-                    const healAmount = parseInt(trait.formula) || 0;
-                    this.hp = Math.min(this.mhp, this.hp + healAmount);
-                }
-                break;
-            case 'onUnitDeath':
-                if (trait.type === 'on_death_cast') {
-                    const [deadUnit] = args;
-                    if (deadUnit.uid === this.uid) {
-                        const skill = Data.skills[trait.skill.toLowerCase()];
-                        if (skill) {
-                            // Dynamically load dependencies to avoid circles
-                            import('../classes/Game_Action.js').then(({ Game_Action }) => {
-                                if (window.Game && window.Game.BattleManager) {
-                                    const enemies = window.Game.BattleManager.enemies.filter(e => e.hp > 0);
-                                    const action = new Game_Action(this);
-                                    action.setObject(skill);
-                                    enemies.forEach(target => {
-                                        action.apply(target);
-                                    });
-                                    Log.battle(`${this.name} casts ${skill.name} upon death!`);
-                                }
-                            });
-                        }
-                    }
-                }
-                break;
-            case 'onUnitEvade':
-                 if (trait.type === 'evade_bonus') {
-                    const [evadingUnit] = args;
-                    if (evadingUnit.uid === this.uid) {
-                        const maxBonus = Math.floor(this.level / 2);
-                        if(!this.evadeBonus) this.evadeBonus = 0;
-                        if(this.evadeBonus < maxBonus){
-                            this.evadeBonus += 1;
-                            Log.battle(`${this.name} gained +1 bonus from evading!`);
-                        }
-                    }
-                }
-                break;
-        }
+        TraitRegistry.handle(eventName, this, trait, ...args);
     }
 }
