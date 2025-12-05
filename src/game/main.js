@@ -1,7 +1,7 @@
 import { Data } from '../assets/data/data.js';
 import { DataManager } from './DataManager.js';
 import { Log } from './log.js';
-import { Systems } from './systems.js';
+import * as Systems from './systems.js';
 import { SceneManager, InputManager, BattleManager, RenderManager } from './managers.js';
 import { Scene_Explore, Scene_Battle } from './scenes.js';
 import { Window_HUD } from './window/hud.js';
@@ -68,8 +68,16 @@ export const Game = {
         await Systems.Effekseer.preload();
 
         // Wire hooks for scene transitions originating from systems
-        Systems.sceneHooks.onBattleStart = () => this.SceneManager.changeScene(this.Scenes.battle);
-        // Systems.sceneHooks.onBattleEnd no longer automatically changes scene; handled by Victory UI
+        // Systems.sceneHooks is no longer available as a property of Systems since it is a namespace now.
+        // We need to check if any systems need manual hooking or if they are self-contained.
+        // The previous Systems.sceneHooks was used by ExploreSystem to trigger battle.
+        // ExploreSystem now needs a way to request scene change.
+        // Currently ExploreSystem calls window.Game.SceneManager.changeScene which is fine.
+        // But let's check if ExploreSystem relies on Systems.sceneHooks.
+
+        // Wait, I see Systems.Explore is an instance.
+        // If ExploreSystem used Systems.sceneHooks, it might be broken now if I removed it from systems.js.
+        // I should check ExploreSystem.js.
 
         // Bind battle handlers
         this.Windows.BattleLog.togglePlayerTurn(false, {

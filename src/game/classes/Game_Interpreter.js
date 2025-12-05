@@ -39,10 +39,6 @@ export class Game_Interpreter {
             const method = this[`command_${command.code}`];
             if (typeof method === 'function') {
                 try {
-                    // If the command returns false, it means "wait" or "break" logic might be needed,
-                    // but since we are using async/await, we can just await the command.
-                    // If the command is synchronous, it returns undefined or value immediately.
-                    // If async, we await it.
                     await method.call(this, command);
                 } catch (e) {
                     console.error(`Error executing command ${command.code} in event ${this._eventId}:`, e);
@@ -64,35 +60,10 @@ export class Game_Interpreter {
      */
     async command_MESSAGE(params) {
         const text = params.text;
-        // For now, we use the existing Systems.Events.show for simple messages,
-        // or Log if it's not a modal.
-        // If it's a modal message that requires user input/closure:
-
-        // We need a way to wait for the message to close.
-        // Currently Systems.Events.show just shows it and returns.
-        // We might need to promisify the UI interaction.
-
-        if (window.Game && window.Game.Systems && window.Game.Systems.Events) {
-             return new Promise((resolve) => {
-                 // Create a custom content with a button that resolves the promise
-                 const container = document.createElement('div');
-                 container.className = 'space-y-2';
-                 container.innerHTML = `<div class="text-lg">${text}</div>`;
-
-                 const btn = document.createElement('button');
-                 btn.className = 'mt-4 border border-gray-600 px-4 py-2 hover:bg-gray-700 w-full';
-                 btn.innerText = 'Continue';
-                 btn.onclick = () => {
-                     window.Game.Systems.Events.close();
-                     resolve();
-                 };
-
-                 container.appendChild(btn);
-                 window.Game.Systems.Events.show('MESSAGE', container);
-             });
-        } else {
-            Log.add(text);
-        }
+        // For now, assume Log.add is sufficient unless we have a modal message window.
+        // If there was a modal message implementation, it would be called here.
+        Log.add(text);
+        // Note: If we had a Window_Message, we would await its show/close here.
     }
 
     /**
@@ -171,15 +142,16 @@ export class Game_Interpreter {
      * { code: 'SHOP', stock: [...] }
      */
     async command_SHOP(params) {
-        if (window.Game && window.Game.Systems && window.Game.Systems.Events) {
-            const events = window.Game.Systems.Events;
-            // Use provided stock or generate random stock
+        if (window.Game && window.Game.Windows && window.Game.Windows.Shop) {
             let stock = params.stock;
-            if (!stock) {
-                stock = events.generateShopStock();
+            // Generate stock if not provided, using EventSystem helper
+            if (!stock && window.Game.Systems.Event) {
+                stock = window.Game.Systems.Event.generateShopStock();
             }
-            // Await the UI interaction
-            await events.showShop(stock);
+            if (stock) {
+                Log.add('You discover a mysterious merchant.');
+                await window.Game.Windows.Shop.show(stock);
+            }
         }
     }
 
@@ -188,13 +160,16 @@ export class Game_Interpreter {
      * { code: 'RECRUIT', offers: [...] }
      */
     async command_RECRUIT(params) {
-        if (window.Game && window.Game.Systems && window.Game.Systems.Events) {
-            const events = window.Game.Systems.Events;
+        if (window.Game && window.Game.Windows && window.Game.Windows.Recruit) {
             let offers = params.offers;
-            if (!offers) {
-                offers = events.generateRecruitOffers();
+            // Generate offers if not provided, using EventSystem helper
+            if (!offers && window.Game.Systems.Event) {
+                offers = window.Game.Systems.Event.generateRecruitOffers();
             }
-            await events.showRecruit(offers);
+            if (offers) {
+                Log.add('You encounter a wandering soul.');
+                await window.Game.Windows.Recruit.show(offers);
+            }
         }
     }
 
@@ -202,8 +177,8 @@ export class Game_Interpreter {
      * Trigger Shrine.
      */
     async command_SHRINE(params) {
-        if (window.Game && window.Game.Systems && window.Game.Systems.Events) {
-            await window.Game.Systems.Events.shrine();
+        if (window.Game && window.Game.Systems && window.Game.Systems.Event) {
+            await window.Game.Systems.Event.shrine();
         }
     }
 
@@ -211,8 +186,8 @@ export class Game_Interpreter {
      * Trigger Trap.
      */
     async command_TRAP(params) {
-        if (window.Game && window.Game.Systems && window.Game.Systems.Events) {
-            await window.Game.Systems.Events.trap();
+        if (window.Game && window.Game.Systems && window.Game.Systems.Event) {
+            await window.Game.Systems.Event.trap();
         }
     }
 
@@ -224,15 +199,7 @@ export class Game_Interpreter {
         if (window.$gameMap && this._eventId) {
             const event = window.$gameMap.events.find(e => e.id === this._eventId);
             if (event) {
-                // If it's a one-time event, we might want to remove it from the map completely.
-                // Or just 'erase' it until map reload.
-                // The current Game_Map logic for removeEvent expects the object.
-                // Game_Event has .erase() which sets _erased = true.
                 event.erase();
-                // We should also trigger a visual update in ExploreSystem?
-                // ExploreSystem.syncDynamic() should handle it if it checks .isErased
-                // But we might want to remove it from the map's active event list if it's permanently gone?
-                // For now, let's just use event.erase() and rely on renderer to hide it.
             }
         }
     }
