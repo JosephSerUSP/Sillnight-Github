@@ -2,6 +2,7 @@
 import { Game_Party } from './classes/Game_Party.js';
 import { Game_Map } from './classes/Game_Map.js';
 import { Data } from '../assets/data/data.js';
+import { Services } from './ServiceLocator.js';
 
 /**
  * Static class responsible for creating and managing the initial game state.
@@ -14,8 +15,18 @@ export class DataManager {
      * @static
      */
     static setupNewGame() {
-        window.$gameParty = new Game_Party();
-        window.$gameMap = new Game_Map();
+        // Create instances
+        const party = new Game_Party();
+        const map = new Game_Map();
+
+        // Register with ServiceLocator
+        Services.register('party', party);
+        Services.register('map', map);
+
+        // Assign to global window for backward compatibility
+        window.$gameParty = party;
+        window.$gameMap = map;
+
         window.$gameMap.setup(1); // Floor 1
 
         this.populateInitialParty();

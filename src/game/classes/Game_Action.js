@@ -2,6 +2,7 @@ import { Data } from '../../assets/data/data.js';
 import { Game_Battler } from './Game_Battler.js';
 import { Log } from '../log.js';
 import * as Systems from '../systems.js';
+import { MathParser } from '../utils/MathParser.js';
 
 /**
  * Handles the execution of battle actions (skills/items).
@@ -112,13 +113,8 @@ export class Game_Action {
         const b = target;
         let value = 0;
 
-        try {
-            // Evaluates the formula string (e.g. "4 + 2 * a.level")
-            value = Math.max(0, eval(effect.formula));
-        } catch (e) {
-            console.error('Error evaluating formula:', effect.formula, e);
-            return 0;
-        }
+        // Use MathParser instead of eval
+        value = Math.max(0, MathParser.evaluate(effect.formula, { a, b }));
 
         // Apply stats (ATK/DEF or MAT/MDF)
         const statType = this.item().stat || 'atk';
