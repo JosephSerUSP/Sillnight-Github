@@ -52,6 +52,10 @@ export function renderCreaturePanel(unit) {
     const xpForThisLvl = nextLvlXp - currentLvlXp;
     const xpPct = (xpInCurrentLvl / xpForThisLvl) * 100;
 
+    const maxMp = typeof unit.mmp === 'number' ? unit.mmp : (typeof unit.mmp === 'function' ? unit.mmp() : 0);
+    const hasMp = maxMp > 0;
+    const mpPct = hasMp ? (unit.mp / maxMp) * 100 : 0;
+
     // Reduced sizes and removed explicit text-xs/text-sm where appropriate to inherit Window_Base style
     // But specific small text like Lv/HP might need to remain relatively small or just inherit standardFontSize (12px).
     // Let's use inherit where possible, but for "smaller" text use explicit scaling or classes.
@@ -67,6 +71,8 @@ export function renderCreaturePanel(unit) {
         <div class="mt-auto w-full space-y-0.5">
         <div class="text-[10px] text-right text-gray-500">${hp}/${maxhp}</div>
             <div class="w-full h-1 bg-gray-800"><div class="${hpColor} h-full transition-all duration-300" style="width:${hpPct}%"></div></div>
+            ${hasMp ? `<div class="text-[10px] text-right text-gray-500">MP ${unit.mp}/${maxMp}</div>
+            <div class="w-full h-1 bg-gray-800"><div class="bg-indigo-500 h-full" style="width:${mpPct}%"></div></div>` : ''}
             <div class="w-full h-1 bg-gray-800"><div class="bg-blue-500 h-full" style="width:${xpPct}%"></div></div>
         </div>
     `;

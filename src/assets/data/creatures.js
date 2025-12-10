@@ -1,4 +1,27 @@
 export const Creatures = {
+    summoner: {
+        id: 'summoner',
+        name: 'Summoner',
+        description: 'A conduit between worlds who anchors the party and channels mana to sustain allies.',
+        sprite: '🔮',
+        spriteAsset: null,
+        baseHp: 26,
+        hpGrowth: 0.12,
+        baseMp: 820,
+        mpGrowth: 0.02,
+        xpCurve: 12,
+        baseXp: 0,
+        cost: 0,
+        temperament: 'kind',
+        race: 'Mystic',
+        elements: [],
+        passives: [],
+        atk: 90, def: 100, mat: 110, mdf: 115,
+        acts: [
+            ['guard', 'attack'],
+            ['wait']
+        ]
+    },
     pixie: {
         id: 'pixie',
         name: 'Pixie',

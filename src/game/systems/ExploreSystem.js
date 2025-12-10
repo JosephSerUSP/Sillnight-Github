@@ -434,6 +434,10 @@ export class ExploreSystem {
             // Update Logical Position
             window.$gameMap._playerPos = { x: newX, y: newY };
 
+            if (window.$gameParty) {
+                window.$gameParty.onMapStep();
+            }
+
             // Update Map Visited State (logical only)
             window.$gameMap.updateVisibility(newX, newY, this.fogRevealRadius);
 
