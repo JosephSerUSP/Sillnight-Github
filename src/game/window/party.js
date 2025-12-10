@@ -12,6 +12,10 @@ class PartySlotComponent extends Component {
         this.unit = unit;
         this.index = index;
 
+        if (unit?.isSummoner) {
+            this.addClass('summoner-slot');
+        }
+
         // Render content
         if (unit) {
             this.setHtml(renderCreaturePanel(unit));
@@ -56,7 +60,8 @@ export class Window_Party extends Window_Selectable {
 
     defineLayout() {
         this.layout = new GridLayout(this.root, {
-            columns: 'repeat(3, 1fr)',
+            columns: 'repeat(3, 1fr) 0.8fr',
+            rows: 'repeat(2, minmax(0, 1fr))',
             gap: '4px'
             // rows defaults to null, relying on autoRows: 'minmax(0, 1fr)' for equal height
         });
@@ -122,7 +127,19 @@ export class Window_Party extends Window_Selectable {
             component.setSelected(true);
         }
 
-        this.layout.add(component);
+        const layoutOptions = this.slotLayoutPosition(index);
+        this.layout.add(component, layoutOptions);
+    }
+
+    slotLayoutPosition(index) {
+        const summonerIndex = window.$gameParty.summonerSlotIndex();
+        if (index === summonerIndex) {
+            return { col: 4, row: '1 / span 2' };
+        }
+
+        const col = (index % 3) + 1;
+        const row = Math.floor(index / 3) + 1;
+        return { col, row };
     }
 
     /**

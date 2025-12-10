@@ -62,6 +62,10 @@
         .party-slot:hover, .party-menu-slot:hover { border-color: var(--highlight); background: #1a1a1a; cursor: pointer; }
         .party-slot.selected, .party-menu-slot.selected { border-color: #fff; background: #222; box-shadow: 0 0 10px var(--highlight); }
 
+        .summoner-slot {
+            grid-row: span 2;
+        }
+
         .sprite-img {
             image-rendering: pixelated;
             object-fit: contain;
@@ -204,7 +208,7 @@
                             <span class="text-[10px] text-gray-400">PARTY STATUS</span>
                             <span id="turn-indicator" class="text-[10px] text-yellow-500 hidden mode-overlay px-2">FORMATION MODE</span>
                         </div>
-                        <div id="party-grid" class="flex-grow grid grid-rows-2 grid-cols-3 gap-1 p-1">
+                        <div id="party-grid" class="flex-grow grid grid-rows-2 grid-cols-4 gap-1 p-1">
                             <!-- JS Generated -->
                         </div>
                     </div>
