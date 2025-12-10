@@ -12,7 +12,10 @@ export const Data = {
     // Configuration constants controlling core parameters.
     config: {
         baseGoldPerEnemy: 20,
-        baseXpPerEnemy: 5
+        baseXpPerEnemy: 5,
+        summonerBaseMp: 820,
+        summonerActionMpDrain: 5,
+        summonerStepMpDrain: 3
     },
     // Element symbols used for skills and creatures. Elements can stack.
     elements: { R: '🔴', G: '🟢', B: '🔵', W: '⚪', K: '⚫' },

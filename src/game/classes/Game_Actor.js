@@ -111,6 +111,12 @@ export class Game_Actor extends Game_Battler {
         if (paramId === 0) {
             return Math.round(def.baseHp * (1 + def.hpGrowth * (this._level - 1)));
         }
+        // 1: mmp
+        if (paramId === 1) {
+            const baseMp = def.baseMp || 0;
+            const growth = def.mpGrowth || 0;
+            return Math.round(baseMp * (1 + growth * (this._level - 1)));
+        }
         // 2: atk, 3: def, 4: mat, 5: mdf, 6: agi, 7: luk
         if (paramId >= 2 && paramId <= 7) {
             const keys = [null, null, 'atk', 'def', 'mat', 'mdf', 'agi', 'luk'];

@@ -36,11 +36,15 @@ export class Window_HUD extends Window_Base {
         this._floorText = new TextComponent('FLOOR 1');
         this._floorText.setHtml('FLOOR <span class="text-white">1</span>');
 
+        this._mpText = new TextComponent('MP 0/0');
+        this._mpText.setHtml('MP <span class="text-white">0/0</span>');
+
         // Gold Display (Right)
         this._goldText = new TextComponent('GOLD 0');
         this._goldText.setHtml('GOLD <span class="text-white">0</span>');
 
         this.layout.add(this._floorText);
+        this.layout.add(this._mpText);
         this.layout.add(this._goldText);
     }
 
@@ -50,8 +54,11 @@ export class Window_HUD extends Window_Base {
     refresh() {
         const floor = window.$gameMap ? window.$gameMap.floor : 1;
         const gold = window.$gameParty ? window.$gameParty.gold : 0;
+        const summoner = window.$gameParty ? window.$gameParty.summoner : null;
+        const mpText = summoner ? `${summoner.mp}/${summoner.mmp}` : '0/0';
 
         if (this._floorText) this._floorText.setHtml(`FLOOR <span class="text-white">${floor}</span>`);
         if (this._goldText) this._goldText.setHtml(`GOLD <span class="text-white">${gold}</span>`);
+        if (this._mpText) this._mpText.setHtml(`MP <span class="text-white">${mpText}</span>`);
     }
 }

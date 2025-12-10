@@ -1,4 +1,5 @@
 import { Game_Actor } from './Game_Actor.js';
+import { Game_Summoner } from './Game_Summoner.js';
 import { Data } from '../../assets/data/data.js';
 
 /**
@@ -12,8 +13,12 @@ export class Game_Party {
         this._steps = 0;
         /** @type {Array<Game_Actor>} List of all owned units. */
         this._roster = [];
-        /** @type {Array<Game_Actor|null>} The active party formation (fixed size 6). */
-        this._activeSlots = [null, null, null, null, null, null];
+        /** @type {Array<Game_Actor|null>} The active party formation (fixed size 7 including Summoner). */
+        this._activeSlots = new Array(this.maxSlots()).fill(null);
+        /** @type {Game_Summoner} The fixed summoner unit. */
+        this._summoner = new Game_Summoner(1);
+        this._activeSlots[this.summonerSlotIndex()] = this._summoner;
+        this._summoner.slotIndex = this.summonerSlotIndex();
         /** @type {Object} The inventory (items and equipment). */
         this._inventory = {
             items: {},
@@ -29,6 +34,31 @@ export class Game_Party {
     get activeSlots() { return this._activeSlots; }
     /** @returns {Array<Game_Actor>} Full roster. */
     get roster() { return this._roster; }
+    /** @returns {Game_Summoner} The fixed summoner. */
+    get summoner() { return this._summoner; }
+
+    /** @returns {number} Total active slots including summoner. */
+    maxSlots() { return 7; }
+
+    /** @returns {number} The number of slots creatures can occupy (excluding summoner). */
+    maxCreatureSlots() { return this.maxSlots() - 1; }
+
+    /** @returns {number} The summoner's fixed slot index. */
+    summonerSlotIndex() { return this.maxSlots() - 1; }
+
+    /**
+     * Checks whether a given index is reserved for the summoner.
+     * @param {number} index
+     * @returns {boolean}
+     */
+    isSummonerSlot(index) {
+        return index === this.summonerSlotIndex();
+    }
+
+    /** @returns {number} Count of active non-summoner creatures. */
+    activeCreatureCount() {
+        return this._activeSlots.filter((u, idx) => u && !this.isSummonerSlot(idx)).length;
+    }
 
     /**
      * Adds gold to the party.
@@ -117,7 +147,7 @@ export class Game_Party {
         const actor = new Game_Actor(speciesId, level);
         this._roster.push(actor);
         // Auto-add to first empty slot if available
-        const emptyIdx = this._activeSlots.findIndex(s => s === null);
+        const emptyIdx = this._activeSlots.findIndex((s, idx) => s === null && !this.isSummonerSlot(idx));
         if (emptyIdx !== -1) {
             this._activeSlots[emptyIdx] = actor;
             actor.slotIndex = emptyIdx;
@@ -130,6 +160,7 @@ export class Game_Party {
      * @param {string} uid - The actor's unique ID.
      */
     removeActor(uid) {
+        if (this._summoner && this._summoner.uid === uid) return;
         const idx = this._roster.findIndex(a => a.uid === uid);
         if (idx !== -1) {
             const actor = this._roster[idx];
@@ -147,6 +178,8 @@ export class Game_Party {
      * @param {number} slot2 - Index of second slot.
      */
     swapOrder(slot1, slot2) {
+        if (this.isSummonerSlot(slot1) || this.isSummonerSlot(slot2)) return;
+
         const temp = this._activeSlots[slot1];
         this._activeSlots[slot1] = this._activeSlots[slot2];
         this._activeSlots[slot2] = temp;
@@ -161,5 +194,33 @@ export class Game_Party {
      */
     battleMembers() {
         return this._activeSlots.filter(actor => actor !== null);
+    }
+
+    /**
+     * Applies MP drain to the summoner from an ally action.
+     * @param {Game_Actor} actor
+     */
+    onAllyAction(actor) {
+        if (!this._summoner || !actor || actor.isSummoner) return;
+        this.drainSummonerMp(Data.config.summonerActionMpDrain || 0);
+    }
+
+    /** Applies MP drain to the summoner when moving on the map. */
+    onMapStep() {
+        this.drainSummonerMp(Data.config.summonerStepMpDrain || 0);
+    }
+
+    /**
+     * Drains a fixed amount of MP from the summoner and refreshes UI.
+     * @param {number} amount
+     */
+    drainSummonerMp(amount) {
+        if (!this._summoner || amount <= 0) return;
+        const before = this._summoner.mp;
+        this._summoner.mp = Math.max(0, this._summoner.mp - amount);
+        if (before !== this._summoner.mp) {
+            window.Game?.Windows?.HUD?.refresh();
+            window.Game?.Windows?.Party?.refresh();
+        }
     }
 }

@@ -55,7 +55,6 @@ export class Window_Party extends Window_Selectable {
     }
 
     defineLayout() {
-        // Party grid is typically 2 rows of 3 columns (6 slots)
         this.layout = new GridLayout(this.root, {
             columns: 'repeat(3, 1fr)',
             gap: '4px'
@@ -115,6 +114,10 @@ export class Window_Party extends Window_Selectable {
         const u = this.items[index];
         const component = new PartySlotComponent(u, index, (idx) => this.callHandler('click', idx));
 
+        if (u?.isSummoner) {
+            component.addClass('border-indigo-400');
+        }
+
         if (this._index === index) {
             component.setSelected(true);
         }
@@ -130,8 +133,16 @@ export class Window_Party extends Window_Selectable {
     onClick(index) {
         // Allow swapping only in formation mode
         if (window.Game.ui.formationMode) {
+            if (window.$gameParty.isSummonerSlot(index)) {
+                this.deselect();
+                return;
+            }
              const selectedIndex = this._index;
             if (selectedIndex !== -1 && selectedIndex !== index) {
+                if (window.$gameParty.isSummonerSlot(selectedIndex)) {
+                    this.deselect();
+                    return;
+                }
                 window.$gameParty.swapOrder(selectedIndex, index);
                 this.deselect();
             } else {
