@@ -75,9 +75,9 @@ export class BattleRenderSystem {
             const rowOffset = isEnemy ? 2.5 : -2.5;
             const backOffset = isEnemy ? 2 : -2;
             const xMap = [-2, 0, 2];
-            const isBack = slot > 2;
             const col = slot % 3;
-            return { x: xMap[col], y: rowOffset + (isBack ? backOffset : 0) };
+            const row = Math.floor(slot / 3);
+            return { x: xMap[col], y: rowOffset + (backOffset * row) };
         };
         const loadTexture = (assetPath, ready) => {
             if (!assetPath || !this.textureLoader) return ready(null);

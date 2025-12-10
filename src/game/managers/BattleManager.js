@@ -133,8 +133,15 @@ export const BattleManager = {
         const allUnits = [...this.allies, ...this.enemies]
             .filter(u => u.hp > 0);
 
-        allUnits.sort((a, b) => b.speed - a.speed || Math.random() - 0.5);
-        this.queue = allUnits;
+        const summoner = window.$gameParty?.summoner;
+        const nonSummonerUnits = summoner
+            ? allUnits.filter(u => u.uid !== summoner.uid)
+            : allUnits;
+
+        nonSummonerUnits.sort((a, b) => b.speed - a.speed || Math.random() - 0.5);
+        this.queue = (summoner && summoner.hp > 0)
+            ? [summoner, ...nonSummonerUnits]
+            : nonSummonerUnits;
         this.turnIndex = 0;
 
         this.processNextTurn();
@@ -189,8 +196,12 @@ export const BattleManager = {
             const action = new Game_Action(unit);
             action.setObject(actionData);
 
+            if (isAlly) {
+                window.$gameParty?.onAllyAction(unit);
+            }
+
             let targets = [];
-            const validEnemies = enemies.filter(u => u.hp > 0);
+            let validEnemies = enemies.filter(u => u.hp > 0);
             const validFriends = friends.filter(u => u.hp > 0);
             if (actionData.target === 'self') targets = [unit];
             else if (actionData.target === 'ally-single') targets = [validFriends.sort((a, b) => a.hp - b.hp)[0]];
@@ -200,6 +211,12 @@ export const BattleManager = {
                 const backRow = validEnemies.filter(e => e.slotIndex >= 3);
                 targets = frontRow.length > 0 ? frontRow : backRow;
             } else {
+                if (!isAlly && actionData.target !== 'enemy-all' && actionData.target !== 'enemy-row') {
+                    const nonSummonerEnemies = validEnemies.filter(e => !e.isSummoner);
+                    if (nonSummonerEnemies.length > 0) {
+                        validEnemies = nonSummonerEnemies;
+                    }
+                }
                 targets = [validEnemies[Math.floor(Math.random() * validEnemies.length)]];
             }
             if (targets.length === 0 || !targets[0]) {

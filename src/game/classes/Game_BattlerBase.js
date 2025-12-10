@@ -22,6 +22,8 @@ export class Game_BattlerBase {
         this._buffs = [0, 0, 0, 0, 0, 0, 0, 0];
         /** @type {Array<number>} Duration of buffs. */
         this._buffTurns = [0, 0, 0, 0, 0, 0, 0, 0];
+        /** @type {boolean} Identifies the summoner unit. */
+        this.isSummoner = false;
     }
 
     /**

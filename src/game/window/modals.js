@@ -788,6 +788,11 @@ export class Window_PartyMenu extends Window_Selectable {
     }
 
     onPartySlotClick(element) {
+        if (element.dataset.locked === 'true') {
+            const selected = this.root.querySelector('.party-menu-slot.selected');
+            if (selected) selected.classList.remove('selected');
+            return;
+        }
         const selected = this.root.querySelector('.party-menu-slot.selected');
 
         if (selected) {
@@ -807,8 +812,8 @@ export class Window_PartyMenu extends Window_Selectable {
             const toUnit = toIsReserved ? window.$gameParty.roster.find(u => u.uid === toUid) : window.$gameParty.activeSlots[toIndex];
 
             // Enforce party limit
-            const activePartySize = window.$gameParty.activeSlots.filter(u => u !== null).length;
-            if (fromIsReserved && !toIsReserved && !toUnit && activePartySize >= 4) {
+            const activePartySize = window.$gameParty.activeCreatureCount();
+            if (fromIsReserved && !toIsReserved && !toUnit && activePartySize >= window.$gameParty.maxCreatureSlots()) {
                 alert("Your active party is full. Swap a member out before adding a new one.");
                 return;
             }
@@ -868,6 +873,14 @@ export class Window_PartyMenu extends Window_Selectable {
                 if (!unit) {
                     isEmptyActiveSlot = true;
                 }
+            } else if (row === 2 && col === 0) {
+                const activeSlotIndex = window.$gameParty.summonerSlotIndex();
+                unit = window.$gameParty.activeSlots[activeSlotIndex];
+                index = activeSlotIndex;
+                isReserved = false;
+                if (!unit) {
+                    isEmptyActiveSlot = true;
+                }
             } else {
                 if (reserveUnitIndex < reserveUnits.length) {
                     unit = reserveUnits[reserveUnitIndex];
@@ -885,6 +898,7 @@ export class Window_PartyMenu extends Window_Selectable {
             div.dataset.uid = unit ? unit.uid : `empty_${index}`;
             div.dataset.index = index;
             div.dataset.isReserved = isReserved;
+            div.dataset.locked = unit?.isSummoner ? 'true' : 'false';
 
             if (unit) {
                 div.innerHTML = renderCreaturePanel(unit);
