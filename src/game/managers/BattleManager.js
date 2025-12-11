@@ -453,7 +453,7 @@ export const BattleManager = {
                 // 3. Process Level Ups
                 for (const ev of levelUps) {
                     // Focus Camera
-                    Systems.Battle3D.setFocus('unit', ev.unit.uid);
+                    Systems.Battle3D.setFocus('unit', ev.unit.uid, true);
                     Systems.Battle3D.dimOthers(ev.unit.uid);
 
                     // Show Window
