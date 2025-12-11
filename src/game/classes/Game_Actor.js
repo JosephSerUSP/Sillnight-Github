@@ -191,9 +191,16 @@ export class Game_Actor extends Game_Battler {
      */
     expForLevel(level) {
         if (level <= 1) return 0;
+
+        // Retrieve creature-specific xpCurve, default to 10 if missing
+        const creature = Data.creatures[this._speciesId];
+        const xpCurve = creature && creature.xpCurve ? creature.xpCurve : 10;
+
         // Cumulative XP required to reach 'level'
-        // Using formula: 100 * (level-1)^1.1
-        return Math.round(100 * Math.pow(level - 1, 1.1));
+        // Formula: (xpCurve * 10) * (level - 1)^1.5
+        // This ensures scaling depends on the creature's growth curve.
+        const base = xpCurve * 10;
+        return Math.round(base * Math.pow(level - 1, 1.5));
     }
 
     /**

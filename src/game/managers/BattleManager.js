@@ -387,7 +387,17 @@ export const BattleManager = {
                 Systems.Battle3D.setFocus('victory');
 
                 const gold = this.enemies.length * Data.config.baseGoldPerEnemy * window.$gameMap.floor;
-                const baseXp = this.enemies.length * Data.config.baseXpPerEnemy * window.$gameMap.floor;
+
+                // Calculate Total XP from all defeated enemies
+                let totalXp = 0;
+                this.enemies.forEach(e => {
+                    if (typeof e.xpValue === 'function') {
+                        totalXp += e.xpValue();
+                    } else {
+                        // Fallback
+                        totalXp += Data.config.baseXpPerEnemy * window.$gameMap.floor;
+                    }
+                });
 
                 window.$gameParty.gainGold(gold);
                 window.Game.Windows.HUD.refresh();
@@ -399,7 +409,7 @@ export const BattleManager = {
                 this.allies.forEach(p => {
                     if (!p) return;
 
-                    const pXp = Math.round(baseXp * (1 + p.xpRate));
+                    const pXp = Math.round(totalXp * (1 + p.xpRate));
                     finalXpMap.set(p.uid, pXp);
 
                     // Snapshot stats before XP
@@ -444,7 +454,7 @@ export const BattleManager = {
 
                 // 2. Show Victory Window
                 await window.Game.Windows.Victory.show({
-                    xp: baseXp, // Show base, maybe note bonuses? Simplicity: base
+                    xp: totalXp, // Show base, maybe note bonuses? Simplicity: base
                     gold: gold,
                     drops: [], // Todo: drops
                     party: this.allies.filter(Boolean)
