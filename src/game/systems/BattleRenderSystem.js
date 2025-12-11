@@ -11,7 +11,11 @@ export class BattleRenderSystem {
         this.textureLoader = null;
         this.textureCache = {};
         this.spriteScaleFactor = 3;
-        this.cameraState = { angle: -Math.PI / 4, targetAngle: -Math.PI / 4, targetX: 0, targetY: 0 };
+        this.cameraState = {
+            angle: -Math.PI / 4, targetAngle: -Math.PI / 4,
+            targetX: 0, targetY: 0,
+            x: 0, y: 0 // Current focus point
+        };
     }
 
     /** Initializes the 3D scene. */
@@ -72,12 +76,22 @@ export class BattleRenderSystem {
         this.group.clear();
         this.sprites = {};
         const getPos = (isEnemy, slot) => {
+            const isSummoner = !isEnemy && slot === window.$gameParty.summonerSlotIndex();
+
             const rowOffset = isEnemy ? 2.5 : -2.5;
             const backOffset = isEnemy ? 2 : -2;
             const xMap = [-2, 0, 2];
             const col = slot % 3;
             const row = Math.floor(slot / 3);
-            return { x: xMap[col], y: rowOffset + (backOffset * row) };
+
+            const pos = { x: xMap[col], y: rowOffset + (backOffset * row) };
+
+            if (isSummoner) {
+                // Move summoner slightly closer (was -6.5, moving to -5.5)
+                pos.y += 1.0;
+            }
+
+            return pos;
         };
         const loadTexture = (assetPath, ready) => {
             if (!assetPath || !this.textureLoader) return ready(null);
@@ -162,41 +176,53 @@ export class BattleRenderSystem {
      * Moves the camera focus to a specific target type.
      * @param {string} type - 'ally', 'enemy', 'victory', 'unit', or default.
      * @param {string} [targetUid] - The UID of the unit to focus on (if type is 'unit').
+     * @param {boolean} [ease=false] - Whether to ease to the new position.
      */
-    setFocus(type, targetUid) {
+    setFocus(type, targetUid, ease = false) {
         const BASE = -Math.PI / 4;
         const SHIFT = Math.PI / 12;
+
+        let newX = 0;
+        let newY = 0;
+        let newAngle = BASE;
+        let newZoom = false;
+
         if (type === 'ally') {
-            this.cameraState.targetAngle = BASE - SHIFT;
-            this.cameraState.targetX = 0;
-            this.cameraState.targetY = 0;
-            this.cameraState.zoom = false;
+            newAngle = BASE - SHIFT;
+            newZoom = false;
         } else if (type === 'enemy') {
-            this.cameraState.targetAngle = BASE + SHIFT;
-            this.cameraState.targetX = 0;
-            this.cameraState.targetY = 0;
-            this.cameraState.zoom = false;
+            newAngle = BASE + SHIFT;
+            newZoom = false;
         } else if (type === 'victory') {
-            this.cameraState.targetAngle = this.cameraState.angle + Math.PI * 2;
-            this.cameraState.targetX = 0;
-            this.cameraState.targetY = -3.5;
-            this.cameraState.zoom = false;
+            newAngle = this.cameraState.angle + Math.PI * 2;
+            newX = 0;
+            newY = -3.5;
+            newZoom = false;
         } else if (type === 'unit' && targetUid) {
             const sprite = this.sprites[targetUid];
             if (sprite) {
-                this.cameraState.targetAngle = this.cameraState.angle + Math.PI * 2; // Continue rotation
-                this.cameraState.targetX = sprite.position.x;
-                this.cameraState.targetY = sprite.position.y;
-                this.cameraState.zoom = true;
+                newAngle = this.cameraState.angle + Math.PI * 2;
+                newX = sprite.position.x;
+                newY = sprite.position.y;
+                newZoom = true;
             }
         } else {
-            if (this.cameraState.angle > Math.PI * 2 || this.cameraState.angle < -Math.PI * 2) {
+             if (this.cameraState.angle > Math.PI * 2 || this.cameraState.angle < -Math.PI * 2) {
                 this.cameraState.angle = BASE;
             }
-            this.cameraState.targetAngle = BASE;
-            this.cameraState.targetX = 0;
-            this.cameraState.targetY = 0;
-            this.cameraState.zoom = false;
+            newAngle = BASE;
+            newZoom = false;
+        }
+
+        this.cameraState.targetAngle = newAngle;
+        this.cameraState.targetX = newX;
+        this.cameraState.targetY = newY;
+        this.cameraState.zoom = newZoom;
+
+        // If not easing, snap immediately
+        if (!ease) {
+            this.cameraState.x = newX;
+            this.cameraState.y = newY;
         }
     }
 
@@ -230,11 +256,17 @@ export class BattleRenderSystem {
     animate() {
         requestAnimationFrame(() => this.animate());
         const cs = this.cameraState;
+
+        // Interpolate angle
         if (window.Game.ui.mode === 'BATTLE_WIN') {
             cs.angle += 0.005;
         } else {
             cs.angle += (cs.targetAngle - cs.angle) * 0.05;
         }
+
+        // Interpolate focus point
+        cs.x += (cs.targetX - cs.x) * 0.05;
+        cs.y += (cs.targetY - cs.y) * 0.05;
 
         // Drive Scene Updates
         if (window.Game && window.Game.SceneManager) {
@@ -250,12 +282,13 @@ export class BattleRenderSystem {
             Z_HEIGHT = 5.0;
         }
 
-        this.camera.position.x = cs.targetX + Math.cos(cs.angle) * R;
-        this.camera.position.y = cs.targetY + Math.sin(cs.angle) * R;
-        // Smooth Z transition could be added here, but direct assignment for now
+        this.camera.position.x = cs.x + Math.cos(cs.angle) * R;
+        this.camera.position.y = cs.y + Math.sin(cs.angle) * R;
+
+        // Smooth Z transition
         this.camera.position.z = this.camera.position.z + (Z_HEIGHT - this.camera.position.z) * 0.1;
 
-        this.camera.lookAt(cs.targetX, cs.targetY, 2);
+        this.camera.lookAt(cs.x, cs.y, 2);
 
         const renderer = window.Game.RenderManager.getRenderer();
         if (renderer && (window.Game.ui.mode === 'BATTLE' || window.Game.ui.mode === 'BATTLE_WIN')) {
