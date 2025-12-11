@@ -43,7 +43,7 @@ export class Window_BattleLog extends Window_Base {
         this.layout.add(header);
 
         // Log Content Container
-        this._logContainer = new Component('div', 'p-2 overflow-y-auto font-mono leading-tight space-y-1 no-scrollbar text-gray-300 flex-grow');
+        this._logContainer = new Component('div', 'p-2 overflow-y-auto font-mono leading-tight no-scrollbar text-gray-300 flex-grow text-[11px]');
         // We set ID 'game-log' because other systems (like Log class) might write to it directly?
         // Checking src/game/log.js would be wise.
         this._logContainer.element.id = 'game-log';
@@ -59,7 +59,7 @@ export class Window_BattleLog extends Window_Base {
         if (!this._bannerText || !this._banner) return;
         this._bannerText.innerText = text;
         this._banner.classList.remove('opacity-0');
-        setTimeout(() => this._banner.classList.add('opacity-0'), 2500);
+        setTimeout(() => this._banner.classList.add('opacity-0'), 3500);
     }
 
     /**
