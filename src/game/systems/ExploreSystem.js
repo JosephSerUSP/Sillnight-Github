@@ -4,6 +4,7 @@ import { Game_Interpreter } from '../classes/Game_Interpreter.js';
 import { modifyMaterialWithFog } from '../materials/FogMaterial.js';
 import { Config } from '../Config.js';
 import * as Systems from '../systems.js';
+import { Services } from '../ServiceLocator.js';
 
 class ParticleSystem {
     constructor(scene) {
@@ -66,7 +67,7 @@ class ParticleSystem {
 }
 
 export class ExploreSystem {
-    constructor() {
+    constructor(mapService) {
         this.scene = null;
         this.camera = null;
         this.playerMesh = null;
@@ -93,8 +94,18 @@ export class ExploreSystem {
         this.fogRevealRadius = 2;
         this.fogFadeRadius = 2;
 
+        // Dependency Injection for Game_Map
+        // Fallback to global if not provided (for transition)
+        // We do NOT cache _mapService if it's null, we rely on the getter to fetch the latest.
+        this._mapService = mapService;
+
         /** @type {Game_Interpreter} */
         this.interpreter = new Game_Interpreter();
+    }
+
+    get $gameMap() {
+        if (this._mapService) return this._mapService;
+        return Services.has('map') ? Services.get('map') : window.$gameMap;
     }
 
     /** Initializes the exploration system. */
@@ -155,8 +166,8 @@ export class ExploreSystem {
         if (!this.scene) return;
         this.mapGroup.clear();
         // Access Game_Map data directly
-        if (!window.$gameMap) return;
-        const mapData = window.$gameMap._data;
+        if (!this.$gameMap) return;
+        const mapData = this.$gameMap._data;
 
         const map = mapData;
         const height = map.length;
@@ -181,7 +192,7 @@ export class ExploreSystem {
         // Populate initial fogTarget based on map visited state
         // This ensures saving/loading preserves "fully visited" tiles,
         // though partial analog states are reset to 0 or 255.
-        const gMap = window.$gameMap;
+        const gMap = this.$gameMap;
         for (let y = 0; y < height; y++) {
              const texRow = (height - 1) - y;
              for (let x = 0; x < width; x++) {
@@ -290,8 +301,8 @@ export class ExploreSystem {
         // Initial dynamic sync
         this.syncDynamic();
 
-        const startX = window.$gameMap.playerPos.x;
-        const startY = window.$gameMap.playerPos.y;
+        const startX = this.$gameMap.playerPos.x;
+        const startY = this.$gameMap.playerPos.y;
         this.playerMesh.position.set(startX, 0.5, startY);
         this.playerTarget.set(startX, 0.5, startY);
         this.cameraLookCurrent.set(startX, 0, startY);
@@ -304,10 +315,10 @@ export class ExploreSystem {
      * Uses Accumulative Reveal logic: Visibility only increases, never decreases.
      */
     updateFogTarget() {
-        if (!this.fogTarget || !window.$gameMap) return;
+        if (!this.fogTarget || !this.$gameMap) return;
         if (!this.playerMesh) return; // Guard against missing player mesh
 
-        const map = window.$gameMap;
+        const map = this.$gameMap;
         const w = map.width;
         const h = map.height;
 
@@ -358,10 +369,10 @@ export class ExploreSystem {
         }
         this.dynamicGroup.clear();
 
-        if (!window.$gameMap) return;
+        if (!this.$gameMap) return;
 
         // Iterate over active events
-        const events = window.$gameMap.events;
+        const events = this.$gameMap.events;
 
         for (const event of events) {
             if (event.isErased) continue;
@@ -426,20 +437,20 @@ export class ExploreSystem {
         if (window.Game.ui.mode !== 'EXPLORE' || window.Game.ui.formationMode) return;
         if (this.isAnimating) return;
 
-        const newX = window.$gameMap.playerPos.x + dx;
-        const newY = window.$gameMap.playerPos.y + dy;
-        const tile = window.$gameMap.tileAt(newX, newY);
+        const newX = this.$gameMap.playerPos.x + dx;
+        const newY = this.$gameMap.playerPos.y + dy;
+        const tile = this.$gameMap.tileAt(newX, newY);
 
         if (tile !== 1) { // Not a wall
             // Update Logical Position
-            window.$gameMap._playerPos = { x: newX, y: newY };
+            this.$gameMap._playerPos = { x: newX, y: newY };
 
             if (window.$gameParty) {
                 window.$gameParty.onMapStep();
             }
 
             // Update Map Visited State (logical only)
-            window.$gameMap.updateVisibility(newX, newY, this.fogRevealRadius);
+            this.$gameMap.updateVisibility(newX, newY, this.fogRevealRadius);
 
             // Trigger Animation
             this.moveLerpStart.copy(this.playerMesh.position);
@@ -460,14 +471,14 @@ export class ExploreSystem {
      */
     checkTile(x, y) {
         // Check for static tile events (Stairs)
-        const tile = window.$gameMap.tileAt(x, y);
+        const tile = this.$gameMap.tileAt(x, y);
         if (tile === 3) {
             this.resolveStaticTile(tile);
             return;
         }
 
         // Check for dynamic events
-        const event = window.$gameMap.eventAt(x, y);
+        const event = this.$gameMap.eventAt(x, y);
         if (event && !event.isErased) {
              if (event.trigger === 'TOUCH' || event.trigger === 'ACTION') {
                   this.interpreter.setup(event.commands, event.id);
@@ -485,7 +496,7 @@ export class ExploreSystem {
      * @param {number} code
      */
     resolveStaticTile(code) {
-        const map = window.$gameMap;
+        const map = this.$gameMap;
         if (code === 3) {
              map.floor++;
              Log.add('Descended...');
@@ -557,8 +568,8 @@ export class ExploreSystem {
                 const s = obj.material.userData.shader;
                 s.uniforms.uFogMap.value = this.fogTexture;
                 // Assuming map size hasn't changed without rebuildLevel
-                if (window.$gameMap) {
-                     s.uniforms.uMapSize.value.set(window.$gameMap.width, window.$gameMap.height);
+                if (this.$gameMap) {
+                     s.uniforms.uMapSize.value.set(this.$gameMap.width, this.$gameMap.height);
                 }
             }
         };
@@ -583,14 +594,14 @@ export class ExploreSystem {
         // We must ensure their uniforms are set once the shader compiles.
         if (this.matFloor && this.matFloor.userData.shader && this.fogTexture) {
             this.matFloor.userData.shader.uniforms.uFogMap.value = this.fogTexture;
-            if (window.$gameMap) {
-                this.matFloor.userData.shader.uniforms.uMapSize.value.set(window.$gameMap.width, window.$gameMap.height);
+            if (this.$gameMap) {
+                this.matFloor.userData.shader.uniforms.uMapSize.value.set(this.$gameMap.width, this.$gameMap.height);
             }
         }
         if (this.matWall && this.matWall.userData.shader && this.fogTexture) {
             this.matWall.userData.shader.uniforms.uFogMap.value = this.fogTexture;
-            if (window.$gameMap) {
-                this.matWall.userData.shader.uniforms.uMapSize.value.set(window.$gameMap.width, window.$gameMap.height);
+            if (this.$gameMap) {
+                this.matWall.userData.shader.uniforms.uMapSize.value.set(this.$gameMap.width, this.$gameMap.height);
             }
         }
 
@@ -647,8 +658,8 @@ export class ExploreSystem {
      * Helper to get generateFloor access if called from outside?
      */
     generateAndRebuild() {
-         if (window.$gameMap) {
-             window.$gameMap.generateFloor();
+         if (this.$gameMap) {
+             this.$gameMap.generateFloor();
              this.rebuildLevel();
          }
     }
