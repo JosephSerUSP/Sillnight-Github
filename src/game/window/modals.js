@@ -764,8 +764,8 @@ export class Window_PartyMenu extends Window_Selectable {
 
         // Using GridLayout for the content
         this.grid = new GridLayout(this.gridContainer.element, {
-            columns: 'repeat(7, 1fr)',
-            rows: 'repeat(5, 1fr)',
+            columns: 'repeat(3, 1fr) 0.8fr repeat(3, 1fr)',
+            rows: 'repeat(5, minmax(0, 1fr))',
             gap: 4
         });
 
@@ -850,67 +850,97 @@ export class Window_PartyMenu extends Window_Selectable {
 
         const columns = 7;
         const rows = 5;
-        const totalSlots = columns * rows;
-
-        const activeSet = new Set(window.$gameParty.activeSlots.filter(Boolean).map(u => u.uid));
+        const activeSlots = window.$gameParty.activeSlots;
+        const activeSet = new Set(activeSlots.filter(Boolean).map(u => u.uid));
         const reserveUnits = window.$gameParty.roster.filter(u => !activeSet.has(u.uid));
         let reserveUnitIndex = 0;
 
-        for (let i = 0; i < totalSlots; i++) {
-            const row = Math.floor(i / columns);
-            const col = i % columns;
+        const formationPositions = [];
+        for (let i = 0; i < 6; i++) {
+            formationPositions.push({
+                index: i,
+                col: (i % 3) + 1,
+                row: Math.floor(i / 3) + 1
+            });
+        }
 
-            let unit = null;
-            let index = -1;
-            let isReserved = true;
-            let isEmptyActiveSlot = false;
+        const summonerIndex = window.$gameParty.summonerSlotIndex();
+        formationPositions.push({
+            index: summonerIndex,
+            col: 4,
+            row: 1,
+            rowSpan: 2,
+            className: 'summoner-slot'
+        });
 
-            if (row < 2 && col < 3) {
-                const activeSlotIndex = row * 3 + col;
-                unit = window.$gameParty.activeSlots[activeSlotIndex];
-                index = activeSlotIndex;
-                isReserved = false;
-                if (!unit) {
-                    isEmptyActiveSlot = true;
-                }
-            } else if (row === 2 && col === 0) {
-                const activeSlotIndex = window.$gameParty.summonerSlotIndex();
-                unit = window.$gameParty.activeSlots[activeSlotIndex];
-                index = activeSlotIndex;
-                isReserved = false;
-                if (!unit) {
-                    isEmptyActiveSlot = true;
-                }
-            } else {
-                if (reserveUnitIndex < reserveUnits.length) {
-                    unit = reserveUnits[reserveUnitIndex];
-                    reserveUnitIndex++;
-                }
+        const usedCells = new Set();
+        formationPositions.forEach(pos => {
+            const rowsCovered = pos.rowSpan ? pos.rowSpan : 1;
+            for (let r = 0; r < rowsCovered; r++) {
+                usedCells.add(`${pos.col}-${pos.row + r}`);
             }
+        });
 
+        const reservePositions = [];
+        for (let row = 1; row <= rows; row++) {
+            for (let col = 1; col <= columns; col++) {
+                if (usedCells.has(`${col}-${row}`)) continue;
+                reservePositions.push({ col, row });
+            }
+        }
+
+        const addSlot = ({ unit, index, isReserved, position, isEmptyActiveSlot, extraClass }) => {
             const div = document.createElement('div');
             let baseClasses = 'party-menu-slot relative flex flex-col p-1';
             if (!isReserved) {
                 baseClasses += ' bg-gray-800/50';
             }
+            if (extraClass) {
+                baseClasses += ` ${extraClass}`;
+            }
             div.className = baseClasses;
 
-            div.dataset.uid = unit ? unit.uid : `empty_${index}`;
+            const emptyId = `empty_${index}_${position.col}_${position.row}`;
+            div.dataset.uid = unit ? unit.uid : emptyId;
             div.dataset.index = index;
             div.dataset.isReserved = isReserved;
             div.dataset.locked = unit?.isSummoner ? 'true' : 'false';
 
             if (unit) {
                 div.innerHTML = renderCreaturePanel(unit);
+            } else if (isEmptyActiveSlot) {
+                div.innerHTML = '<span class="m-auto text-gray-600 text-[10px]">EMPTY</span>';
             } else {
-                 if (isEmptyActiveSlot) {
-                    div.innerHTML = '<span class="m-auto text-gray-600 text-[10px]">EMPTY</span>';
-                 } else {
-                    div.style.visibility = 'hidden';
-                 }
+                div.style.visibility = 'hidden';
             }
 
-            this.grid.add(div);
-        }
+            const rowValue = position.rowSpan ? `${position.row} / span ${position.rowSpan}` : position.row;
+            this.grid.add(div, { col: position.col, row: rowValue });
+        };
+
+        formationPositions.forEach(pos => {
+            const unit = activeSlots[pos.index];
+            const isEmptyActiveSlot = !unit;
+            addSlot({
+                unit,
+                index: pos.index,
+                isReserved: false,
+                position: pos,
+                isEmptyActiveSlot,
+                extraClass: pos.className
+            });
+        });
+
+        reservePositions.forEach(pos => {
+            const unit = reserveUnitIndex < reserveUnits.length ? reserveUnits[reserveUnitIndex++] : null;
+            addSlot({
+                unit,
+                index: -1,
+                isReserved: true,
+                position: pos,
+                isEmptyActiveSlot: false,
+                extraClass: null
+            });
+        });
     }
 }

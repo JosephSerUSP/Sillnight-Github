@@ -71,12 +71,20 @@ export class BattleRenderSystem {
     setupScene(allies, enemies) {
         this.group.clear();
         this.sprites = {};
-        const getPos = (isEnemy, slot) => {
+        const getPos = (isEnemy, unit) => {
             const rowOffset = isEnemy ? 2.5 : -2.5;
             const backOffset = isEnemy ? 2 : -2;
             const xMap = [-2, 0, 2];
-            const col = slot % 3;
-            const row = Math.floor(slot / 3);
+            const col = unit.slotIndex % 3;
+            const row = Math.floor(unit.slotIndex / 3);
+
+            if (!isEnemy && unit.isSummoner) {
+                return {
+                    x: 0,
+                    y: rowOffset + (backOffset * 2.5)
+                };
+            }
+
             return { x: xMap[col], y: rowOffset + (backOffset * row) };
         };
         const loadTexture = (assetPath, ready) => {
@@ -108,7 +116,7 @@ export class BattleRenderSystem {
         };
         const createSprite = (unit, isEnemy) => {
             if (!unit) return;
-            const pos = getPos(isEnemy, unit.slotIndex);
+            const pos = getPos(isEnemy, unit);
             const addSpriteToScene = (texture) => {
                 if (!texture) {
                     const canvas = document.createElement('canvas');

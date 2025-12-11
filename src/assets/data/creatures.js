@@ -4,7 +4,7 @@ export const Creatures = {
         name: 'Summoner',
         description: 'A conduit between worlds who anchors the party and channels mana to sustain allies.',
         sprite: '🔮',
-        spriteAsset: null,
+        spriteAsset: 'assets/images/creatures/Summoner.png',
         baseHp: 26,
         hpGrowth: 0.12,
         baseMp: 820,
