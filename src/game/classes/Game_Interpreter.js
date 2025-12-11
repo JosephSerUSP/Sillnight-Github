@@ -189,18 +189,32 @@ export class Game_Interpreter {
 
     /**
      * Trigger Recruit.
-     * { code: 'RECRUIT', offers: [...] }
+     * { code: 'RECRUIT', offers: [...], offer: {...} }
      */
     async command_RECRUIT(params) {
         Log.add('You encounter a wandering soul.');
 
-        let offers = params.offers;
-        if (!offers) {
-            offers = Systems.Event.generateRecruitOffers();
+        // Support legacy list or new single offer
+        let offer = params.offer;
+
+        // Backwards compatibility/Fallback
+        if (!offer && params.offers && params.offers.length > 0) {
+            offer = { speciesId: params.offers[0].id, level: 1, cost: { type: 'FREE', value: 0 } };
+        } else if (!offer) {
+             offer = Systems.Event.generateRecruit(1);
         }
 
         if (window.Game && window.Game.Windows && window.Game.Windows.Recruit) {
-            await window.Game.Windows.Recruit.show(offers);
+            const recruited = await window.Game.Windows.Recruit.show(offer);
+
+            if (recruited) {
+                // If successfully recruited, erase the event
+                this.command_ERASE_EVENT();
+            } else {
+                // If not recruited (cancelled), do nothing (event persists)
+                // Stop execution if there were subsequent commands (though RECRUIT is usually last or alone)
+                this._index = this._list.length;
+            }
         } else {
             console.error("Window_Recruit not found.");
         }
