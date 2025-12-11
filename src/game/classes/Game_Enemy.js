@@ -112,4 +112,18 @@ export class Game_Enemy extends Game_Battler {
         const traitElements = this.elementTraits;
         return traitElements.length > 0 ? traitElements : innate;
     }
+
+    /**
+     * Calculates the XP value yielded by this enemy.
+     * Based on species BaseXP and Level Multiplier.
+     * @returns {number} The XP value.
+     */
+    xpValue() {
+        const def = Data.creatures[this._speciesId];
+        const base = (def && def.baseXp) || 0;
+        // Formula: (BaseXP + 2) * ConfigBase * LevelMultiplier
+        // Adding +2 ensures even 0 baseXp creatures give something if configured.
+        const configBase = Data.config.baseXpPerEnemy || 5;
+        return Math.floor((base + 2) * configBase * this._levelMultiplier);
+    }
 }
