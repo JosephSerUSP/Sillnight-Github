@@ -1,5 +1,6 @@
 import { Data } from '../../assets/data/data.js';
 import { Game_Event } from './Game_Event.js';
+import * as Systems from '../systems.js';
 
 /**
  * Manages the map state, including grid data, player position, and visited tiles.
@@ -162,11 +163,13 @@ export class Game_Map {
                 };
                 break;
             case 'RECRUIT':
+                const offer = Systems.Event.generateRecruit(this._floor);
                 data = {
                     type: 'RECRUIT',
                     trigger: 'TOUCH',
                     visual: { type: 'RECRUIT' },
-                    commands: [{ code: 'RECRUIT' }, { code: 'ERASE_EVENT' }]
+                    commands: [{ code: 'RECRUIT', offer: offer }]
+                    // ERASE_EVENT is removed so the event persists if not recruited
                 };
                 break;
             case 'SHRINE':
