@@ -13,7 +13,6 @@ import { Window_Shop } from './window/shop.js';
 import { Window_Recruit } from './window/recruit.js';
 import { Config } from './Config.js';
 import { Services } from './ServiceLocator.js';
-import { BattleObserver } from './systems/BattleObserver.js';
 
 /**
  * Core game bootstrapper; keeps entrypoint slim while delegating to managers/scenes.
@@ -41,6 +40,7 @@ export const Game = {
         mode: 'EXPLORE',
         formationMode: false
     },
+    Input: null, // InputManager instance
 
     /**
      * Initializes the game.
@@ -54,7 +54,7 @@ export const Game = {
         DataManager.setupNewGame();
 
         // Initialize Observer (connects EventBus to UI/Systems)
-        this.observer = new BattleObserver();
+        this.observer = Systems.Observer;
 
         // Create windows
         this.Windows.HUD = new Window_HUD();
@@ -68,8 +68,6 @@ export const Game = {
         this.Windows.Shop = new Window_Shop();
         this.Windows.Recruit = new Window_Recruit();
 
-        // Initial map generation (already done in setupNewGame, but need to render)
-        // Systems.Map.generateFloor(); // Moved to DataManager
         this.RenderManager.init();
         Systems.Explore.init();
         Systems.Battle3D.init();
@@ -77,7 +75,6 @@ export const Game = {
 
         // Wire hooks for scene transitions originating from systems
         Systems.sceneHooks.onBattleStart = () => this.SceneManager.changeScene(this.Scenes.battle);
-        // Systems.sceneHooks.onBattleEnd no longer automatically changes scene; handled by Victory UI
 
         // Initialize BattleManager events
         BattleManager.init();
@@ -98,8 +95,8 @@ export const Game = {
         this.Scenes.battle = new Scene_Battle(Systems, this.Windows);
         this.SceneManager.changeScene(this.Scenes.explore);
 
-        const input = new InputManager(this.SceneManager);
-        input.boot();
+        this.Input = new InputManager(this.SceneManager);
+        this.Input.boot();
 
         this.ready = true;
     }
