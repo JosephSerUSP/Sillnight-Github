@@ -1,12 +1,13 @@
 import { Data } from '../../assets/data/data.js';
-import { Log } from '../log.js';
 import * as Systems from '../systems.js';
 import { Game_Enemy } from '../classes/Game_Enemy.js';
 import { Game_Action } from '../classes/Game_Action.js';
+import { Services } from '../ServiceLocator.js';
 
 /**
  * Manages the flow and state of battle.
  * Handles encounter setup, turn processing, and victory/defeat conditions.
+ * Decoupled from UI via EventBus.
  * @namespace BattleManager
  */
 export const BattleManager = {
@@ -85,9 +86,9 @@ export const BattleManager = {
         this.setup(allies, enemies);
 
         Systems.Battle3D.setupScene(this.allies, this.enemies);
-        const enemyNames = enemies.map(e => e.name).join(', ');
-        Log.battle(`Enemies: ${enemyNames}`);
-        window.Game.Windows.BattleLog.showBanner('ENCOUNTER');
+
+        // Emit battle start event
+        Services.events.emit('battle:start', { enemies: this.enemies });
 
         // Brief delay before first round starts to allow player to see enemies
         setTimeout(() => this.nextRound(), 1000);
@@ -101,6 +102,8 @@ export const BattleManager = {
         this.roundCount++;
         this.phase = 'ROUND_START';
 
+        Services.events.emit('battle:round_start', { round: this.roundCount });
+
         Systems.Battle3D.setFocus('neutral');
         if (this.allies.every(u => u.hp <= 0)) return this.end(false);
         if (this.enemies.every(u => u.hp <= 0)) return this.end(true);
@@ -108,25 +111,23 @@ export const BattleManager = {
         [...this.allies, ...this.enemies].forEach(u => {
              // Remove 'guarding' state
              if (typeof u.removeState === 'function') {
-                 // We don't have a fixed ID for guarding yet, using string 'guarding' in _states
-                 // Game_Action logic checks for 'guarding' string in _states.
-                 // So we filter it out.
                  if (u.isStateAffected && u.isStateAffected('guarding')) {
                      u.removeState('guarding');
                  }
-                 // Legacy fallback
                  if (u.status) u.status = u.status.filter(s => s !== 'guarding');
              } else if (u.status) {
                  u.status = u.status.filter(s => s !== 'guarding');
              }
         });
 
-        Log.battle(`--- Round ${this.roundCount} ---`);
         if (this.playerTurnRequested) {
             this.phase = 'PLAYER_INPUT';
             this.playerTurnRequested = false;
-            window.Game.Windows.BattleLog.togglePlayerTurn(true);
-            Log.battle('Waiting for orders...');
+
+            // Emit player turn request event
+            Services.events.emit('battle:player_turn_request', false); // Turn off the "QUEUED" status
+            window.Game.Windows.BattleLog.togglePlayerTurn(true); // Still direct DOM for now for complex interaction, or refactor later
+            Services.events.emit('battle:log', 'Waiting for orders...');
             return;
         }
 
@@ -152,7 +153,10 @@ export const BattleManager = {
      * Executes AI actions or waits for animations.
      */
     processNextTurn() {
-         window.Game.Windows.Party.refresh();
+            // Replaces: window.Game.Windows.Party.refresh();
+            // BattleObserver handles Party refresh on events usually,
+            // but we might want to ensure sync here.
+
             if (this.turnIndex >= this.queue.length) {
                 setTimeout(() => this.nextRound(), 1000);
                 return;
@@ -163,9 +167,10 @@ export const BattleManager = {
                 this.processNextTurn();
                 return;
             }
-            if (Systems.Observer) Systems.Observer.fire('onTurnStart', unit);
+
+            Services.events.emit('battle:turn_start', { unit });
+
             const isAlly = this.allies.some(a => a.uid === unit.uid);
-            Systems.Battle3D.setFocus(isAlly ? 'ally' : 'enemy');
             const enemies = isAlly ? this.enemies : this.allies;
             const friends = isAlly ? this.allies : this.enemies;
             const possibleActs = [...unit.acts[0], ...(unit.acts[1] || [])];
@@ -223,7 +228,8 @@ export const BattleManager = {
                 this.processNextTurn();
                 return;
             }
-            window.Game.Windows.BattleLog.showBanner(`${unit.name} used ${actionData.name}!`);
+
+            Services.events.emit('battle:action_used', { unit, action: actionData, targets });
 
             // Use Game_Action to apply effects
             const allResults = [];
@@ -233,7 +239,7 @@ export const BattleManager = {
             });
 
             if (allResults.length === 0) {
-                Log.battle(`> ${unit.name} used ${actionData.name}!`);
+                 // Log handled by observer
             }
 
             const script = Data.actionScripts[actionData.script] || Data.actionScripts.attack || [];
@@ -244,7 +250,7 @@ export const BattleManager = {
                     if (!target) return;
 
                     if (isMiss) {
-                        Log.battle(`> Missed ${target.name}!`);
+                        Services.events.emit('battle:action_missed', { target });
                         return;
                     }
 
@@ -258,19 +264,15 @@ export const BattleManager = {
                             if (newHp <= 0 && Math.random() < surviveChance) {
                                 newHp = 1;
                                 dealtDamage = target.hp > 0 ? target.hp - 1 : 0;
-                                Log.battle(`> ${target.name} survives with 1 HP!`);
+                                Services.events.emit('battle:log', `> ${target.name} survives with 1 HP!`);
                             }
 
                             target.hp = Math.max(0, newHp);
                             if (dealtDamage > 0 || value === 0) {
-                                Log.battle(`> ${unit.name} hits ${target.name} for ${dealtDamage}.`);
-                                Systems.Battle3D.showDamageNumber(target.uid, -dealtDamage, isCrit);
-                                Systems.Battle3D.playAnim(target.uid, [{type: 'feedback', bind: 'self', shake: 0.8, opacity: 0.7, color: 0xffffff}]);
+                                Services.events.emit('battle:damage_dealt', { source: unit, target, value: dealtDamage, isCrit });
                             }
                             if (target.hp <= 0) {
-                                Log.battle(`> ${target.name} was defeated!`);
-                                Systems.Battle3D.playDeathFade(target.uid);
-                                if (Systems.Observer) Systems.Observer.fire('onUnitDeath', target);
+                                Services.events.emit('battle:unit_death', { unit: target });
 
                                 // Revive check
                                 const reviveChance = target.traitsSum('revive_on_ko_chance');
@@ -278,7 +280,7 @@ export const BattleManager = {
                                     const revivePercent = target.traitsSum('revive_on_ko_percent') || 0.5;
                                     const revivedHp = Math.floor(target.mhp * revivePercent);
                                     target.hp = revivedHp;
-                                    Log.battle(`> ${target.name} was revived with ${revivedHp} HP!`);
+                                    Services.events.emit('battle:log', `> ${target.name} was revived with ${revivedHp} HP!`);
                                     const revivedTs = Systems.Battle3D.sprites[target.uid];
                                     if (revivedTs) revivedTs.visible = true;
                                 }
@@ -286,19 +288,15 @@ export const BattleManager = {
                             break;
                         case 'hp_heal':
                         case 'hp_heal_ratio':
-                            // Value is already calculated in Game_Action.apply
                             const healAmount = value;
                             target.hp = Math.min(target.mhp, target.hp + healAmount);
-                            Log.battle(`> ${target.name} healed for ${healAmount}.`);
-                            Systems.Battle3D.showDamageNumber(target.uid, healAmount);
-                            Systems.Battle3D.playAnim(target.uid, [{type: 'feedback', bind: 'self', opacity: 0.5, color: 0x00ff00}]);
+                            Services.events.emit('battle:heal_dealt', { source: unit, target, value: healAmount });
                             break;
                         case 'revive':
                             if (target.hp <= 0) {
-                                // Value calculated in apply (based on target mhp)
                                 const revivedHp = value;
                                 target.hp = revivedHp;
-                                Log.battle(`> ${target.name} was revived with ${revivedHp} HP.`);
+                                Services.events.emit('battle:log', `> ${target.name} was revived with ${revivedHp} HP.`);
                                 const ts = Systems.Battle3D.sprites[target.uid];
                                 if (ts) ts.visible = true;
                             }
@@ -309,29 +307,27 @@ export const BattleManager = {
                                 target.maxHpBonus += bonus;
                             }
                             target.hp += bonus;
-                            Log.battle(`> ${target.name}'s Max HP increased by ${bonus}.`);
+                            Services.events.emit('battle:log', `> ${target.name}'s Max HP increased by ${bonus}.`);
                             break;
                         case 'add_status':
                             if (Math.random() < (effect.chance || 1)) {
                                 if (typeof target.addState === 'function') {
-                                    // Using string ID for now as per data
                                     target.addState(effect.status);
                                 } else {
-                                    // Fallback
                                     if (!target.status) target.status = [];
                                     if (!target.status.includes(effect.status)) {
                                         target.status.push(effect.status);
                                     }
                                 }
-                                Log.battle(`> ${target.name} is now ${effect.status}.`);
+                                Services.events.emit('battle:state_added', { target, state: effect.status });
                             }
                             break;
                         case 'miss':
-                             Log.battle(`> Missed ${target.name}!`);
+                             Services.events.emit('battle:action_missed', { target });
                              break;
                     }
                 });
-                window.Game.Windows.Party.refresh();
+                // Party refresh handled by observer
                 if (this.allies.every(u => u.hp <= 0) || this.enemies.every(u => u.hp <= 0)) {
                     this.turnIndex = 999; // End round early
                 }
@@ -350,12 +346,7 @@ export const BattleManager = {
     requestPlayerTurn() {
          if (window.Game.ui.mode === 'BATTLE') {
             this.playerTurnRequested = true;
-            Log.add('Interrupt queued.');
-            const btn = document.getElementById('btn-player-turn');
-            if (btn) {
-                btn.classList.add('border-green-500', 'text-green-500');
-                btn.innerText = 'QUEUED';
-            }
+            Services.events.emit('battle:player_turn_request', true);
         }
     },
 
@@ -365,11 +356,7 @@ export const BattleManager = {
     resumeAuto() {
         window.Game.Windows.BattleLog.togglePlayerTurn(false);
         this.playerTurnRequested = false;
-        const btn = document.getElementById('btn-player-turn');
-        if (btn) {
-            btn.classList.remove('border-green-500', 'text-green-500');
-            btn.innerText = 'STOP ROUND (SPACE)';
-        }
+        Services.events.emit('battle:player_turn_request', false);
         this.processNextTurn();
     },
 
@@ -380,7 +367,10 @@ export const BattleManager = {
     async end(win) {
          document.getElementById('battle-ui-overlay').innerHTML = '';
             if (win) {
-                window.Game.Windows.BattleLog.showBanner('VICTORY');
+                // Replaces: window.Game.Windows.BattleLog.showBanner('VICTORY');
+                Services.events.emit('battle:victory', { xp: 0, gold: 0, party: [] }); // Dummy event for now
+
+                window.Game.Windows.BattleLog.showBanner('VICTORY'); // Keeping direct call for now as Victory UI is complex
                 window.Game.ui.mode = 'BATTLE_WIN';
                 Systems.sceneHooks?.onBattleEnd?.();
                 if (Systems.Observer) Systems.Observer.fire('onBattleEnd', [...this.allies, ...this.enemies].filter(u => u && u.hp > 0));
@@ -472,11 +462,7 @@ export const BattleManager = {
 
             } else {
                 window.Game.ui.mode = 'EXPLORE';
-                Systems.Battle3D.setFocus('neutral');
-                window.Game.Windows.BattleLog.showModal(`
-                    <div class="text-red-600 text-4xl mb-4">DEFEATED</div>
-                    <button class="mt-4 border border-red-800 text-red-500 px-4 py-2 hover:bg-red-900/20" onclick="location.reload()">RESTART</button>
-                `);
+                Services.events.emit('battle:defeat');
             }
     }
 };

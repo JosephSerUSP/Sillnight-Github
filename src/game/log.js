@@ -4,12 +4,15 @@
  * @namespace Log
  */
 export const Log = {
+    history: [],
+
     /**
      * Adds a generic message to the game log.
      * @param {string} msg - The message to display.
      * @param {string} [color='text-gray-300'] - The CSS class for the text color.
      */
     add: (msg, color = 'text-gray-300') => {
+        Log.history.push(msg);
         const log = document.getElementById('game-log');
         if (!log) return;
         const div = document.createElement('div');

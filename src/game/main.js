@@ -12,6 +12,8 @@ import { Window_Victory, Window_LevelUp } from './window/victory.js';
 import { Window_Shop } from './window/shop.js';
 import { Window_Recruit } from './window/recruit.js';
 import { Config } from './Config.js';
+import { Services } from './ServiceLocator.js';
+import { BattleObserver } from './systems/BattleObserver.js';
 
 /**
  * Core game bootstrapper; keeps entrypoint slim while delegating to managers/scenes.
@@ -29,6 +31,7 @@ export const Game = {
     data: Data,
     log: Log,
     config: Config,
+    Services: Services,
     Scenes: {},
     SceneManager: new SceneManager(),
     BattleManager: BattleManager,
@@ -49,6 +52,9 @@ export const Game = {
     async init() {
         // Initialize Data (Create Party, Map, etc.)
         DataManager.setupNewGame();
+
+        // Initialize Observer (connects EventBus to UI/Systems)
+        this.observer = new BattleObserver();
 
         // Create windows
         this.Windows.HUD = new Window_HUD();
@@ -72,6 +78,9 @@ export const Game = {
         // Wire hooks for scene transitions originating from systems
         Systems.sceneHooks.onBattleStart = () => this.SceneManager.changeScene(this.Scenes.battle);
         // Systems.sceneHooks.onBattleEnd no longer automatically changes scene; handled by Victory UI
+
+        // Initialize BattleManager events
+        BattleManager.init();
 
         // Bind battle handlers
         this.Windows.BattleLog.togglePlayerTurn(false, {
