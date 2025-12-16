@@ -53,7 +53,10 @@ export const BattleManager = {
      */
     async startEncounter() {
         Systems.sceneHooks?.onBattleStart?.();
-        window.Game.ui.mode = 'BATTLE';
+        if (window.Game && window.Game.ui) {
+            window.Game.ui.mode = 'BATTLE';
+        }
+
         // Wait for scene switch (handles DOM race conditions)
         await window.Game.Scenes.battle.switchScene(true);
 
@@ -344,7 +347,7 @@ export const BattleManager = {
      * Flags a request for manual player input at the next opportunity.
      */
     requestPlayerTurn() {
-         if (window.Game.ui.mode === 'BATTLE') {
+        if (window.Game && window.Game.ui && window.Game.ui.mode === 'BATTLE') {
             this.playerTurnRequested = true;
             Services.events.emit('battle:player_turn_request', true);
         }
