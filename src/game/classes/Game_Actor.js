@@ -1,6 +1,5 @@
 import { Game_Battler } from './Game_Battler.js';
 import { Services } from '../ServiceLocator.js';
-import { Data } from '../../assets/data/data.js';
 
 /**
  * Represents an actor (player character) in the game.
