@@ -1,5 +1,4 @@
 import { Game_Battler } from './Game_Battler.js';
-import { Data } from '../../assets/data/data.js';
 import { Services } from '../ServiceLocator.js';
 
 /**
