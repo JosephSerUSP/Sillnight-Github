@@ -20,6 +20,8 @@ import { SkillRegistry } from './registries/SkillRegistry.js';
 import { PassiveRegistry } from './registries/PassiveRegistry.js';
 import { EquipmentRegistry } from './registries/EquipmentRegistry.js';
 import { ItemRegistry } from './registries/ItemRegistry.js';
+import { Game_Actor } from './classes/Game_Actor.js';
+import { Game_Enemy } from './classes/Game_Enemy.js';
 
 /**
  * Core game bootstrapper; keeps entrypoint slim while delegating to managers/scenes.
@@ -43,6 +45,10 @@ export const Game = {
     BattleManager: BattleManager,
     RenderManager: new RenderManager(),
     Windows: {},
+    Classes: {
+        Game_Actor,
+        Game_Enemy
+    },
     ui: {
         mode: 'EXPLORE',
         formationMode: false
