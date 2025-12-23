@@ -74,7 +74,12 @@ export class TraitRegistry extends Registry {
     traitsSum(battler, code, id) {
         return this.traitsSet(battler, code)
             .filter(t => t.dataId === id)
-            .reduce((r, trait) => r + (trait.value || 0), 0);
+            .reduce((r, trait) => {
+                let val = 0;
+                if (trait.value !== undefined) val = trait.value;
+                else if (trait.formula !== undefined) val = parseFloat(trait.formula) || 0;
+                return r + val;
+            }, 0);
     }
 
     /**
@@ -83,6 +88,11 @@ export class TraitRegistry extends Registry {
     traitsPi(battler, code, id) {
         return this.traitsSet(battler, code)
             .filter(t => t.dataId === id)
-            .reduce((r, trait) => r * (trait.value !== undefined ? trait.value : 1), 1);
+            .reduce((r, trait) => {
+                let val = 1;
+                if (trait.value !== undefined) val = trait.value;
+                else if (trait.formula !== undefined) val = parseFloat(trait.formula) || 1;
+                return r * val;
+            }, 1);
     }
 }

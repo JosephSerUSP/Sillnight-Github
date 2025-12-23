@@ -1,6 +1,7 @@
 import { Data } from '../../assets/data/data.js';
 import { Game_Event } from './Game_Event.js';
 import * as Systems from '../systems.js';
+import { BSPGenerator } from '../generators/BSPGenerator.js';
 
 /**
  * Manages the map state, including grid data, player position, and visited tiles.
@@ -54,32 +55,45 @@ export class Game_Map {
      * Populates the map with walls, empty space, enemies, treasure, etc.
      */
     generateFloor() {
-        // Logic moved from Systems.Map.generateFloor
-        // We need to access Data.dungeons
+        // Logic refactored to use BSPGenerator
         const dungeon = Data.dungeons.default;
         const mapCfg = dungeon.map;
 
-        this._width = mapCfg.width;
-        this._height = mapCfg.height;
+        // Instantiate generator
+        const generator = new BSPGenerator({
+            width: mapCfg.width,
+            height: mapCfg.height,
+            minRoomSize: 5
+        });
 
-        const map = Array(mapCfg.height).fill().map(() => Array(mapCfg.width).fill(1));
-        let x = Math.floor(mapCfg.width / 2);
-        let y = Math.floor(mapCfg.height / 2);
-        this._playerPos = { x, y };
+        // Generate Grid
+        const result = generator.generate(this._floor);
+        const { grid, rooms, startX, startY, endX, endY, width, height } = result;
 
-        for (let i = 0; i < mapCfg.carveSteps; i++) {
-            map[y][x] = 0;
-            const dir = Math.floor(Math.random() * 4);
-            if (dir === 0 && y > 1) y--;
-            else if (dir === 1 && y < mapCfg.height - 2) y++;
-            else if (dir === 2 && x > 1) x--;
-            else if (dir === 3 && x < mapCfg.width - 2) x++;
+        this._width = width;
+        this._height = height;
+        this._playerPos = { x: startX, y: startY };
+
+        // Convert 1D grid to 2D
+        const map = [];
+        for (let y = 0; y < height; y++) {
+            map.push(grid.slice(y * width, (y + 1) * width));
         }
 
+        // Place Stairs at End Room center
+        if (map[endY][endX] === 0) {
+            map[endY][endX] = 3; // Stairs
+        } else {
+            console.warn("End position is a wall, force carving");
+            map[endY][endX] = 3;
+        }
+
+        // Collect Empty Tiles for events
         const emptyTiles = [];
-        for (let ry = 0; ry < mapCfg.height; ry++) {
-            for (let rx = 0; rx < mapCfg.width; rx++) {
-                if (map[ry][rx] === 0 && (rx !== this._playerPos.x || ry !== this._playerPos.y)) {
+        for (let ry = 0; ry < height; ry++) {
+            for (let rx = 0; rx < width; rx++) {
+                // Ensure not start or end
+                if (map[ry][rx] === 0 && (rx !== startX || ry !== startY) && (rx !== endX || ry !== endY)) {
                     emptyTiles.push({ x: rx, y: ry });
                 }
             }
@@ -91,12 +105,10 @@ export class Game_Map {
                 const idx = Math.floor(Math.random() * emptyTiles.length);
                 const tile = emptyTiles.splice(idx, 1)[0];
 
-                // Static tiles handled by integer grid
                 if (type === 'STAIRS') {
-                    map[tile.y][tile.x] = 3;
-                }
-                // Dynamic entities handled by Game_Event
-                else {
+                    // Fallback if main stairs fail, or extra stairs?
+                    // Currently main stairs are set by generator end room logic.
+                } else {
                     this.createEvent(type, tile.x, tile.y);
                 }
             }
@@ -111,7 +123,6 @@ export class Game_Map {
         };
 
         place('ENEMY', getCount(mapCfg.tileCounts.enemies));
-        place('STAIRS', getCount(mapCfg.tileCounts.stairs));
         place('TREASURE', getCount(mapCfg.tileCounts.treasure));
         place('SHOP', getCount(mapCfg.tileCounts.shops));
         place('RECRUIT', getCount(mapCfg.tileCounts.recruits));
@@ -119,7 +130,7 @@ export class Game_Map {
         place('TRAP', getCount(mapCfg.tileCounts.traps));
 
         this._data = map;
-        this._visited = Array(mapCfg.height).fill().map(() => Array(mapCfg.width).fill(false));
+        this._visited = Array(height).fill().map(() => Array(width).fill(false));
     }
 
     /**

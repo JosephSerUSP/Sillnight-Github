@@ -101,7 +101,17 @@ export const Game = {
         // Initialize BattleManager events
         BattleManager.init();
 
-        // Bind battle handlers
+        // Bind battle handlers via EventBus
+        Services.events.on('battle:player_turn_start', () => {
+             this.Windows.BattleLog.togglePlayerTurn(true, {
+                 onRequest: () => BattleManager.requestPlayerTurn(),
+                 onResume: () => BattleManager.resumeAuto()
+             });
+        });
+        Services.events.on('battle:player_turn_end', () => {
+             this.Windows.BattleLog.togglePlayerTurn(false);
+        });
+        // Set initial state
         this.Windows.BattleLog.togglePlayerTurn(false, {
             onRequest: () => BattleManager.requestPlayerTurn(),
             onResume: () => BattleManager.resumeAuto()
