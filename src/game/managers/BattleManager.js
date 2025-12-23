@@ -182,7 +182,7 @@ export const BattleManager = {
                 const hurt = friends.filter(f => f.hp < f.mhp).sort((a, b) => a.hp - b.hp)[0];
                 if (hurt && hurt.hp < hurt.mhp * 0.6) {
                     for (const a of possibleActs) {
-                        const skill = Data.skills[a.toLowerCase()];
+                        const skill = Services.get('SkillRegistry').get(a) || Services.get('SkillRegistry').get(a.toLowerCase());
                         if (skill && skill.category === 'heal') { chosen = a; break; }
                     }
                 }
@@ -192,13 +192,36 @@ export const BattleManager = {
             }
 
             let actionData = null;
-            const chosenLower = chosen.toLowerCase();
-            const skillKey = Object.keys(Data.skills).find(k => k.toLowerCase() === chosenLower);
-            const itemKey = Object.keys(Data.items).find(k => k.toLowerCase() === chosenLower);
 
-            if (skillKey) actionData = Data.skills[skillKey];
-            else if (itemKey) actionData = Data.items[itemKey];
-            else actionData = Data.skills['attack'];
+            // Try explicit lookup in registries first
+            const skillRegistry = Services.get('SkillRegistry');
+            const itemRegistry = Services.get('ItemRegistry');
+
+            // Note: chosen is usually an ID string (e.g. 'attack', 'cure')
+            // Registries expect the exact ID.
+            if (skillRegistry.get(chosen)) {
+                actionData = skillRegistry.get(chosen);
+            } else if (itemRegistry.get(chosen)) {
+                actionData = itemRegistry.get(chosen);
+            } else {
+                // Fallback: Case-insensitive search (Legacy support)
+                // This is expensive and should be deprecated, but kept for safety during migration
+                const chosenLower = chosen.toLowerCase();
+                const allSkillIds = skillRegistry.getAll().map(s => s.id);
+                const skillKey = allSkillIds.find(k => k.toLowerCase() === chosenLower);
+
+                if (skillKey) {
+                    actionData = skillRegistry.get(skillKey);
+                } else {
+                    const allItemIds = itemRegistry.getAll().map(i => i.id);
+                    const itemKey = allItemIds.find(k => k.toLowerCase() === chosenLower);
+                    if (itemKey) {
+                        actionData = itemRegistry.get(itemKey);
+                    } else {
+                        actionData = skillRegistry.get('attack');
+                    }
+                }
+            }
 
             // Create Game_Action instance
             const action = new Game_Action(unit);
