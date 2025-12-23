@@ -1,6 +1,6 @@
 import { Game_Actor } from './Game_Actor.js';
 import { Game_Summoner } from './Game_Summoner.js';
-import { Data } from '../../assets/data/data.js';
+import { Config } from '../Config.js';
 
 /**
  * Manages the player's party, inventory, and gold.
@@ -202,12 +202,12 @@ export class Game_Party {
      */
     onAllyAction(actor) {
         if (!this._summoner || !actor || actor.isSummoner) return;
-        this.drainSummonerMp(Data.config.summonerActionMpDrain || 0);
+        this.drainSummonerMp(Config.summonerActionMpDrain || 0);
     }
 
     /** Applies MP drain to the summoner when moving on the map. */
     onMapStep() {
-        this.drainSummonerMp(Data.config.summonerStepMpDrain || 0);
+        this.drainSummonerMp(Config.summonerStepMpDrain || 0);
     }
 
     /**

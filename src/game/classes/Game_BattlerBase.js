@@ -1,4 +1,3 @@
-import { Data } from '../../assets/data/data.js';
 import { Services } from '../ServiceLocator.js';
 
 /**
