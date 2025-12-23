@@ -7,7 +7,8 @@ import { Services } from '../ServiceLocator.js';
 /**
  * Manages the flow and state of battle.
  * Handles encounter setup, turn processing, and victory/defeat conditions.
- * Decoupled from UI via EventBus.
+ * Decoupled from visual feedback via EventBus, but currently orchestrates
+ * the 3D scene (Animations) and Victory UI directly (Hybrid State).
  * @namespace BattleManager
  */
 export const BattleManager = {
@@ -288,6 +289,7 @@ export const BattleManager = {
 
     /**
      * Ends the battle and displays the result.
+     * Manages the complex asynchronous flow of Victory/Level Up windows.
      * @param {boolean} win - True if the player won.
      */
     async end(win) {
