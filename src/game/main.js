@@ -17,6 +17,8 @@ import { TraitRegistry } from './registries/TraitRegistry.js';
 import { EffectRegistry } from './registries/EffectRegistry.js';
 import { CreatureRegistry } from './registries/CreatureRegistry.js';
 import { SkillRegistry } from './registries/SkillRegistry.js';
+import { PassiveRegistry } from './registries/PassiveRegistry.js';
+import { EquipmentRegistry } from './registries/EquipmentRegistry.js';
 import { ItemRegistry } from './registries/ItemRegistry.js';
 
 /**
@@ -60,6 +62,8 @@ export const Game = {
         Services.register('EffectRegistry', new EffectRegistry());
         Services.register('CreatureRegistry', new CreatureRegistry());
         Services.register('SkillRegistry', new SkillRegistry());
+        Services.register('PassiveRegistry', new PassiveRegistry());
+        Services.register('EquipmentRegistry', new EquipmentRegistry());
         Services.register('ItemRegistry', new ItemRegistry());
 
         // Initialize Data (Create Party, Map, etc.)

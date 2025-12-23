@@ -2,10 +2,10 @@ import { Registry } from './Registry.js';
 import { Data } from '../../assets/data/data.js';
 
 /**
- * Registry for Skill definitions.
- * Handles loading, inheritance, and caching of skill data.
+ * Registry for Equipment definitions.
+ * Handles loading, inheritance, and caching of equipment data.
  */
-export class SkillRegistry extends Registry {
+export class EquipmentRegistry extends Registry {
     constructor() {
         super();
         this._initialized = false;
@@ -13,24 +13,23 @@ export class SkillRegistry extends Registry {
     }
 
     /**
-     * Loads skill data from the global Data object.
+     * Loads equipment data from the global Data object.
      */
     load() {
         if (this._initialized) return;
 
-        const skills = Data.skills || {};
-        for (const [id, skill] of Object.entries(skills)) {
-            // Ensure ID is set in the object
-            this.register(id, { ...skill, id });
+        const equipment = Data.equipment || {};
+        for (const [id, equip] of Object.entries(equipment)) {
+            this.register(id, { ...equip, id });
         }
 
         this._initialized = true;
     }
 
     /**
-     * Retrieves a skill definition by ID, resolving inheritance if needed.
-     * @param {string} id - The skill ID.
-     * @returns {Object} The resolved skill definition.
+     * Retrieves an equipment definition by ID.
+     * @param {string} id - The equipment ID.
+     * @returns {Object} The resolved equipment definition.
      */
     get(id) {
         if (!this._initialized) this.load();
@@ -42,7 +41,6 @@ export class SkillRegistry extends Registry {
         const raw = super.get(id);
         if (!raw) return null;
 
-        // Start resolution process
         const resolved = this._resolveInternal(id, raw, new Set());
         this._resolvedCache.set(id, resolved);
         return resolved;
@@ -56,7 +54,7 @@ export class SkillRegistry extends Registry {
      */
     _resolveInternal(id, data, stack) {
         if (stack.has(id)) {
-            console.warn(`Circular inheritance detected for skill '${id}'.`);
+            console.warn(`Circular inheritance detected for equipment '${id}'.`);
             return { ...data };
         }
 
@@ -70,7 +68,7 @@ export class SkillRegistry extends Registry {
         let parentResolved;
 
         if (!parentRaw) {
-             console.warn(`Parent '${data.parent}' not found for skill '${id}'.`);
+             console.warn(`Parent '${data.parent}' not found for equipment '${id}'.`);
              parentResolved = {};
         } else {
              if (this._resolvedCache.has(data.parent)) {
@@ -86,7 +84,7 @@ export class SkillRegistry extends Registry {
         return {
             ...parentResolved,
             ...data,
-            id: id // Ensure ID is correct
+            id: id
         };
     }
 }

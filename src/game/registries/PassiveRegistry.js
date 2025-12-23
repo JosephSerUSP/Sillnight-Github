@@ -2,10 +2,10 @@ import { Registry } from './Registry.js';
 import { Data } from '../../assets/data/data.js';
 
 /**
- * Registry for Skill definitions.
- * Handles loading, inheritance, and caching of skill data.
+ * Registry for Passive definitions.
+ * Handles loading, inheritance, and caching of passive data.
  */
-export class SkillRegistry extends Registry {
+export class PassiveRegistry extends Registry {
     constructor() {
         super();
         this._initialized = false;
@@ -13,24 +13,23 @@ export class SkillRegistry extends Registry {
     }
 
     /**
-     * Loads skill data from the global Data object.
+     * Loads passive data from the global Data object.
      */
     load() {
         if (this._initialized) return;
 
-        const skills = Data.skills || {};
-        for (const [id, skill] of Object.entries(skills)) {
-            // Ensure ID is set in the object
-            this.register(id, { ...skill, id });
+        const passives = Data.passives || {};
+        for (const [id, passive] of Object.entries(passives)) {
+            this.register(id, { ...passive, id });
         }
 
         this._initialized = true;
     }
 
     /**
-     * Retrieves a skill definition by ID, resolving inheritance if needed.
-     * @param {string} id - The skill ID.
-     * @returns {Object} The resolved skill definition.
+     * Retrieves a passive definition by ID.
+     * @param {string} id - The passive ID.
+     * @returns {Object} The resolved passive definition.
      */
     get(id) {
         if (!this._initialized) this.load();
@@ -42,7 +41,6 @@ export class SkillRegistry extends Registry {
         const raw = super.get(id);
         if (!raw) return null;
 
-        // Start resolution process
         const resolved = this._resolveInternal(id, raw, new Set());
         this._resolvedCache.set(id, resolved);
         return resolved;
@@ -56,7 +54,7 @@ export class SkillRegistry extends Registry {
      */
     _resolveInternal(id, data, stack) {
         if (stack.has(id)) {
-            console.warn(`Circular inheritance detected for skill '${id}'.`);
+            console.warn(`Circular inheritance detected for passive '${id}'.`);
             return { ...data };
         }
 
@@ -70,7 +68,7 @@ export class SkillRegistry extends Registry {
         let parentResolved;
 
         if (!parentRaw) {
-             console.warn(`Parent '${data.parent}' not found for skill '${id}'.`);
+             console.warn(`Parent '${data.parent}' not found for passive '${id}'.`);
              parentResolved = {};
         } else {
              if (this._resolvedCache.has(data.parent)) {
@@ -86,7 +84,7 @@ export class SkillRegistry extends Registry {
         return {
             ...parentResolved,
             ...data,
-            id: id // Ensure ID is correct
+            id: id
         };
     }
 }

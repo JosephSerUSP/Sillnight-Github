@@ -59,7 +59,7 @@ export class Game_Enemy extends Game_Battler {
             objects.push(species);
             if (species.passives) {
                 species.passives.forEach(pId => {
-                    const passive = Data.passives[pId];
+                    const passive = Services.get('PassiveRegistry').get(pId);
                     if (passive) objects.push(passive);
                 });
             }

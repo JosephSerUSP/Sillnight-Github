@@ -1,6 +1,7 @@
 import { Game_BattlerBase } from './Game_BattlerBase.js';
 import { Data } from '../../assets/data/data.js';
 import { Log } from '../log.js';
+import { Services } from '../ServiceLocator.js';
 
 /**
  * Superclass for actors and enemies.
@@ -181,7 +182,9 @@ export class Game_Battler extends Game_BattlerBase {
                 if (trait.type === 'on_death_cast') {
                     const [deadUnit] = args;
                     if (deadUnit.uid === this.uid) {
-                        const skill = Data.skills[trait.skill.toLowerCase()];
+                        const skillId = trait.skill.toLowerCase();
+                        // Use Registry to find skill, ensuring it exists
+                        const skill = Services.get('SkillRegistry').get(skillId);
                         if (skill) {
                             // Dynamically load dependencies to avoid circles
                             import('../classes/Game_Action.js').then(({ Game_Action }) => {

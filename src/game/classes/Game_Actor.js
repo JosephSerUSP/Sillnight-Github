@@ -80,14 +80,14 @@ export class Game_Actor extends Game_Battler {
             // 2. Species Passives
             if (species.passives) {
                 species.passives.forEach(pId => {
-                    const passive = Data.passives[pId];
+                    const passive = Services.get('PassiveRegistry').get(pId);
                     if (passive) objects.push(passive);
                 });
             }
         }
         // 3. Equipment
         if (this._equipmentId) {
-            const equip = Data.equipmentById[this._equipmentId];
+            const equip = Services.get('EquipmentRegistry').get(this._equipmentId);
             if (equip) objects.push(equip);
         }
         return objects;

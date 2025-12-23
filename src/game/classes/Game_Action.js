@@ -43,7 +43,7 @@ export class Game_Action {
      */
     setObject(obj) {
         if (Services.get('SkillRegistry').get(obj.id)) this.setSkill(obj);
-        else if (Services.get('ItemRegistry').get(obj.id)) this.setItem(obj);
+        else if (Services.get('ItemRegistry').get(obj.id) || Services.get('EquipmentRegistry').get(obj.id)) this.setItem(obj);
         else this.setSkill(obj);
     }
 
@@ -160,8 +160,9 @@ export class Game_Action {
 
              // 5. Critical Hit
              const critChance = a.cri;
+             const critMult = (Data.config.baseCritMultiplier !== undefined) ? Data.config.baseCritMultiplier : 1.5;
              if (Math.random() < critChance) {
-                 value = Math.floor(value * (Data.config.baseCritMultiplier || 1.5));
+                 value = Math.floor(value * critMult);
                  this._lastResultIsCrit = true;
                  Log.battle('> Critical Hit!');
              } else {
