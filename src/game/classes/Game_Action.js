@@ -1,7 +1,8 @@
-import { Data } from '../../assets/data/data.js';
 import { Game_Battler } from './Game_Battler.js';
 import { Log } from '../log.js';
 import * as Systems from '../systems.js';
+import { Services } from '../ServiceLocator.js';
+import { Data } from '../../assets/data/data.js';
 
 /**
  * Handles the execution of battle actions (skills/items).
@@ -41,8 +42,8 @@ export class Game_Action {
      * @param {Object} obj - The action data object.
      */
     setObject(obj) {
-        if (Data.skills[obj.id]) this.setSkill(obj);
-        else if (Data.items[obj.id]) this.setItem(obj);
+        if (Services.get('SkillRegistry').get(obj.id)) this.setSkill(obj);
+        else if (Services.get('ItemRegistry').get(obj.id)) this.setItem(obj);
         else this.setSkill(obj);
     }
 
