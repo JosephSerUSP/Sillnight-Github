@@ -1,7 +1,7 @@
 import { Game_BattlerBase } from './Game_BattlerBase.js';
-import { Data } from '../../assets/data/data.js';
 import { Log } from '../log.js';
 import { Services } from '../ServiceLocator.js';
+import { Config } from '../Config.js';
 
 /**
  * Superclass for actors and enemies.
@@ -47,7 +47,7 @@ export class Game_Battler extends Game_BattlerBase {
 
     /** @returns {number} Critical Hit Rate (0-1). Base 5% + traits. */
     get cri() {
-        return (Data.config.baseCritChance || 0.05) + this.traitsSum('crit_bonus_percent');
+        return (Config.baseCritChance || 0.05) + this.traitsSum('crit_bonus_percent');
     }
 
     /** @returns {number} Evasion Rate (0-1). */

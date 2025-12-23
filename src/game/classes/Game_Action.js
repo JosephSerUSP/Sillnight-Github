@@ -2,7 +2,7 @@ import { Game_Battler } from './Game_Battler.js';
 import { Log } from '../log.js';
 import * as Systems from '../systems.js';
 import { Services } from '../ServiceLocator.js';
-import { Data } from '../../assets/data/data.js';
+import { Config } from '../Config.js';
 
 /**
  * Handles the execution of battle actions (skills/items).
@@ -160,7 +160,7 @@ export class Game_Action {
 
              // 5. Critical Hit
              const critChance = a.cri;
-             const critMult = (Data.config.baseCritMultiplier !== undefined) ? Data.config.baseCritMultiplier : 1.5;
+             const critMult = (Config.baseCritMultiplier !== undefined) ? Config.baseCritMultiplier : 1.5;
              if (Math.random() < critChance) {
                  value = Math.floor(value * critMult);
                  this._lastResultIsCrit = true;

@@ -3,6 +3,7 @@ import * as Systems from '../systems.js';
 import { Game_Enemy } from '../classes/Game_Enemy.js';
 import { Game_Action } from '../classes/Game_Action.js';
 import { Services } from '../ServiceLocator.js';
+import { Config } from '../Config.js';
 
 /**
  * Manages the flow and state of battle.
@@ -49,9 +50,23 @@ export const BattleManager = {
     },
 
     /**
-     * Generates a random encounter based on the current floor and starts it.
+     * Helper to start a fixed encounter by enemy IDs (e.g. for testing).
+     * @param {Array<string>} enemyIds - List of enemy species IDs.
      */
-    async startEncounter() {
+    async startFixedEncounter(enemyIds) {
+        const enemies = enemyIds.map((id, i) => {
+             const e = new Game_Enemy(id, 0, 0, 1);
+             e.slotIndex = i;
+             return e;
+        });
+        await this._startEncounterWithEnemies(enemies);
+    },
+
+    /**
+     * Internal method to start encounter with pre-generated enemies.
+     * @param {Array<Game_Enemy>} enemies
+     */
+    async _startEncounterWithEnemies(enemies) {
         Systems.sceneHooks?.onBattleStart?.();
         if (window.Game && window.Game.ui) {
             window.Game.ui.mode = 'BATTLE';
@@ -67,6 +82,21 @@ export const BattleManager = {
 
         const allies = window.$gameParty.activeSlots.filter(u => u !== null);
 
+        this.setup(allies, enemies);
+
+        Systems.Battle3D.setupScene(this.allies, this.enemies);
+
+        // Emit battle start event
+        Services.events.emit('battle:start', { enemies: this.enemies });
+
+        // Brief delay before first round starts to allow player to see enemies
+        setTimeout(() => this.nextRound(), 1000);
+    },
+
+    /**
+     * Generates a random encounter based on the current floor and starts it.
+     */
+    async startEncounter() {
         const floor = window.$gameMap.floor;
         const dungeon = Data.dungeons.default;
         const enc = dungeon.encounters;
@@ -86,15 +116,7 @@ export const BattleManager = {
             enemies.push(enemy);
         }
 
-        this.setup(allies, enemies);
-
-        Systems.Battle3D.setupScene(this.allies, this.enemies);
-
-        // Emit battle start event
-        Services.events.emit('battle:start', { enemies: this.enemies });
-
-        // Brief delay before first round starts to allow player to see enemies
-        setTimeout(() => this.nextRound(), 1000);
+        await this._startEncounterWithEnemies(enemies);
     },
 
     /**
@@ -325,8 +347,8 @@ export const BattleManager = {
                 if (Systems.Observer) Systems.Observer.fire('onBattleEnd', [...this.allies, ...this.enemies].filter(u => u && u.hp > 0));
                 Systems.Battle3D.setFocus('victory');
 
-                const gold = this.enemies.length * Data.config.baseGoldPerEnemy * window.$gameMap.floor;
-                const baseXp = this.enemies.length * Data.config.baseXpPerEnemy * window.$gameMap.floor;
+                const gold = this.enemies.length * Config.baseGoldPerEnemy * window.$gameMap.floor;
+                const baseXp = this.enemies.length * Config.baseXpPerEnemy * window.$gameMap.floor;
 
                 window.$gameParty.gainGold(gold);
                 window.Game.Windows.HUD.refresh();
