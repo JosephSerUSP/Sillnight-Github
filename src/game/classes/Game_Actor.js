@@ -1,4 +1,5 @@
 import { Game_Battler } from './Game_Battler.js';
+import { Services } from '../ServiceLocator.js';
 import { Data } from '../../assets/data/data.js';
 
 /**
@@ -56,7 +57,12 @@ export class Game_Actor extends Game_Battler {
         this._speciesId = speciesId;
         this._level = level;
         this._exp = this.expForLevel(this._level);
-        const def = Data.creatures[speciesId];
+        const def = Services.get('CreatureRegistry').get(speciesId);
+        if (!def) {
+             console.error(`Actor species not found in registry: ${speciesId}`);
+             this._name = 'Unknown';
+             return;
+        }
         this._name = def.name;
         this.recoverAll();
     }
@@ -68,7 +74,7 @@ export class Game_Actor extends Game_Battler {
     traitObjects() {
         const objects = super.traitObjects();
         // 1. Species Data
-        const species = Data.creatures[this._speciesId];
+        const species = Services.get('CreatureRegistry').get(this._speciesId);
         if (species) {
             objects.push(species);
             // 2. Species Passives
@@ -92,12 +98,14 @@ export class Game_Actor extends Game_Battler {
 
     /** @returns {string} The sprite character to render. */
     get sprite() {
-        return Data.creatures[this._speciesId].sprite;
+        const def = Services.get('CreatureRegistry').get(this._speciesId);
+        return def ? def.sprite : '?';
     }
 
     /** @returns {string|undefined} The path to the sprite asset image. */
     get spriteAsset() {
-        return Data.creatures[this._speciesId].spriteAsset;
+        const def = Services.get('CreatureRegistry').get(this._speciesId);
+        return def ? def.spriteAsset : undefined;
     }
 
     /**
@@ -106,7 +114,9 @@ export class Game_Actor extends Game_Battler {
      * @returns {number} The base parameter value.
      */
     paramBase(paramId) {
-        const def = Data.creatures[this._speciesId];
+        const def = Services.get('CreatureRegistry').get(this._speciesId);
+        if (!def) return 0;
+
         // 0: mhp
         if (paramId === 0) {
             return Math.round(def.baseHp * (1 + def.hpGrowth * (this._level - 1)));
@@ -169,7 +179,6 @@ export class Game_Actor extends Game_Battler {
     gainExp(exp) {
         this._exp += exp;
         // Level up logic
-        const def = Data.creatures[this._speciesId];
         while (this.currentExp() >= this.nextLevelExp()) {
             this.levelUp();
         }
@@ -206,15 +215,22 @@ export class Game_Actor extends Game_Battler {
 
     // Compatibility with old object structure
     /** @returns {Array} The list of actions available to the creature. */
-    get acts() { return Data.creatures[this._speciesId].acts; }
+    get acts() {
+        const def = Services.get('CreatureRegistry').get(this._speciesId);
+        return def ? def.acts : [];
+    }
     /** @returns {string} The temperament of the creature. */
-    get temperament() { return Data.creatures[this._speciesId].temperament; }
+    get temperament() {
+        const def = Services.get('CreatureRegistry').get(this._speciesId);
+        return def ? def.temperament : 'free';
+    }
     /** @returns {Array} The elemental affinities of the creature. */
     get elements() {
         // Start with innate elements
-        const innate = Data.creatures[this._speciesId].elements || [];
+        const def = Services.get('CreatureRegistry').get(this._speciesId);
+        const innate = def ? (def.elements || []) : [];
         // Check for element overrides from traits
-        const traitElements = this.elementTraits;
-        return traitElements.length > 0 ? traitElements : innate;
+        const traitElements = this.elementTraits; // Assumes getter exists in parent or mixin
+        return traitElements && traitElements.length > 0 ? traitElements : innate;
     }
 }
