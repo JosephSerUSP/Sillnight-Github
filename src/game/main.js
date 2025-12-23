@@ -15,6 +15,7 @@ import { Config } from './Config.js';
 import { Services } from './ServiceLocator.js';
 import { TraitRegistry } from './registries/TraitRegistry.js';
 import { EffectRegistry } from './registries/EffectRegistry.js';
+import { CreatureRegistry } from './registries/CreatureRegistry.js';
 
 /**
  * Core game bootstrapper; keeps entrypoint slim while delegating to managers/scenes.
@@ -55,6 +56,7 @@ export const Game = {
         // Register Core Services
         Services.register('TraitRegistry', new TraitRegistry());
         Services.register('EffectRegistry', new EffectRegistry());
+        Services.register('CreatureRegistry', new CreatureRegistry());
 
         // Initialize Data (Create Party, Map, etc.)
         DataManager.setupNewGame();

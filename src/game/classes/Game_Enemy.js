@@ -1,5 +1,6 @@
 import { Game_Battler } from './Game_Battler.js';
 import { Data } from '../../assets/data/data.js';
+import { Services } from '../ServiceLocator.js';
 
 /**
  * Represents an enemy in the game.
@@ -36,7 +37,13 @@ export class Game_Enemy extends Game_Battler {
      * @param {string} speciesId - The species ID.
      */
     setup(speciesId) {
-        const def = Data.creatures[speciesId];
+        // Use Registry instead of direct Data access
+        const def = Services.get('CreatureRegistry').get(speciesId);
+        if (!def) {
+             console.error(`Enemy species not found in registry: ${speciesId}`);
+             this._name = 'Unknown';
+             return;
+        }
         this._name = def.name;
         this.recoverAll(); // Sets HP/MP to max
     }
@@ -47,7 +54,7 @@ export class Game_Enemy extends Game_Battler {
      */
     traitObjects() {
         const objects = super.traitObjects();
-        const species = Data.creatures[this._speciesId];
+        const species = Services.get('CreatureRegistry').get(this._speciesId);
         if (species) {
             objects.push(species);
             if (species.passives) {
@@ -73,9 +80,15 @@ export class Game_Enemy extends Game_Battler {
     get name() { return this._name; }
 
     /** @returns {string} The sprite character. */
-    get sprite() { return Data.creatures[this._speciesId].sprite; }
+    get sprite() {
+        const def = Services.get('CreatureRegistry').get(this._speciesId);
+        return def ? def.sprite : '?';
+    }
     /** @returns {string|undefined} The sprite asset path. */
-    get spriteAsset() { return Data.creatures[this._speciesId].spriteAsset; }
+    get spriteAsset() {
+        const def = Services.get('CreatureRegistry').get(this._speciesId);
+        return def ? def.spriteAsset : undefined;
+    }
 
     /**
      * Calculates the base parameter value.
@@ -84,7 +97,9 @@ export class Game_Enemy extends Game_Battler {
      * @returns {number} The base value.
      */
     paramBase(paramId) {
-        const def = Data.creatures[this._speciesId];
+        const def = Services.get('CreatureRegistry').get(this._speciesId);
+        if (!def) return 0;
+
         if (paramId === 0) { // mhp
              return Math.floor(def.baseHp * this._levelMultiplier);
         }
@@ -101,13 +116,20 @@ export class Game_Enemy extends Game_Battler {
     /** @returns {number} The nominal level. */
     get level() { return this._level; }
     /** @returns {Array} List of action patterns. */
-    get acts() { return Data.creatures[this._speciesId].acts; }
+    get acts() {
+        const def = Services.get('CreatureRegistry').get(this._speciesId);
+        return def ? def.acts : [];
+    }
     /** @returns {string} The temperament. */
-    get temperament() { return Data.creatures[this._speciesId].temperament; }
+    get temperament() {
+        const def = Services.get('CreatureRegistry').get(this._speciesId);
+        return def ? def.temperament : 'free';
+    }
     /** @returns {Array} Elemental affinities. */
     get elements() {
+        const def = Services.get('CreatureRegistry').get(this._speciesId);
         // Start with innate elements
-        const innate = Data.creatures[this._speciesId].elements || [];
+        const innate = def ? (def.elements || []) : [];
         // Check for element overrides from traits
         const traitElements = this.elementTraits;
         return traitElements.length > 0 ? traitElements : innate;
