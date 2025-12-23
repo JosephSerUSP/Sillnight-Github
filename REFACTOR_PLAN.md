@@ -10,6 +10,7 @@ This plan aims to transition the current prototype architecture into a robust, s
 ### 1.1. The Registry System
 **Goal:** Centralized, efficient access to game data (Items, Creatures, Skills) with support for "Inheritance" and "Mixins" in data.
 *   **Problem:** Currently, data is imported directly as raw JSON/JS objects. Modding or dynamic patching is hard.
+*   **Current Status (Phase 1):** `TraitRegistry` and `EffectRegistry` exist to handle *logic execution*, but data loading is still direct via `Data` object.
 *   **Solution:** `Registry` classes.
     *   `CreatureRegistry`: Loads creature definitions, resolves inheritance (e.g., "Goblin Archer" inherits "Goblin").
     *   `ItemRegistry`, `SkillRegistry`.
@@ -18,6 +19,7 @@ This plan aims to transition the current prototype architecture into a robust, s
 ### 1.2. The Event Bus (Pub/Sub)
 **Goal:** Decouple Game Logic from UI and Rendering.
 *   **Problem:** `BattleManager` directly calls `Window_BattleLog.add()`. If we change the UI, we break the battle logic.
+*   **Current Status (Phase 1):** Partially implemented. `Services.events` is active. `BattleObserver` handles logs and damage numbers. However, `BattleManager` still drives `BattleRenderSystem` (animations) and some UI (Victory Window) directly.
 *   **Solution:** Global `EventBus`.
     *   `BattleManager` emits `battle:damage_dealt` { target, amount }.
     *   `BattleLog` listens to `battle:damage_dealt` and renders text.
@@ -29,6 +31,7 @@ This plan aims to transition the current prototype architecture into a robust, s
 *   **Solution:** `Game.Services`.
     *   Registers `InputService`, `AudioService`, `PersistenceService`.
     *   Allows for easy mocking in tests.
+*   **Status:** Implemented (`src/game/ServiceLocator.js`).
 
 ---
 
@@ -96,15 +99,15 @@ This plan aims to transition the current prototype architecture into a robust, s
 
 ## Roadmap
 
-### Phase 1: Core Foundation (Immediate)
-1.  Implement **EventBus**.
-2.  Implement **Registry** base class.
-3.  Refactor `BattleManager` to use EventBus (detach UI).
+### Phase 1: Core Foundation (In Progress / Partial)
+1.  Implement **EventBus** (Done: `BattleObserver`).
+2.  Implement **Registry** logic handlers (Done: `TraitRegistry`, `EffectRegistry`).
+3.  Refactor `BattleManager` to use EventBus (Partial: Logging/Numbers decoupled, Animations/Flow still coupled).
 
-### Phase 2: The Data Engine
-1.  Implement **Trait/Effect** classes.
-2.  Migrate `creatures.js` and `skills.js` to the new schema.
-3.  Refactor `Game_Battler` to calculate stats via Traits.
+### Phase 2: The Data Engine (Next Priority)
+1.  Implement **Registry** data loaders (Move off direct `Data` object access).
+2.  Migrate `creatures.js` and `skills.js` to a schema that supports inheritance.
+3.  Refactor `Game_Battler` to load stats via Registry lookups.
 
 ### Phase 3: The World
 1.  Refactor `Game_Map` to use `MapGenerator` strategies.

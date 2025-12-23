@@ -46,7 +46,7 @@ graph TD
         BM[BattleManager]
         Party[Game_Party]
         Map[Game_Map]
-        Registry[Data Registry]
+        Registry[Trait/Effect Registry]
     end
 
     subgraph "View Layer (View)"
@@ -60,6 +60,7 @@ graph TD
     ActiveScene -->|Updates| ExploreSys
 
     BM -->|Emits Events| Bus
+    BM -->|Orchestrates| BattleSys
     Bus -->|Notifies| UI
     Bus -->|Notifies| BattleSys
 ```
@@ -94,12 +95,12 @@ Handles the dungeon crawling experience.
 ### 3.3. Battle System (`BattleManager` vs `BattleRenderSystem`)
 Strictly separates the "Brain" from the "Eyes".
 
-*   **`BattleManager` (The Brain):** Pure logic.
+*   **`BattleManager` (The Brain):** Logic & Orchestration.
     *   Calculates turn order (`queue`).
     *   Executes actions (`Game_Action`).
     *   Determines results (Hit/Miss/Crit).
-    *   *Knows nothing about sprites or 3D models.*
-*   **`BattleRenderSystem` (The Eyes):** Pure visualization.
+    *   *Note:* Currently operates in a **Hybrid** state, orchestrating `BattleRenderSystem` (e.g. `playAnim`) and waiting for completion callbacks, while delegating visual feedback (damage numbers, logs) to the `EventBus`.
+*   **`BattleRenderSystem` (The Eyes):** Visualization.
     *   Listens to `BattleManager` events via `Observer`.
     *   Manages 3D sprites (`Spriteset_Battle`).
     *   Controls the Camera (Zoom, Pan).
@@ -133,12 +134,16 @@ The game entities follow a prototype chain but rely heavily on "Traits" for stat
 *   **`Game_Actor`:** Adds `level`, `exp`, `equipment`.
 *   **`Game_Enemy`:** Adds `dropItems`, `ai_pattern`.
 
-### 4.3. Data Structure (`src/assets/data`)
-The game is data-driven.
+### 4.3. Data & Registry System
+The game is data-driven, using a Registry pattern for logic execution and a Data Loader for definitions.
 
-*   `creatures.js`: Defines base stats, growth curves, and sprite assets.
-*   `skills.js` / `items.js`: Defines effects, costs, and animations.
-*   **Loader:** `DataManager` hydrates this raw JSON into the game state at runtime.
+*   **Data Files (`src/assets/data/`):** Define creatures, skills, items, and config.
+    *   `creatures.js`: Base stats, growth curves, sprites.
+    *   `skills.js`: Effects, costs, animations.
+    *   **Loader:** `DataManager` hydrates this raw JSON into the global `Data` object.
+*   **Registries (`src/game/registries/`):** Handle logic execution for data-driven behaviors.
+    *   **`TraitRegistry`:** Calculates final parameter values (`getParamValue`) by aggregating traits (Passives, Equipment) found on a battler. It handles event triggers like `onTurnStart`.
+    *   **`EffectRegistry`:** Handles the application of action effects (`apply`), executing logic for damage, healing, state addition, etc.
 
 ---
 
@@ -147,5 +152,6 @@ The game is data-driven.
 The codebase is currently in a transitional state (Phase 1 of Refactor). The ultimate goals are:
 
 1.  **Full Decoupling:** Complete the migration of *all* UI logic to the `EventBus`. Currently, some legacy calls (like `window.Game.Windows.BattleLog`) still exist within Logic classes.
-2.  **Registry Expansion:** Move from raw object lookups (`Data.skills['fire']`) to a robust `SkillRegistry` that handles inheritance (e.g., "Fire II" inherits "Fire I").
-3.  **Reactive UI:** Implement a lightweight binding system so Windows update automatically when data changes, removing manual `refresh()` calls.
+2.  **Logic Separation:** Fully detach `BattleManager` from `BattleRenderSystem` methods (like `playAnim`). The Manager should emit an event (e.g., `battle:perform_action`) and wait for a `battle:animation_complete` event, rather than passing callbacks.
+3.  **Registry Expansion:** Move from raw object lookups (`Data.skills['fire']`) to a robust `SkillRegistry` that handles data loading and inheritance (e.g., "Fire II" inherits "Fire I").
+4.  **Reactive UI:** Implement a lightweight binding system so Windows update automatically when data changes, removing manual `refresh()` calls.
