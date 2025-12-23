@@ -1,4 +1,4 @@
-import { Data } from '../../assets/data/data.js';
+import { Services } from '../ServiceLocator.js';
 import { Game_Event } from './Game_Event.js';
 import * as Systems from '../systems.js';
 import { BSPGenerator } from '../generators/BSPGenerator.js';
@@ -55,8 +55,15 @@ export class Game_Map {
      * Populates the map with walls, empty space, enemies, treasure, etc.
      */
     generateFloor() {
-        // Logic refactored to use BSPGenerator
-        const dungeon = Data.dungeons.default;
+        // Retrieve dungeon data from Registry
+        const dungeonRegistry = Services.get('DungeonRegistry');
+        const dungeon = dungeonRegistry.get('default');
+
+        if (!dungeon) {
+            console.error("Default dungeon not found in registry.");
+            return;
+        }
+
         const mapCfg = dungeon.map;
 
         // Instantiate generator
@@ -151,10 +158,16 @@ export class Game_Map {
                 };
                 break;
             case 'TREASURE':
-                const treasure = Data.events.treasure;
-                const amt = treasure.gold.base
-                    + Math.floor(Math.random() * treasure.gold.random)
-                    + treasure.gold.perFloor * this._floor;
+                const eventRegistry = Services.get('EventDataRegistry');
+                const treasure = eventRegistry.get('treasure');
+
+                let amt = 10; // Default fallback
+                if (treasure) {
+                    amt = treasure.gold.base
+                        + Math.floor(Math.random() * treasure.gold.random)
+                        + treasure.gold.perFloor * this._floor;
+                }
+
                 data = {
                     type: 'TREASURE',
                     trigger: 'TOUCH',

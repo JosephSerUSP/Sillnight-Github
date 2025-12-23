@@ -98,10 +98,20 @@ export class EffekseerSystem {
             if (this.cache[name]) return this.cache[name];
             const resolved = resolveAssetPath(path);
             if (!resolved) return null;
+
             const p = new Promise((resolve) => {
-                const effect = this.context.loadEffect(resolved, 1.0, (efk) => resolve(efk || effect || null));
-                if (effect && typeof effect.then !== 'function') {
-                    resolve(effect);
+                // Add explicit onerror callback
+                const onload = (efk) => resolve(efk || null);
+                const onerror = (msg, url) => {
+                    console.warn(`Failed to load Effekseer effect: ${name} (${url}) - ${msg}`);
+                    resolve(null);
+                };
+
+                const effect = this.context.loadEffect(resolved, 1.0, onload, onerror);
+
+                // Fallback for older effekseer versions or if it returns promise (unlikely here but safe)
+                if (effect && typeof effect.then === 'function') {
+                    effect.then(resolve).catch(() => resolve(null));
                 }
             });
             this.cache[name] = p;

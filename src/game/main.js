@@ -20,6 +20,8 @@ import { SkillRegistry } from './registries/SkillRegistry.js';
 import { PassiveRegistry } from './registries/PassiveRegistry.js';
 import { EquipmentRegistry } from './registries/EquipmentRegistry.js';
 import { ItemRegistry } from './registries/ItemRegistry.js';
+import { DungeonRegistry } from './registries/DungeonRegistry.js';
+import { EventDataRegistry } from './registries/EventDataRegistry.js';
 import { Game_Actor } from './classes/Game_Actor.js';
 import { Game_Enemy } from './classes/Game_Enemy.js';
 
@@ -63,6 +65,8 @@ export const Game = {
      * @returns {Promise<void>} A promise that resolves when initialization is complete.
      */
     async init() {
+        console.log("Game.init: Starting initialization...");
+
         // Register Core Services
         Services.register('TraitRegistry', new TraitRegistry());
         Services.register('EffectRegistry', new EffectRegistry());
@@ -71,9 +75,30 @@ export const Game = {
         Services.register('PassiveRegistry', new PassiveRegistry());
         Services.register('EquipmentRegistry', new EquipmentRegistry());
         Services.register('ItemRegistry', new ItemRegistry());
+        Services.register('DungeonRegistry', new DungeonRegistry());
+        Services.register('EventDataRegistry', new EventDataRegistry());
+        console.log("Game.init: Services registered.");
+
+        // Load Data into Registries
+        // Note: CreatureRegistry loads lazily via get(), but others might need explicit load.
+        // For safety, we load them if they have a load method.
+        await Services.get('DungeonRegistry').load();
+        await Services.get('EventDataRegistry').load();
+
+        // Ensure other registries that might need it are loaded
+        if (Services.get('CreatureRegistry').load) Services.get('CreatureRegistry').load();
+        if (Services.get('SkillRegistry').load) Services.get('SkillRegistry').load();
+        if (Services.get('ItemRegistry').load) Services.get('ItemRegistry').load();
+        if (Services.get('EquipmentRegistry').load) Services.get('EquipmentRegistry').load();
+        if (Services.get('PassiveRegistry').load) Services.get('PassiveRegistry').load();
+        if (Services.get('TraitRegistry').load) Services.get('TraitRegistry').load();
+        if (Services.get('EffectRegistry').load) Services.get('EffectRegistry').load();
+
+        console.log("Game.init: Registries loaded.");
 
         // Initialize Data (Create Party, Map, etc.)
         DataManager.setupNewGame();
+        console.log("Game.init: DataManager setup complete.");
 
         // Initialize Observer (connects EventBus to UI/Systems)
         this.observer = Systems.Observer;
@@ -89,11 +114,13 @@ export const Game = {
         this.Windows.LevelUp = new Window_LevelUp();
         this.Windows.Shop = new Window_Shop();
         this.Windows.Recruit = new Window_Recruit();
+        console.log("Game.init: Windows created.");
 
         this.RenderManager.init();
         Systems.Explore.init();
         Systems.Battle3D.init();
         await Systems.Effekseer.preload();
+        console.log("Game.init: Systems initialized.");
 
         // Wire hooks for scene transitions originating from systems
         Systems.sceneHooks.onBattleStart = () => this.SceneManager.changeScene(this.Scenes.battle);
@@ -131,6 +158,7 @@ export const Game = {
         this.Input.boot();
 
         this.ready = true;
+        console.log("Game.init: Initialization complete. Game.ready = true.");
     }
 };
 
