@@ -149,9 +149,10 @@ export const BattleManager = {
             this.phase = 'PLAYER_INPUT';
             this.playerTurnRequested = false;
 
-            // Emit player turn request event
-            Services.events.emit('battle:player_turn_request', false); // Turn off the "QUEUED" status
-            window.Game.Windows.BattleLog.togglePlayerTurn(true); // Still direct DOM for now for complex interaction, or refactor later
+            // Emit player turn request event (false = cancel queue status, implied active)
+            // Ideally we emit 'start_player_turn'
+            Services.events.emit('battle:player_turn_request', false);
+            Services.events.emit('battle:player_turn_start');
             Services.events.emit('battle:log', 'Waiting for orders...');
             return;
         }
@@ -325,8 +326,8 @@ export const BattleManager = {
      * Resumes automatic battle processing.
      */
     resumeAuto() {
-        window.Game.Windows.BattleLog.togglePlayerTurn(false);
         this.playerTurnRequested = false;
+        Services.events.emit('battle:player_turn_end'); // Signals UI to hide buttons
         Services.events.emit('battle:player_turn_request', false);
         this.processNextTurn();
     },
