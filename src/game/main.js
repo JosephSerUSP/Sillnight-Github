@@ -13,6 +13,8 @@ import { Window_Shop } from './window/shop.js';
 import { Window_Recruit } from './window/recruit.js';
 import { Config } from './Config.js';
 import { Services } from './ServiceLocator.js';
+import { TraitRegistry } from './registries/TraitRegistry.js';
+import { EffectRegistry } from './registries/EffectRegistry.js';
 
 /**
  * Core game bootstrapper; keeps entrypoint slim while delegating to managers/scenes.
@@ -50,6 +52,10 @@ export const Game = {
      * @returns {Promise<void>} A promise that resolves when initialization is complete.
      */
     async init() {
+        // Register Core Services
+        Services.register('TraitRegistry', new TraitRegistry());
+        Services.register('EffectRegistry', new EffectRegistry());
+
         // Initialize Data (Create Party, Map, etc.)
         DataManager.setupNewGame();
 

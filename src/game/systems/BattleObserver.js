@@ -122,4 +122,17 @@ export class BattleObserver {
             }
         }
     }
+
+    /**
+     * Fires a trait trigger via the TraitRegistry.
+     * @param {string} triggerName
+     * @param {Object|Array} subject
+     * @param  {...any} args
+     */
+    fire(triggerName, subject, ...args) {
+        const registry = Services.get('TraitRegistry');
+        if (registry) {
+            registry.trigger(triggerName, subject, ...args);
+        }
+    }
 }
