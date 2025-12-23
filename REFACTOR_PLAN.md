@@ -3,6 +3,8 @@
 ## Executive Summary
 This plan aims to transition the current prototype architecture into a robust, scalable engine capable of supporting a complex, data-driven dungeon crawler with procedural storytelling. The core philosophy is **Separation of Concerns** (Logic vs. View) and **Data-Driven Design** (behavior defined in data, not hardcoded).
 
+THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
+
 ---
 
 ## 1. Core Architecture: The Bedrock
