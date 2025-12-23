@@ -1,62 +1,111 @@
--Effects: These directly affect battlers, such as changing hp, applying states, changing level / xp / parameters, etc. 
-'learnAction' - Teaches an action to a creature. 
-'learnPassive' - Teaches a passive to a creature. 
-'elementAdd' - Adds a new element to the battler.
-'elementChange' - Changes all elements of this battler to the target element. If the battler has no elements, it should now have one.
-Effects should be flexible. I should be able to cover novel effects without hardcoding them.
+# Game Design Document
 
+**NOTE: This document dictates the intended design and behavior of the game moving forward. It serves as the specification for future development. Where the current codebase differs from this document, the codebase should eventually be refactored to match this design.**
 
--Traits: These modify or change characteristics of battlers, or/and trigger Effects. They are properties of Equipment, Passives and States. 
-Some examples:
-'hit_bonus' - for adding flat bonus to hit chance (default 0 means 100% chance. 0.1 would mean 110%).
-'evade_chance' - for calculating the chance of evading enemy physical attacks. default is 0.
-'crit_bonus_percent' - for calculating the chance of inflicting a critical hit. Default is 0.05 (5%).
-'xp_bonus_percent' - increases XP gain.
-'element_change' - Changes the battler's elemental affinity.
-'PARAM_PLUS' - Additive bonus to parameters (e.g. +10 ATK).
-'PARAM_RATE' - Multiplicative bonus to parameters (e.g. x1.2 DEF).
-'trigger: effect' - Traits can execute Effects on certain triggers, such as restoring HP when winning a battle (`onBattleEnd`) or healing per turn (`onTurnStart`).
+---
 
+## 1. Core Philosophies
 
-Both Effects and Traits also must generate description strings. These are going to be attached to an object's description. For example, a "Mythril Sword"'s "Description" field might just say "A sword made from legendary ore.", but, dynamically, "Increases ATK by 5." will be appended to its description.
+*   **Flexibility:** The engine must support novel effects and traits without hardcoding. Designers should be able to script new behaviors via data.
+*   **Tactical Turn Order:** Turn order is dynamic and primarily determined by the *Actions* chosen, not just the unit's base stats.
 
-TRAIT OBJECTS:
-all trait objects have:
-'condition' - a condition for which this object's traits are inherited.
+---
 
-1.Passives: Trait Objects that are innate or learned by creatures.
+## 2. Effects & Traits
 
-2.Equipment: Trait Objects that are equipped to creatures.
-'price' - how much currency is required to purchase this equipment at a shop.
+### Effects
+Directly affect battlers (HP, States, Parameters, etc.).
+*   `learnAction`: Teaches an action to a creature.
+*   `learnPassive`: Teaches a passive to a creature.
+*   `elementAdd`: Adds a new element to the battler.
+*   `elementChange`: Changes all elements of this battler to the target element.
+*   **Goal:** Effects must be composable. Example: `changeMaxActions` should be possible via a generic effect system even if not explicitly hardcoded.
 
-3.States: Trait Objects that are temporarily applied to creatures.
-States expire. The architecture for handling state expiry allows for turn-based or event-based removal.
+### Traits
+Static modifiers on Equipment, Passives, and States.
+*   `hit_bonus`: Flat bonus to hit chance (0 = +0%, 10 = +10%).
+*   `evade_chance`: Chance to evade physical attacks.
+*   `crit_bonus_percent`: Chance to inflict critical hits (Default 0.05).
+*   `element_change`: Changes the battler's elemental affinity.
+*   `PARAM_PLUS`: Additive bonus to parameters (e.g., +10 ATK).
+*   `PARAM_RATE`: Multiplicative bonus to parameters (e.g., x1.2 DEF).
+*   `trigger`: Traits can execute Effects on triggers (e.g., `onBattleEnd`, `onTurnStart`).
 
-4.Battlers: The battle units. They're both allies and enemies. They inherit traits from Passives, Equipment, States and the PC.
-They have the following core parameters:
--'mhp' - Max HP.
--'mmp' - Max MP.
--'atk' - Attack Power (Physical).
--'def' - Defense (Physical).
--'mat' - Magic Attack.
--'mdf' - Magic Defense.
--'agi' - Agility (affects Turn Order).
--'luk' - Luck (affects State rates etc).
-And derived properties:
--'level' - Current level.
--'exp' - Current experience.
--'ele' - Array of elements (from innate species data + traits).
+**Dynamic Descriptions:**
+Both Effects and Traits must generate description strings automatically.
+*   *Example:* A "Mythril Sword" description ("Legendary ore...") automatically appends "Increases ATK by 5" based on its traits.
 
-EFFECT OBJECTS:
-1.Actions: Apply Effects to targets. They can be:
-1.a.Skills: Used by creatures.
-1.b.Items: Used by the PC (Inventory).
+---
 
-They have the following properties:
--'ele' - actions often have an element.
--'stat' - Defines the offensive stat used ('atk' or 'mat').
+## 3. Data Structures
 
--Summoner:
-The Player Character. 
-'mmp / mp' - for exploration mechanics and spellcasting. 
-Performing actions (such as moving) in the dungeon drains their MP. When it hits 0, the creatures get progressively weaker.
+### Trait Objects
+All trait objects (Passives, Equipment, States, Battlers) share:
+*   `condition`: A logic check required for traits to be active.
+
+#### 1. Passives
+Innate or learned traits. Subject `a` and `b` are the same.
+
+#### 2. Equipment
+Items equipped to creatures.
+*   `price`: Shop cost.
+
+#### 3. States
+Temporary modifiers.
+*   **Expiry:** Must be flexible (turns, steps, triggers).
+
+#### 4. Battlers (Allies & Enemies)
+The core units.
+*   **Core Parameters:**
+    *   `mhp` (Max HP)
+    *   `mmp` (Max MP)
+    *   `atk` (Attack Power - Physical)
+    *   `def` (Defense - Physical)
+    *   `mat` (Magic Attack)
+    *   `mdf` (Magic Defense)
+    *   `agi` (Agility - Base speed, influences evasion/turn ties)
+    *   `luk` (Luck - State rates, critical avoidance)
+*   **Derived Stats:**
+    *   `level`, `exp`
+    *   `ele` (Elements)
+
+---
+
+## 4. Action System
+
+### Action Properties
+Actions (Skills & Items) are the core of combat.
+*   `asp` (**Action Speed**): The **primary** determinant of turn order. Fast attacks (high ASP) go before slow powerful ones (low ASP), regardless of the user's base Agility.
+*   `ele` (Element): Damage multiplier (1.25x for same-element match).
+*   `cnd` (Condition): Requirements (e.g., "Front Row", "HP < 50%").
+*   `stat`: The offensive parameter used (`atk` or `mat`).
+
+### Types
+1.  **Skills:** Used by creatures. Default cost: None/MP.
+2.  **Spells:** Used by PC (Summoner). Default cost: MP.
+3.  **Items:** Used by PC. Default cost: Consumable.
+
+### Complex Action Examples (Design Goals)
+*   **Potion Rain:**
+    *   *Condition:* Inventory has healing item.
+    *   *Cost:* Consumes item.
+    *   *Effect:* Apply item effect to ALL party members (75% efficacy).
+
+### Complex Trait Examples
+*   **Mug:**
+    *   *Trigger:* On dealing damage.
+    *   *Effect:* Gain gold equal to damage dealt.
+
+---
+
+## 5. The Summoner (Player Character)
+
+*   **Role:** The anchor. If the Summoner dies, the run might be over or compromised.
+*   **MP as Oxygen:**
+    *   Moving in the dungeon drains MP.
+    *   MP = 0 leads to "suffocation" (stat penalties, HP loss).
+*   **Combat:**
+    *   Acts *outside* the regular turn flow (Instant or End of Round).
+    *   Commands: Use Item, Formation, Spell, Flee.
+    *   **Flee:** Infinite attempts, costs money/MP, chance increases per attempt.
+    *   **Targeting:** Enemies target Summoner only if all creatures are down/shielding.
