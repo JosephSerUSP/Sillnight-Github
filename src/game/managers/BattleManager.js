@@ -30,7 +30,7 @@ export const BattleManager = {
      * Initializes the BattleManager.
      */
     init() {
-        // Any static init if needed
+        this.effectRegistry = Services.get('EffectRegistry');
     },
 
     /**
@@ -251,84 +251,7 @@ export const BattleManager = {
             const applyResults = () => {
                 allResults.forEach(({ target, value, effect, isCrit, isMiss }) => {
                     if (!target) return;
-
-                    if (isMiss) {
-                        Services.events.emit('battle:action_missed', { target });
-                        return;
-                    }
-
-                    switch (effect.type) {
-                        case 'hp_damage':
-                            let dealtDamage = value;
-                            let newHp = target.hp - dealtDamage;
-
-                            // Check for survive KO trait
-                            const surviveChance = target.traitsSum('survive_ko');
-                            if (newHp <= 0 && Math.random() < surviveChance) {
-                                newHp = 1;
-                                dealtDamage = target.hp > 0 ? target.hp - 1 : 0;
-                                Services.events.emit('battle:log', `> ${target.name} survives with 1 HP!`);
-                            }
-
-                            target.hp = Math.max(0, newHp);
-                            if (dealtDamage > 0 || value === 0) {
-                                Services.events.emit('battle:damage_dealt', { source: unit, target, value: dealtDamage, isCrit });
-                            }
-                            if (target.hp <= 0) {
-                                Services.events.emit('battle:unit_death', { unit: target });
-
-                                // Revive check
-                                const reviveChance = target.traitsSum('revive_on_ko_chance');
-                                if (Math.random() < reviveChance) {
-                                    const revivePercent = target.traitsSum('revive_on_ko_percent') || 0.5;
-                                    const revivedHp = Math.floor(target.mhp * revivePercent);
-                                    target.hp = revivedHp;
-                                    Services.events.emit('battle:log', `> ${target.name} was revived with ${revivedHp} HP!`);
-                                    const revivedTs = Systems.Battle3D.sprites[target.uid];
-                                    if (revivedTs) revivedTs.visible = true;
-                                }
-                            }
-                            break;
-                        case 'hp_heal':
-                        case 'hp_heal_ratio':
-                            const healAmount = value;
-                            target.hp = Math.min(target.mhp, target.hp + healAmount);
-                            Services.events.emit('battle:heal_dealt', { source: unit, target, value: healAmount });
-                            break;
-                        case 'revive':
-                            if (target.hp <= 0) {
-                                const revivedHp = value;
-                                target.hp = revivedHp;
-                                Services.events.emit('battle:log', `> ${target.name} was revived with ${revivedHp} HP.`);
-                                const ts = Systems.Battle3D.sprites[target.uid];
-                                if (ts) ts.visible = true;
-                            }
-                            break;
-                        case 'increase_max_hp':
-                            const bonus = parseInt(effect.formula);
-                            if (typeof target.maxHpBonus !== 'undefined') {
-                                target.maxHpBonus += bonus;
-                            }
-                            target.hp += bonus;
-                            Services.events.emit('battle:log', `> ${target.name}'s Max HP increased by ${bonus}.`);
-                            break;
-                        case 'add_status':
-                            if (Math.random() < (effect.chance || 1)) {
-                                if (typeof target.addState === 'function') {
-                                    target.addState(effect.status);
-                                } else {
-                                    if (!target.status) target.status = [];
-                                    if (!target.status.includes(effect.status)) {
-                                        target.status.push(effect.status);
-                                    }
-                                }
-                                Services.events.emit('battle:state_added', { target, state: effect.status });
-                            }
-                            break;
-                        case 'miss':
-                             Services.events.emit('battle:action_missed', { target });
-                             break;
-                    }
+                    this.effectRegistry.apply(effect, unit, target, value, isCrit, isMiss);
                 });
                 // Party refresh handled by observer
                 if (this.allies.every(u => u.hp <= 0) || this.enemies.every(u => u.hp <= 0)) {

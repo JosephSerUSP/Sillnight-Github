@@ -1,4 +1,5 @@
 import { Data } from '../../assets/data/data.js';
+import { Services } from '../ServiceLocator.js';
 
 /**
  * The foundational class for any entity that participates in battle.
@@ -171,11 +172,16 @@ export class Game_BattlerBase {
 
     /**
      * Calculates the value of a parameter.
-     * Formula: (Base + Plus) * Rate * BuffRate
+     * Delegates to TraitRegistry.
      * @param {number} paramId - 0:mhp, 1:mmp, 2:atk, 3:def, 4:mat, 5:mdf, 6:agi, 7:luk
      * @returns {number} The final parameter value.
      */
     param(paramId) {
+        const registry = Services.get('TraitRegistry');
+        if (registry) {
+            return registry.getParamValue(this, paramId);
+        }
+        // Fallback if registry not ready
         let value = this.paramBase(paramId) + this.paramPlus(paramId);
         value *= this.paramRate(paramId);
         value *= this.paramBuffRate(paramId);
