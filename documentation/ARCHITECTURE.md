@@ -151,6 +151,8 @@ The game is data-driven, using a Registry pattern for logic execution and a Data
 
 The codebase is currently in a transitional state (Phase 1 of Refactor). The ultimate goals are:
 
+WHEN IMPLEMENTING THE REFACTOR, UPDATE THE DOCUMENT ACCORDINGLY.
+
 1.  **Full Decoupling:** Complete the migration of *all* UI logic to the `EventBus`. Currently, some legacy calls (like `window.Game.Windows.BattleLog`) still exist within Logic classes.
 2.  **Logic Separation:** Fully detach `BattleManager` from `BattleRenderSystem` methods (like `playAnim`). The Manager should emit an event (e.g., `battle:perform_action`) and wait for a `battle:animation_complete` event, rather than passing callbacks.
 3.  **Registry Expansion:** Move from raw object lookups (`Data.skills['fire']`) to a robust `SkillRegistry` that handles data loading and inheritance (e.g., "Fire II" inherits "Fire I").
