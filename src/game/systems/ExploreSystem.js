@@ -494,13 +494,31 @@ export class ExploreSystem {
         setTimeout(() => this.syncDynamic(), 300);
     }
 
-    resolveStaticTile(code) {
+    async resolveStaticTile(code) {
         const map = window.$gameMap;
         if (code === 3) {
+
+             // TRANSITION: OUT
+             if (window.Game.TransitionManager) {
+                 await window.Game.TransitionManager.startMapTransitionOut();
+             }
+
              map.floor++;
              Log.add('Descended...');
              map.generateFloor();
              this.rebuildLevel();
+
+             // Since we use instanced rendering and fog textures, we might need a moment for them to be ready.
+             // (Normally handled synchronously, but let's be safe).
+             await new Promise(r => requestAnimationFrame(r));
+
+             // We need to ensure the renderer is clear of the old frame before revealing.
+             // But TransitionManager overlay is blocking the view.
+
+             // TRANSITION: IN
+             if (window.Game.TransitionManager) {
+                 await window.Game.TransitionManager.startMapTransitionIn();
+             }
         }
     }
 

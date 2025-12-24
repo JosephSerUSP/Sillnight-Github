@@ -68,29 +68,57 @@ export const BattleManager = {
      */
     async _startEncounterWithEnemies(enemies) {
         Systems.sceneHooks?.onBattleStart?.();
+
+        // IMPORTANT: Do NOT set mode to BATTLE yet.
+        // We want ExploreSystem to keep rendering the last frame so we can capture it.
+
+        // 1. Transition Out (Swirl -> Black)
+        if (window.Game && window.Game.TransitionManager) {
+            // Capture the current frame from the renderer
+            const renderer = window.Game.RenderManager.getRenderer();
+            if (renderer) {
+                await window.Game.TransitionManager.startBattleTransition(renderer.domElement);
+            } else {
+                 await window.Game.TransitionManager.startBattleTransition();
+            }
+        }
+
+        // NOW set the mode, stopping ExploreSystem and starting BattleSystem logic
         if (window.Game && window.Game.ui) {
             window.Game.ui.mode = 'BATTLE';
         }
 
+        // 2. Switch Scene (Hidden)
         // Wait for scene switch (handles DOM race conditions)
         await window.Game.Scenes.battle.switchScene(true);
 
-        Systems.Battle3D.cameraState.angle = -Math.PI / 4;
-        Systems.Battle3D.cameraState.targetAngle = -Math.PI / 4;
-        Systems.Battle3D.setFocus('neutral');
+        const allies = window.$gameParty.activeSlots.filter(u => u !== null);
+        this.setup(allies, enemies);
+        Systems.Battle3D.setupScene(this.allies, this.enemies);
+
+        // 3. Setup Camera for Intro
+        Systems.Battle3D.setFocus('INTRO');
         Systems.Battle3D.resize();
 
-        const allies = window.$gameParty.activeSlots.filter(u => u !== null);
+        // 4. Reveal (Intro Transition: Black -> Cut In)
+        if (window.Game && window.Game.TransitionManager) {
+            // Start the intro animation (it's async, runs in parallel with camera)
+            const introPromise = window.Game.TransitionManager.startBattleIntro();
 
-        this.setup(allies, enemies);
+            // Start Camera Motion
+            Systems.Battle3D.playIntro();
 
-        Systems.Battle3D.setupScene(this.allies, this.enemies);
+            await introPromise;
+        } else {
+             // Fallback if no TM
+             Systems.Battle3D.setFocus('neutral');
+        }
 
         // Emit battle start event
         Services.events.emit('battle:start', { enemies: this.enemies });
 
         // Brief delay before first round starts to allow player to see enemies
-        setTimeout(() => this.nextRound(), 1000);
+        setTimeout(() => this.nextRound(), 500);
     },
 
     /**
@@ -456,7 +484,16 @@ export const BattleManager = {
                 Systems.Battle3D.setFocus('victory'); // Or neutral? Victory keeps spinning.
 
                 // Exit
+                // Transition Back to Map
+                if (window.Game.TransitionManager) {
+                     await window.Game.TransitionManager.startMapTransitionOut();
+                }
+
                 window.Game.SceneManager.changeScene(window.Game.Scenes.explore);
+
+                if (window.Game.TransitionManager) {
+                     await window.Game.TransitionManager.startMapTransitionIn();
+                }
 
             } else {
                 window.Game.ui.mode = 'EXPLORE';
