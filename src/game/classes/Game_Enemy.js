@@ -1,5 +1,6 @@
 import { Game_Battler } from './Game_Battler.js';
 import { Services } from '../ServiceLocator.js';
+import { Config } from '../Config.js';
 
 /**
  * Represents an enemy in the game.
@@ -132,5 +133,27 @@ export class Game_Enemy extends Game_Battler {
         // Check for element overrides from traits
         const traitElements = this.elementTraits;
         return traitElements.length > 0 ? traitElements : innate;
+    }
+
+    /**
+     * Calculates the XP value yielded by this enemy.
+     * @returns {number}
+     */
+    xpValue() {
+        const def = Services.get('CreatureRegistry').get(this._speciesId);
+        const baseXp = def ? (def.baseXp || 0) : 0;
+        const globalXp = Config.Rewards ? Config.Rewards.baseXpPerEnemy : 5;
+        // Formula: (Species Base XP + Global Base XP) * Level Multiplier
+        return Math.floor((baseXp + globalXp) * this._levelMultiplier);
+    }
+
+    /**
+     * Calculates the Gold value yielded by this enemy.
+     * @returns {number}
+     */
+    goldValue() {
+        // Simple formula based on config
+        const globalGold = Config.Rewards ? Config.Rewards.baseGoldPerEnemy : 20;
+        return Math.floor(globalGold * this._levelMultiplier);
     }
 }
