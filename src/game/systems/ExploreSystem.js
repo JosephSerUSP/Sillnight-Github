@@ -139,14 +139,28 @@ export class ExploreSystem {
         this.particles = new ParticleSystem(this.scene);
 
         // Initialize Materials with Fog Shader
+        // Note: modifyMaterialWithFog(material, displace=false)
+        // Hub uses displacement for effect, but it's handled via rebuildLevel logic if needed.
+        // Actually, if we want displacement in Hub (for transient fading), we should enable it here or rebuild logic?
+        // modifyMaterialWithFog injects shader code. We enabled displacement for walls (true) but not floor (false).
+        // The prompt says "when moving away from a tile, it warps and fades back".
+        // This implies displacement on the FLOOR too potentially? Or just walls?
+        // "it warps and fades back into invisible" usually refers to the geometry in FoW.
+        // Let's enable displacement for floor too, but control uMaxOffset via uniform.
         this.matFloor = new THREE.MeshLambertMaterial({ color: 0x333333 });
-        modifyMaterialWithFog(this.matFloor, false);
+        modifyMaterialWithFog(this.matFloor, true); // Enable displacement for floor
 
         this.matWall = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
         modifyMaterialWithFog(this.matWall, true);
 
         this.initialized = true;
-        this.rebuildLevel();
+        // Don't call rebuildLevel() here, it depends on Game_Map which might not be ready.
+        // Game.init calls it after setupNewGame().
+        // But if we are re-initializing, we might need it.
+        // Wait, the original code called it. I will keep it for now but be careful.
+        if (window.$gameMap) {
+             this.rebuildLevel();
+        }
         this.animate();
     }
 
@@ -156,6 +170,55 @@ export class ExploreSystem {
         this.mapGroup.clear();
         // Access Game_Map data directly
         if (!window.$gameMap) return;
+
+        // Update Material Colors based on Visual Data
+        const visuals = window.$gameMap.visuals;
+
+        // Reset Radius to defaults or override
+        this.fogRevealRadius = visuals && visuals.fogRevealRadius !== undefined ? visuals.fogRevealRadius : 2;
+        this.fogFadeRadius = visuals && visuals.fogFadeRadius !== undefined ? visuals.fogFadeRadius : 2;
+
+        if (visuals) {
+            if (visuals.floorColor !== undefined) this.matFloor.color.setHex(visuals.floorColor);
+            if (visuals.wallColor !== undefined) this.matWall.color.setHex(visuals.wallColor);
+            if (visuals.backgroundColor !== undefined) this.scene.background = new THREE.Color(visuals.backgroundColor);
+            if (visuals.fogColor !== undefined) this.scene.fog.color.setHex(visuals.fogColor);
+            if (visuals.fogDensity !== undefined) this.scene.fog.density = visuals.fogDensity;
+            if (visuals.playerLightIntensity !== undefined) this.playerLight.intensity = visuals.playerLightIntensity;
+
+            // Handle Textures
+            const pearlescent = this.generatePearlescentTexture();
+
+            if (visuals.floorTexture === 'pearlescent') {
+                this.matFloor.map = pearlescent;
+                this.matFloor.needsUpdate = true;
+            } else {
+                this.matFloor.map = null;
+                this.matFloor.needsUpdate = true;
+            }
+
+            if (visuals.wallTexture === 'pearlescent') {
+                this.matWall.map = pearlescent;
+                this.matWall.needsUpdate = true;
+            } else {
+                this.matWall.map = null;
+                this.matWall.needsUpdate = true;
+            }
+
+        } else {
+            // Fallback default
+            this.matFloor.color.setHex(0x333333);
+            this.matWall.color.setHex(0x1a1a1a);
+            this.scene.background = new THREE.Color(0x050510);
+            this.scene.fog.color.setHex(0x051015);
+            this.scene.fog.density = 0.05;
+            this.playerLight.intensity = 1.5;
+            this.matFloor.map = null;
+            this.matFloor.needsUpdate = true;
+            this.matWall.map = null;
+            this.matWall.needsUpdate = true;
+        }
+
         const mapData = window.$gameMap._data;
 
         const map = mapData;
@@ -182,11 +245,18 @@ export class ExploreSystem {
         // This ensures saving/loading preserves "fully visited" tiles,
         // though partial analog states are reset to 0 or 255.
         const gMap = window.$gameMap;
+        const isTransient = visuals && visuals.fogType === 'transient';
+
         for (let y = 0; y < height; y++) {
              const texRow = (height - 1) - y;
              for (let x = 0; x < width; x++) {
-                 const visited = gMap.isVisited(x, y);
-                 const val = visited ? 255 : 0;
+                 // If transient, we start at 0 (hidden) and let updateFogTarget handle visibility
+                 // If not transient (Dungeon), we respect visited state
+                 let val = 0;
+                 if (!isTransient) {
+                     const visited = gMap.isVisited(x, y);
+                     val = visited ? 255 : 0;
+                 }
                  const idx = texRow * width + x;
                  this.fogTarget[idx] = val;
              }
@@ -310,6 +380,8 @@ export class ExploreSystem {
         const map = window.$gameMap;
         const w = map.width;
         const h = map.height;
+        const visuals = map.visuals;
+        const isTransient = visuals && visuals.fogType === 'transient';
 
         // Use current interpolated position for smooth gradients
         const px = this.playerMesh.position.x;
@@ -341,8 +413,15 @@ export class ExploreSystem {
                 const byteVal = Math.floor(val * 255);
                 const idx = texRow * w + x;
 
-                // Accumulate: Take the max of current known visibility and new potential visibility
-                this.fogTarget[idx] = Math.max(this.fogTarget[idx], byteVal);
+                // Accumulate or Overwrite based on transient type
+                if (isTransient) {
+                    // In transient mode, we don't accumulate. We set the value directly.
+                    // This allows it to fade back to 0 when the player leaves.
+                    this.fogTarget[idx] = byteVal;
+                } else {
+                    // Standard Accumulative Reveal
+                    this.fogTarget[idx] = Math.max(this.fogTarget[idx], byteVal);
+                }
             }
         }
     }
@@ -641,6 +720,51 @@ export class ExploreSystem {
                 Systems.Effekseer.update(this.camera);
             }
         }
+    }
+
+    /**
+     * Generates a procedural pearlescent noise texture.
+     * @returns {THREE.CanvasTexture}
+     */
+    generatePearlescentTexture() {
+        const size = 512;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        // Base off-white
+        ctx.fillStyle = '#f5f5fa';
+        ctx.fillRect(0, 0, size, size);
+
+        // Function to add soft gradient blobs
+        const addBlob = (hue, s, l, alpha, minR, maxR) => {
+            const x = Math.random() * size;
+            const y = Math.random() * size;
+            const r = Math.random() * (maxR - minR) + minR;
+            const grd = ctx.createRadialGradient(x, y, 0, x, y, r);
+            grd.addColorStop(0, `hsla(${hue}, ${s}%, ${l}%, ${alpha})`);
+            grd.addColorStop(1, `hsla(${hue}, ${s}%, ${l}%, 0)`);
+            ctx.fillStyle = grd;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+        };
+
+        // Layers of colors for pearlescent effect
+        // Cyans/Greens
+        for (let i = 0; i < 50; i++) addBlob(170 + Math.random()*20, 80, 80, 0.1, 50, 150);
+        // Pinks/Purples
+        for (let i = 0; i < 50; i++) addBlob(280 + Math.random()*40, 80, 85, 0.1, 50, 150);
+        // Yellow/Gold highlights
+        for (let i = 0; i < 30; i++) addBlob(40 + Math.random()*20, 90, 90, 0.08, 30, 80);
+        // White shine
+        for (let i = 0; i < 40; i++) addBlob(0, 0, 100, 0.15, 20, 60);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        return texture;
     }
 
     /**
