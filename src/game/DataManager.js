@@ -22,7 +22,7 @@ export class DataManager {
         if (Services.get('GameVariables')) Services.get('GameVariables').clear();
         if (Services.get('GameSwitches')) Services.get('GameSwitches').clear();
 
-        window.$gameMap.setup(1); // Floor 1
+        window.$gameMap.setup(0); // Floor 0 (Hub)
 
         this.populateInitialParty();
         this.populateInitialInventory();
