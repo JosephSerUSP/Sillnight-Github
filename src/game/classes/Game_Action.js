@@ -39,12 +39,30 @@ export class Game_Action {
 
     /**
      * Sets the action object directly (skill or item).
-     * @param {Object} obj - The action data object.
+     * Resolves the full object from the Registry to ensure inheritance is applied.
+     * @param {Object} obj - The action data object (must have an id).
      */
     setObject(obj) {
-        if (Services.get('SkillRegistry').get(obj.id)) this.setSkill(obj);
-        else if (Services.get('ItemRegistry').get(obj.id) || Services.get('EquipmentRegistry').get(obj.id)) this.setItem(obj);
-        else this.setSkill(obj);
+        const skill = Services.get('SkillRegistry').get(obj.id);
+        if (skill) {
+            this.setSkill(skill);
+            return;
+        }
+
+        const item = Services.get('ItemRegistry').get(obj.id);
+        if (item) {
+            this.setItem(item);
+            return;
+        }
+
+        const equip = Services.get('EquipmentRegistry').get(obj.id);
+        if (equip) {
+            this.setItem(equip);
+            return;
+        }
+
+        // Fallback for ad-hoc objects that might not be in the registry
+        this.setSkill(obj);
     }
 
     /**
