@@ -6,6 +6,7 @@ import { Items } from './items.js';
 import { Party } from './party.js';
 import { Skills } from './skills.js';
 import { Passives } from './passives.js';
+import { Materials } from './materials.js';
 
 // ------------------- DATA DEFINITIONS -------------------
 export const Data = {
@@ -182,6 +183,7 @@ export const Data = {
     party: Party,
     skills: Skills,
     passives: Passives,
+    materials: Materials,
 
     // Create an index by ID for faster lookups
     equipmentById: Object.values(Equipment).reduce((acc, val) => {
