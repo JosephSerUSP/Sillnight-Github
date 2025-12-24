@@ -85,11 +85,12 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
 *   **Commands:** `ShowMessage`, `MoveCamera`, `Wait`, `Battle`, `Choice`.
 *   **Interpreter:** Executes these commands async.
 *   **Data-Driven:** Events are JSON arrays of commands, loaded from `events.js` or generated procedurally.
-*   **Current Status:** `Game_Interpreter` exists and handles basic commands (`BATTLE`, `SHOP`, `RECRUIT`). Needs expansion for complex narrative logic.
+*   **Current Status:** `Game_Interpreter` exists and handles basic commands (`BATTLE`, `SHOP`, `RECRUIT`). Expanded for complex narrative logic (`IF`, `CHANGE_VARIABLE`, `CHANGE_SWITCH`).
 
 ### 4.2. Variable Store & Quest System
 *   `Game_Variables` / `Game_Switches`: Persistent state tracking.
 *   `QuestManager`: Tracks objective states (`ACTIVE`, `COMPLETED`, `FAILED`).
+*   **Current Status:** `Game_Variables` and `Game_Switches` implemented and registered in `Services`.
 
 ---
 
@@ -113,12 +114,12 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
 2.  Migrate `creatures.js` and `skills.js` to a schema that supports inheritance (Done).
 3.  Refactor `Game_Battler` to load stats via Registry lookups (Done: `Game_Actor`, `Game_Enemy` use Registries).
 
-### Phase 3: The World (In Progress)
+### Phase 3: The World (Done)
 1.  Refactor `Game_Map` to use `MapGenerator` strategies (Done: `BSPGenerator` linked).
-2.  Implement `EventInterpreter` for complex interactions. (Next Priority)
-    - Expand `Game_Interpreter` to support conditional logic (`IF/ELSE`, `CHECK_VAR`).
-    - Implement `Game_Variables` and `Game_Switches`.
+2.  Implement `EventInterpreter` for complex interactions (Done).
+    - Expand `Game_Interpreter` to support conditional logic (`IF/ELSE`, `CHECK_VAR`) (Done).
+    - Implement `Game_Variables` and `Game_Switches` (Done).
 
-### Phase 4: Polish
+### Phase 4: Polish (Next Priority)
 1.  Reactive UI components.
 2.  Audio system integration.
