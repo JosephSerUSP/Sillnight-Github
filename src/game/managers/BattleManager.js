@@ -68,29 +68,36 @@ export const BattleManager = {
      */
     async _startEncounterWithEnemies(enemies) {
         Systems.sceneHooks?.onBattleStart?.();
-        if (window.Game && window.Game.ui) {
-            window.Game.ui.mode = 'BATTLE';
-        }
 
-        // Wait for scene switch (handles DOM race conditions)
-        await window.Game.Scenes.battle.switchScene(true);
+        // Use TransitionManager
+        await window.Game.TransitionManager.play('BATTLE', async () => {
+            if (window.Game && window.Game.ui) {
+                window.Game.ui.mode = 'BATTLE';
+            }
 
-        Systems.Battle3D.cameraState.angle = -Math.PI / 4;
-        Systems.Battle3D.cameraState.targetAngle = -Math.PI / 4;
-        Systems.Battle3D.setFocus('neutral');
-        Systems.Battle3D.resize();
+            // Wait for scene switch (handles DOM race conditions)
+            await window.Game.Scenes.battle.switchScene(true);
 
-        const allies = window.$gameParty.activeSlots.filter(u => u !== null);
+            // Intro Camera Setup
+            Systems.Battle3D.playIntro(); // New Method
+            Systems.Battle3D.resize();
 
-        this.setup(allies, enemies);
+            const allies = window.$gameParty.activeSlots.filter(u => u !== null);
 
-        Systems.Battle3D.setupScene(this.allies, this.enemies);
+            this.setup(allies, enemies);
 
-        // Emit battle start event
-        Services.events.emit('battle:start', { enemies: this.enemies });
+            Systems.Battle3D.setupScene(this.allies, this.enemies);
 
-        // Brief delay before first round starts to allow player to see enemies
-        setTimeout(() => this.nextRound(), 1000);
+            // Emit battle start event
+            Services.events.emit('battle:start', { enemies: this.enemies });
+        });
+
+        // Intro is playing. Round starts after intro?
+        // Let's assume Intro takes some time, or we start round immediately but camera is moving.
+        // User wants "Intro has camera rise...". Usually round starts after intro.
+        // I'll add a delay or wait for intro?
+        // For now, let's keep the delay.
+        setTimeout(() => this.nextRound(), 2500); // Increased delay for intro
     },
 
     /**

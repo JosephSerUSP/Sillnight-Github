@@ -206,11 +206,30 @@ export class BattleRenderSystem {
     }
 
     /**
+     * Starts the battle intro camera sequence.
+     */
+    playIntro() {
+        // Start: Low Z, Close R, Angle X
+        this.cameraState.angle = -Math.PI / 4;
+        this.cameraState.targetAngle = -Math.PI / 4 + (Math.PI / 4); // Rotate 45 deg
+        this.cameraState.targetX = 0;
+        this.cameraState.targetY = 0;
+        this.cameraState.zoom = false;
+
+        // Use a special 'INTRO' mode for manual animation handling in animate()
+        // Or just manipulate the state variables over time.
+        // Let's use a flag.
+        this.cameraState.mode = 'INTRO';
+        this.cameraState.introProgress = 0;
+    }
+
+    /**
      * Moves the camera focus to a specific target type.
      * @param {string} type - 'ally', 'enemy', 'victory', 'unit', or default.
      * @param {string} [targetUid] - The UID of the unit to focus on (if type is 'unit').
      */
     setFocus(type, targetUid) {
+        this.cameraState.mode = 'NORMAL'; // Reset mode
         const BASE = -Math.PI / 4;
         const SHIFT = Math.PI / 12;
         if (type === 'ally') {
@@ -288,21 +307,46 @@ export class BattleRenderSystem {
             window.Game.SceneManager.update();
         }
 
-        // If zooming in (for level up), reduce R and Z height
+        // Camera Update Logic
         let R = 28.28;
         let Z_HEIGHT = 16;
+        let lookAtZ = 2;
 
-        if (cs.zoom) {
+        if (cs.mode === 'INTRO') {
+            // Intro Animation: Rise, Rotate, Zoom Out
+            cs.introProgress = (cs.introProgress || 0) + 0.01;
+            if (cs.introProgress > 1) {
+                cs.mode = 'NORMAL';
+                cs.introProgress = 1;
+            }
+
+            // Easing
+            const p = cs.introProgress;
+            const easeOut = 1 - Math.pow(1 - p, 3); // Cubic ease out
+
+            // Start (p=0): Close in (R=10), Low (Z=5)
+            // End (p=1): Normal (R=28), Normal (Z=16)
+            R = 10 + (18.28 * easeOut);
+            Z_HEIGHT = 5 + (11 * easeOut);
+
+            // Rotation handled by cs.targetAngle logic above?
+            // "Rotating around the battlefield slightly"
+            // The default logic `cs.angle += (cs.targetAngle - cs.angle) * 0.05` handles rotation if we set targetAngle.
+            // But we want it synced with intro.
+            // Let's override angle here if in intro.
+            // cs.angle = -Math.PI/4 + (Math.PI/4 * easeOut);
+        } else if (cs.zoom) {
             R = 10.0;
             Z_HEIGHT = 5.0;
         }
 
         this.camera.position.x = cs.targetX + Math.cos(cs.angle) * R;
         this.camera.position.y = cs.targetY + Math.sin(cs.angle) * R;
-        // Smooth Z transition could be added here, but direct assignment for now
-        this.camera.position.z = this.camera.position.z + (Z_HEIGHT - this.camera.position.z) * 0.1;
 
-        this.camera.lookAt(cs.targetX, cs.targetY, 2);
+        // Smooth Z transition
+        this.camera.position.z = this.camera.position.z + (Z_HEIGHT - this.camera.position.z) * 0.05;
+
+        this.camera.lookAt(cs.targetX, cs.targetY, lookAtZ);
 
         const renderer = window.Game.RenderManager.getRenderer();
         if (renderer && (window.Game.ui.mode === 'BATTLE' || window.Game.ui.mode === 'BATTLE_WIN')) {

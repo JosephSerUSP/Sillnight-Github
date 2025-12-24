@@ -499,8 +499,17 @@ export class ExploreSystem {
         if (code === 3) {
              map.floor++;
              Log.add('Descended...');
-             map.generateFloor();
-             this.rebuildLevel();
+
+             // Transition
+             if (window.Game && window.Game.TransitionManager) {
+                 window.Game.TransitionManager.play('MAP', async () => {
+                     map.generateFloor();
+                     this.rebuildLevel();
+                 });
+             } else {
+                 map.generateFloor();
+                 this.rebuildLevel();
+             }
         }
     }
 

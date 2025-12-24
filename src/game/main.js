@@ -2,7 +2,7 @@ import { Data } from '../assets/data/data.js';
 import { DataManager } from './DataManager.js';
 import { Log } from './log.js';
 import * as Systems from './systems.js';
-import { SceneManager, InputManager, BattleManager, RenderManager } from './managers.js';
+import { SceneManager, InputManager, BattleManager, RenderManager, TransitionManager } from './managers.js';
 import { Scene_Explore, Scene_Battle } from './scenes.js';
 import { Window_HUD } from './window/hud.js';
 import { Window_Party } from './window/party.js';
@@ -48,6 +48,7 @@ export const Game = {
     SceneManager: new SceneManager(),
     BattleManager: BattleManager,
     RenderManager: new RenderManager(),
+    TransitionManager: new TransitionManager(),
     Windows: {},
     Classes: {
         Game_Actor,
