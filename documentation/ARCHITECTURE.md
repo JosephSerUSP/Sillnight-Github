@@ -83,7 +83,7 @@ Unlike traditional engines that render UI to a Canvas, Stillnight uses the DOM.
 *   **`LayoutManager`:** A composition system (`FlexLayout`, `GridLayout`) attached to windows to manage the positioning of children components.
 *   **`Window_Selectable`:** Extends `Window_Base` to handle list navigation (cursor movement, selection), essential for RPG menus.
 
-**Flow:** `Window_Party` -> *observes* -> `Game_Party`. When data changes, the window calls `refresh()`, which uses its `Layout` to rebuild the DOM nodes.
+**Flow:** `Window_Party` updates via manual `refresh()` or direct hooks from Logic classes (e.g., `Game_BattlerBase` -> `window.Game.Windows.Party`).
 
 ### 3.2. Exploration System (`ExploreSystem`)
 Handles the dungeon crawling experience.
@@ -99,7 +99,7 @@ Strictly separates the "Brain" from the "Eyes".
     *   Calculates turn order (`queue`).
     *   Executes actions (`Game_Action`).
     *   Determines results (Hit/Miss/Crit).
-    *   *Note:* Currently operates in a **Hybrid** state, orchestrating `BattleRenderSystem` (e.g. `playAnim`) and waiting for completion callbacks, while delegating visual feedback (damage numbers, logs) to the `EventBus`.
+    *   *Note:* Currently operates in a **Hybrid** state, orchestrating `BattleRenderSystem` (e.g. `playAnim`) and waiting for completion callbacks. Visual feedback is a mix of `EventBus` events (logs) and direct UI window calls (Victory, LevelUp).
 *   **`BattleRenderSystem` (The Eyes):** Visualization.
     *   Listens to `BattleManager` events via `Observer`.
     *   Manages 3D sprites (`Spriteset_Battle`).
@@ -117,10 +117,10 @@ How a skill is executed.
 2.  **Instantiation:** A `Game_Action` is created with the subject and the skill data.
 3.  **Targeting:** `Game_Action` determines valid targets (e.g., "All Enemies").
 4.  **Application:** `action.apply(target)` is called for each target.
-    *   **Formula Eval:** `evalDamageFormula()` parses the math (e.g., `a.mat * 4 - b.mdf * 2`).
+    *   **Formula Eval:** `Game_Action.evalDamageFormula()` parses the math (e.g., `a.mat * 4 - b.mdf * 2`).
     *   **Element Mod:** Checks `target.elements` vs `action.element` for multipliers.
     *   **Variance/Crit:** Applies RNG.
-5.  **Event Emission:** The result is **not** applied visually immediately. Instead, events are fired:
+5.  **Event Emission:** The result is passed to `EffectRegistry` via `BattleManager` callbacks. Events are fired:
     *   `battle:action_used` (Starts animation)
     *   `battle:damage_dealt` (Shows number, reduces HP)
     *   `battle:state_added` (Shows icon)
