@@ -575,6 +575,7 @@ export class Window_Inventory extends Window_Selectable {
             eqKeys.forEach(id => {
                 const count = window.$gameParty.inventory.equipment[id];
                 const def = Services.get('EquipmentRegistry').get(id);
+                if (!def) return;
                 const row = new Component('div', 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1');
                 row.element.innerHTML = `<div><span class="text-yellow-100">${def.name}</span> <span class="text-[10px] text-gray-400">x${count}</span><div class="text-[10px] text-gray-500">${def.description}</div></div>`;
 
@@ -596,6 +597,7 @@ export class Window_Inventory extends Window_Selectable {
             itemKeys.forEach(id => {
                 const count = window.$gameParty.inventory.items[id];
                 const def = Services.get('ItemRegistry').get(id);
+                if (!def) return;
                 const row = new Component('div', 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1');
                 row.element.innerHTML = `<div><span class="text-yellow-100">${def.name}</span> <span class="text-[10px] text-gray-400">x${count}</span><div class="text-[10px] text-gray-500">${def.description}</div></div>`;
 
@@ -943,7 +945,7 @@ export class Window_PartyMenu extends Window_Selectable {
                 index: -1,
                 isReserved: true,
                 position: pos,
-                isEmptyActiveSlot,
+                isEmptyActiveSlot: !unit,
                 extraClass: null
             });
         });
