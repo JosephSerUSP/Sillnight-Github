@@ -16,7 +16,9 @@ export class ButtonComponent extends Component {
 
         this.setText(label);
         if (onClick) {
-            this.on('click', onClick);
+            this.on('click', (event) => {
+                return onClick(event);
+            });
         }
     }
 }
