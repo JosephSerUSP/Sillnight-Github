@@ -17,6 +17,11 @@ export class DataManager {
     static setupNewGame() {
         window.$gameParty = new Game_Party();
         window.$gameMap = new Game_Map();
+
+        // Reset Variables and Switches
+        if (Services.get('GameVariables')) Services.get('GameVariables').clear();
+        if (Services.get('GameSwitches')) Services.get('GameSwitches').clear();
+
         window.$gameMap.setup(1); // Floor 1
 
         this.populateInitialParty();

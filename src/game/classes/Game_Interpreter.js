@@ -175,6 +175,42 @@ export class Game_Interpreter {
         }
     }
 
+    /**
+     * Alias for checking a variable explicitly, similar to IF but dedicated to variable conditions.
+     * { code: 'CHECK_VAR', id: 1, value: 10, op: '==', then: [], else: [] }
+     */
+    async command_CHECK_VAR(params) {
+         // Transform parameters to match IF condition structure
+         const ifParams = {
+             condition: {
+                 type: 'variable',
+                 id: params.id,
+                 value: params.value,
+                 op: params.op
+             },
+             then: params.then,
+             else: params.else
+         };
+         await this.command_IF(ifParams);
+    }
+
+    /**
+     * Alias for checking a switch explicitly.
+     * { code: 'CHECK_SWITCH', id: 'A', value: true, then: [], else: [] }
+     */
+    async command_CHECK_SWITCH(params) {
+         const ifParams = {
+             condition: {
+                 type: 'switch',
+                 id: params.id,
+                 value: params.value
+             },
+             then: params.then,
+             else: params.else
+         };
+         await this.command_IF(ifParams);
+    }
+
     _checkCondition(condition) {
         if (!condition) return true;
 
