@@ -1,5 +1,5 @@
 import { Window_Selectable } from '../windows.js';
-import { Data } from '../../assets/data/data.js';
+import { Services } from '../ServiceLocator.js';
 import { Log } from '../log.js';
 import { FlexLayout, GridLayout } from '../layout/index.js';
 import { TextComponent, ButtonComponent } from '../layout/components.js';
@@ -70,7 +70,10 @@ export class Window_Shop extends Window_Selectable {
 
     createItemElement(stockItem, index) {
         const isItem = stockItem.type === 'item';
-        const data = isItem ? Data.items[stockItem.id] : Data.equipment[stockItem.id];
+        // Use Registry instead of direct Data access
+        const data = isItem
+            ? Services.get('ItemRegistry').get(stockItem.id)
+            : Services.get('EquipmentRegistry').get(stockItem.id);
 
         if (!data) return document.createElement('div');
 

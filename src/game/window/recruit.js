@@ -1,5 +1,5 @@
 import { Window_Selectable } from '../windows.js';
-import { Data } from '../../assets/data/data.js';
+import { Services } from '../ServiceLocator.js';
 import { Log } from '../log.js';
 import { FlexLayout } from '../layout/index.js';
 import { WindowFrameComponent, TextComponent, ButtonComponent } from '../layout/components.js';
@@ -91,7 +91,8 @@ export class Window_Recruit extends Window_Selectable {
         // Name & Race
         const nameEl = document.createElement('div');
         nameEl.className = 'text-center';
-        const def = Data.creatures[this.offer.speciesId];
+        // Use Registry
+        const def = Services.get('CreatureRegistry').get(this.offer.speciesId);
         nameEl.innerHTML = `
             <div class="text-xl text-yellow-400 font-bold tracking-widest">${def.name}</div>
             <div class="text-xs text-gray-500 uppercase tracking-wide">Lv.${this.offer.level} ${def.race}</div>
@@ -143,7 +144,7 @@ export class Window_Recruit extends Window_Selectable {
             rightCol.appendChild(passHeader);
 
             def.passives.forEach(pid => {
-                const p = Data.passives[pid];
+                const p = Services.get('PassiveRegistry').get(pid);
                 if (p) {
                     const el = document.createElement('div');
                     el.className = 'bg-black/40 border border-gray-800 p-2 text-xs';
@@ -169,7 +170,7 @@ export class Window_Recruit extends Window_Selectable {
             skillsGrid.className = 'grid grid-cols-1 gap-1';
 
             uniqueSkills.forEach(sid => {
-                const s = Data.skills[sid];
+                const s = Services.get('SkillRegistry').get(sid);
                 if (s) {
                     const el = document.createElement('div');
                     el.className = 'bg-black/40 border border-gray-800 p-1 px-2 text-xs flex justify-between';

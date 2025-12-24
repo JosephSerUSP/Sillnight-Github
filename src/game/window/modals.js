@@ -1,5 +1,4 @@
 
-import { Data } from '../../assets/data/data.js';
 import { Window_Selectable } from '../windows.js';
 import { renderCreaturePanel, spriteMarkup } from './common.js';
 import { Log } from '../log.js';
@@ -8,6 +7,7 @@ import { GridLayout } from '../layout/GridLayout.js';
 import { Component } from '../layout/Component.js';
 import { TextComponent, ButtonComponent, WindowFrameComponent } from '../layout/components.js';
 import { Game_Action } from '../classes/Game_Action.js';
+import { Services } from '../ServiceLocator.js';
 
 /**
  * Window for displaying creature details and managing equipment.
@@ -264,7 +264,7 @@ export class Window_CreatureModal extends Window_Selectable {
         }
 
         options.forEach(opt => {
-            const def = Data.equipmentById[opt.id];
+            const def = Services.get('EquipmentRegistry').get(opt.id);
             const name = typeof opt.owner?.name === 'function' ? opt.owner.name() : opt.owner?.name;
             const subtitle = opt.source === 'unit' ? `Held by ${name}` : 'Inventory';
 
@@ -367,8 +367,9 @@ export class Window_CreatureModal extends Window_Selectable {
         target.equipmentId = equipmentId;
         this.recomputeHp(target);
 
+        const def = Services.get('EquipmentRegistry').get(equipmentId);
         const name = typeof target.name === 'function' ? target.name() : target.name;
-        Log.add(`${name} equipped ${Data.equipmentById[equipmentId].name}.`);
+        Log.add(`${name} equipped ${def.name}.`);
         if (window.Game.Windows.Party) window.Game.Windows.Party.refresh();
         this.refresh();
     }
@@ -385,9 +386,11 @@ export class Window_CreatureModal extends Window_Selectable {
         }
         target.equipmentId = equipmentId;
         this.recomputeHp(target);
+
+        const def = Services.get('EquipmentRegistry').get(equipmentId);
         const name = typeof target.name === 'function' ? target.name() : target.name;
         const ownerName = typeof owner.name === 'function' ? owner.name() : owner.name;
-        Log.add(`${name} borrowed ${Data.equipmentById[equipmentId].name} from ${ownerName}.`);
+        Log.add(`${name} borrowed ${def.name} from ${ownerName}.`);
         if (window.Game.Windows.Party) window.Game.Windows.Party.refresh();
         this.refresh();
     }
@@ -398,8 +401,9 @@ export class Window_CreatureModal extends Window_Selectable {
         unit.equipmentId = null;
         window.$gameParty.gainEquipment(previous, 1);
         this.recomputeHp(unit);
+        const def = Services.get('EquipmentRegistry').get(previous);
         const name = typeof unit.name === 'function' ? unit.name() : unit.name;
-        Log.add(`${name} removed ${Data.equipmentById[previous].name}.`);
+        Log.add(`${name} removed ${def.name}.`);
         if (window.Game.Windows.Party) window.Game.Windows.Party.refresh();
         this.refresh();
     }
@@ -419,7 +423,8 @@ export class Window_CreatureModal extends Window_Selectable {
     refresh() {
         if (!this._unit) return;
         const unit = this._unit;
-        const def = Data.creatures[unit.speciesId];
+        // Use Registry
+        const def = Services.get('CreatureRegistry').get(unit.speciesId);
 
         let maxhp = 0;
         if (typeof unit.mhp === 'number') maxhp = unit.mhp;
@@ -452,7 +457,7 @@ export class Window_CreatureModal extends Window_Selectable {
             this._ui.passive.innerHTML = '';
             if (def.passives && def.passives.length > 0) {
                 def.passives.forEach(passiveId => {
-                    const passive = Data.passives[passiveId];
+                    const passive = Services.get('PassiveRegistry').get(passiveId);
                     if (passive) {
                         const passiveEl = this.createEl('div', '', this._ui.passive);
                         passiveEl.innerHTML = `<div class="text-yellow-200">${passive.name}</div> <div class="text-[10px] text-gray-400">${passive.description}</div>`;
@@ -476,7 +481,7 @@ export class Window_CreatureModal extends Window_Selectable {
             });
 
             uniqueSkills.forEach(skillId => {
-                const skill = Data.skills[skillId];
+                const skill = Services.get('SkillRegistry').get(skillId);
                 if (skill) {
                     const card = this.createEl('div', 'rpg-window px-3 py-2 bg-black/70 border border-gray-700', this._ui.actions);
                     card.innerHTML = `<div class="text-yellow-200">${skill.name}</div><div class="text-[10px] text-gray-400">${skill.description || ''}</div>`;
@@ -487,7 +492,7 @@ export class Window_CreatureModal extends Window_Selectable {
         // Equipment Button
         if (this._ui.equipSlot) {
             if (unit.equipmentId) {
-                const eq = Data.equipmentById[unit.equipmentId];
+                const eq = Services.get('EquipmentRegistry').get(unit.equipmentId);
                 this._ui.equipSlot.innerText = eq ? eq.name : 'Unknown';
             } else {
                 this._ui.equipSlot.innerText = '[ Empty ]';
@@ -569,7 +574,7 @@ export class Window_Inventory extends Window_Selectable {
 
             eqKeys.forEach(id => {
                 const count = window.$gameParty.inventory.equipment[id];
-                const def = Data.equipmentById[id];
+                const def = Services.get('EquipmentRegistry').get(id);
                 const row = new Component('div', 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1');
                 row.element.innerHTML = `<div><span class="text-yellow-100">${def.name}</span> <span class="text-[10px] text-gray-400">x${count}</span><div class="text-[10px] text-gray-500">${def.description}</div></div>`;
 
@@ -590,7 +595,7 @@ export class Window_Inventory extends Window_Selectable {
 
             itemKeys.forEach(id => {
                 const count = window.$gameParty.inventory.items[id];
-                const def = Data.itemsById[id];
+                const def = Services.get('ItemRegistry').get(id);
                 const row = new Component('div', 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1');
                 row.element.innerHTML = `<div><span class="text-yellow-100">${def.name}</span> <span class="text-[10px] text-gray-400">x${count}</span><div class="text-[10px] text-gray-500">${def.description}</div></div>`;
 
@@ -647,7 +652,7 @@ export class Window_Inventory extends Window_Selectable {
 
     useItem(target, itemId) {
         if (!window.$gameParty.hasItem(itemId)) return;
-        const itemDef = Data.itemsById[itemId];
+        const itemDef = Services.get('ItemRegistry').get(itemId);
 
         // Execute Action
         const action = new Game_Action(target);
@@ -938,7 +943,7 @@ export class Window_PartyMenu extends Window_Selectable {
                 index: -1,
                 isReserved: true,
                 position: pos,
-                isEmptyActiveSlot: false,
+                isEmptyActiveSlot,
                 extraClass: null
             });
         });
