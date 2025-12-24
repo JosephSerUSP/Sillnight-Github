@@ -420,6 +420,9 @@ export class ExploreSystem {
                 } else if (visual.type === 'SHRINE') {
                     color = 0xffffff;
                     geo = new THREE.OctahedronGeometry(0.2);
+                } else if (visual.type === 'NPC') {
+                    color = 0x00ffff; // Cyan for NPCs
+                    geo = new THREE.CylinderGeometry(0.2, 0.2, 0.6, 8);
                 }
 
                 if (visual.type !== 'TRAP') {
