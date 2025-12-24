@@ -100,16 +100,25 @@ export class EffekseerSystem {
             if (!resolved) return null;
 
             const p = new Promise((resolve) => {
-                // Add explicit onerror callback
-                const onload = (efk) => resolve(efk || null);
+                // Keep onerror to prevent hangs on 404
                 const onerror = (msg, url) => {
                     console.warn(`Failed to load Effekseer effect: ${name} (${url}) - ${msg}`);
                     resolve(null);
                 };
 
-                const effect = this.context.loadEffect(resolved, 1.0, onload, onerror);
+                // The effect handle is returned synchronously by loadEffect in this version
+                // but the onload callback argument is undefined.
+                // We must close over the returned 'effect' handle for the callback.
 
-                // Fallback for older effekseer versions or if it returns promise (unlikely here but safe)
+                let effect = null;
+                const onload = () => {
+                    // Use the closed-over effect handle
+                    resolve(effect);
+                };
+
+                effect = this.context.loadEffect(resolved, 1.0, onload, onerror);
+
+                // Fallback: If it's a promise (newer versions?), handle it.
                 if (effect && typeof effect.then === 'function') {
                     effect.then(resolve).catch(() => resolve(null));
                 }
