@@ -245,7 +245,6 @@ export class ExploreSystem {
         // This ensures saving/loading preserves "fully visited" tiles,
         // though partial analog states are reset to 0 or 255.
         const gMap = window.$gameMap;
-        const visuals = window.$gameMap.visuals;
         const isTransient = visuals && visuals.fogType === 'transient';
 
         for (let y = 0; y < height; y++) {
