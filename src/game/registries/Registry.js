@@ -32,4 +32,12 @@ export class Registry {
     getAll() {
         return Array.from(this.data.values());
     }
+
+    /**
+     * Returns the number of registered items.
+     * @returns {number}
+     */
+    count() {
+        return this.data.size;
+    }
 }

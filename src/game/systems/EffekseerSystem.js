@@ -98,10 +98,29 @@ export class EffekseerSystem {
             if (this.cache[name]) return this.cache[name];
             const resolved = resolveAssetPath(path);
             if (!resolved) return null;
+
             const p = new Promise((resolve) => {
-                const effect = this.context.loadEffect(resolved, 1.0, (efk) => resolve(efk || effect || null));
-                if (effect && typeof effect.then !== 'function') {
+                // Keep onerror to prevent hangs on 404
+                const onerror = (msg, url) => {
+                    console.warn(`Failed to load Effekseer effect: ${name} (${url}) - ${msg}`);
+                    resolve(null);
+                };
+
+                // The effect handle is returned synchronously by loadEffect in this version
+                // but the onload callback argument is undefined.
+                // We must close over the returned 'effect' handle for the callback.
+
+                let effect = null;
+                const onload = () => {
+                    // Use the closed-over effect handle
                     resolve(effect);
+                };
+
+                effect = this.context.loadEffect(resolved, 1.0, onload, onerror);
+
+                // Fallback: If it's a promise (newer versions?), handle it.
+                if (effect && typeof effect.then === 'function') {
+                    effect.then(resolve).catch(() => resolve(null));
                 }
             });
             this.cache[name] = p;
