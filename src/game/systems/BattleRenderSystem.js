@@ -11,6 +11,9 @@ export class BattleRenderSystem {
         this.textureLoader = null;
         this.textureCache = {};
         this.spriteScaleFactor = 3;
+        this.groundMesh = null;
+        this.defaultGround = 'src/assets/images/battlefield/floors/RuinedTile1.png';
+        this.currentGroundPath = null;
         this.cameraState = { angle: -Math.PI / 4, targetAngle: -Math.PI / 4, targetX: 0, targetY: 0 };
     }
 
@@ -41,15 +44,47 @@ export class BattleRenderSystem {
         this.scene.add(amb);
         this.scene.add(dir);
 
-        const grid = new THREE.GridHelper(30, 30, 0x444444, 0x111111);
-        grid.rotation.x = Math.PI / 2;
-        this.scene.add(grid);
-
         this.textureLoader = new THREE.TextureLoader();
         this.group = new THREE.Group();
         this.scene.add(this.group);
 
+        // Initialize ground
+        this.setGroundTexture(this.defaultGround);
+
         this.animate();
+    }
+
+    /**
+     * Sets the ground texture for the battle scene.
+     * @param {string} path - The path to the texture image.
+     */
+    setGroundTexture(path) {
+        if (!path) return;
+        const resolved = resolveAssetPath(path);
+        if (this.currentGroundPath === resolved && this.groundMesh) return;
+
+        this.currentGroundPath = resolved;
+        const loader = this.textureLoader || new THREE.TextureLoader();
+
+        loader.load(resolved, (tex) => {
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.magFilter = THREE.NearestFilter;
+            tex.minFilter = THREE.NearestFilter;
+            tex.repeat.set(15, 15);
+
+            if (this.groundMesh) {
+                this.groundMesh.material.map = tex;
+                this.groundMesh.material.needsUpdate = true;
+            } else {
+                const geom = new THREE.PlaneGeometry(60, 60);
+                const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 1.0, metalness: 0.0 });
+                this.groundMesh = new THREE.Mesh(geom, mat);
+                this.groundMesh.receiveShadow = true;
+                this.groundMesh.position.z = -0.05;
+                if (this.scene) this.scene.add(this.groundMesh);
+            }
+        });
     }
 
     /** Resizes the renderer and camera aspect ratio. */
@@ -69,6 +104,9 @@ export class BattleRenderSystem {
      * @param {Array<Object>} enemies - The list of enemy units.
      */
     setupScene(allies, enemies) {
+        const mapOverride = window.$gameMap?.visuals?.battleGround;
+        this.setGroundTexture(mapOverride || this.defaultGround);
+
         this.group.clear();
         this.sprites = {};
         const getPos = (isEnemy, unit) => {
