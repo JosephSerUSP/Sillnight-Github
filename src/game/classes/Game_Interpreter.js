@@ -408,4 +408,20 @@ export class Game_Interpreter {
             }
         }
     }
+
+    /**
+     * Evaluate arbitrary JavaScript.
+     * { code: 'EVAL', script: 'console.log("Hello")' }
+     */
+    command_EVAL(params) {
+        const script = params.script;
+        if (script) {
+            try {
+                // eslint-disable-next-line no-eval
+                eval(script);
+            } catch (e) {
+                console.error("Game_Interpreter EVAL error:", e);
+            }
+        }
+    }
 }

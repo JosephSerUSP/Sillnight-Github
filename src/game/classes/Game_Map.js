@@ -191,9 +191,9 @@ export class Game_Map {
             Maps.hub.events.forEach(evt => {
                 const gameEvent = new Game_Event(evt.x, evt.y, {
                     type: evt.type,
-                    trigger: 'TOUCH',
+                    trigger: evt.trigger || 'TOUCH',
                     visual: evt.visual,
-                    commands: evt.text ? [{ code: 'LOG', text: evt.text }] : []
+                    commands: evt.commands || (evt.text ? [{ code: 'LOG', text: evt.text }] : [])
                 });
                 this.addEvent(gameEvent);
             });
