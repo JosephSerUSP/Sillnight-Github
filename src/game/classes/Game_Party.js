@@ -207,6 +207,7 @@ export class Game_Party {
 
     /** Applies MP drain to the summoner when moving on the map. */
     onMapStep() {
+        if (window.$gameMap && window.$gameMap.hasFlag('NO_MP_DRAIN')) return;
         this.drainSummonerMp(Config.summonerStepMpDrain || 0);
     }
 

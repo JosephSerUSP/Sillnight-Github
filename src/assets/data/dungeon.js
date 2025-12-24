@@ -1,6 +1,12 @@
 export const Dungeons = {
     // A sample dungeon configuration. In the future, we could have multiple dungeons.
     default: {
+        visual: {
+            floorColor: 0x333333,
+            wallColor: 0x1a1a1a,
+            backgroundColor: 0x050510,
+            fogColor: 0x051015
+        },
         // Default map parameters. These can be overridden on a per-floor basis.
         map: {
             // These were previously in Data.config

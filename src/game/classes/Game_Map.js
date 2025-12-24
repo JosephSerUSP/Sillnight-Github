@@ -2,6 +2,8 @@ import { Services } from '../ServiceLocator.js';
 import { Game_Event } from './Game_Event.js';
 import * as Systems from '../systems.js';
 import { BSPGenerator } from '../generators/BSPGenerator.js';
+import { StaticGenerator } from '../generators/StaticGenerator.js';
+import { Maps } from '../../assets/data/maps.js';
 
 /**
  * Manages the map state, including grid data, player position, and visited tiles.
@@ -24,6 +26,10 @@ export class Game_Map {
         this._floor = 1;
         /** @type {Map<string, Game_Event>} Map of active events keyed by "x,y". */
         this._events = new Map();
+        /** @type {Set<string>} Active flags for the current map. */
+        this._flags = new Set();
+        /** @type {Object} Visual configuration for the current map. */
+        this._visuals = null;
     }
 
     /** @returns {number} The map width. */
@@ -38,13 +44,15 @@ export class Game_Map {
     set floor(v) { this._floor = v; }
     /** @returns {Array<Game_Event>} List of all active events. */
     get events() { return Array.from(this._events.values()); }
+    /** @returns {Object} Visual configuration. */
+    get visuals() { return this._visuals; }
 
     /**
      * Sets up the map for a specific floor.
      * Generates a new random layout.
-     * @param {number} [floor=1] - The floor number.
+     * @param {number} [floor=0] - The floor number.
      */
-    setup(floor = 1) {
+    setup(floor = 0) {
         this._floor = floor;
         this._events.clear();
         this.generateFloor();
@@ -55,6 +63,12 @@ export class Game_Map {
      * Populates the map with walls, empty space, enemies, treasure, etc.
      */
     generateFloor() {
+        this._flags.clear();
+        if (this._floor === 0) {
+            this.generateHub();
+            return;
+        }
+
         // Retrieve dungeon data from Registry
         const dungeonRegistry = Services.get('DungeonRegistry');
         const dungeon = dungeonRegistry.get('default');
@@ -65,6 +79,9 @@ export class Game_Map {
         }
 
         const mapCfg = dungeon.map;
+
+        // Load visuals
+        this._visuals = dungeon.visual;
 
         // Instantiate generator
         const generator = new BSPGenerator({
@@ -138,6 +155,49 @@ export class Game_Map {
 
         this._data = map;
         this._visited = Array(height).fill().map(() => Array(width).fill(false));
+    }
+
+    /**
+     * Generates the Hub using StaticGenerator.
+     */
+    generateHub() {
+        // Load flags
+        if (Maps.hub.flags) {
+            Maps.hub.flags.forEach(f => this._flags.add(f));
+        }
+
+        // Load visuals
+        this._visuals = Maps.hub.visual;
+
+        const generator = new StaticGenerator(Maps.hub);
+        const result = generator.generate(0);
+        const { grid, startX, startY, width, height } = result;
+
+        this._width = width;
+        this._height = height;
+        this._playerPos = { x: startX, y: startY };
+
+        const map = [];
+        for (let y = 0; y < height; y++) {
+            map.push(grid.slice(y * width, (y + 1) * width));
+        }
+
+        this._data = map;
+        // In the Hub, everything is visible
+        this._visited = Array(height).fill().map(() => Array(width).fill(true));
+
+        // Add static events from map data
+        if (Maps.hub.events) {
+            Maps.hub.events.forEach(evt => {
+                const gameEvent = new Game_Event(evt.x, evt.y, {
+                    type: evt.type,
+                    trigger: 'TOUCH',
+                    visual: evt.visual,
+                    commands: evt.text ? [{ code: 'LOG', text: evt.text }] : []
+                });
+                this.addEvent(gameEvent);
+            });
+        }
     }
 
     /**
@@ -337,5 +397,14 @@ export class Game_Map {
      */
     eventAt(x, y) {
         return this._events.get(`${x},${y}`) || null;
+    }
+
+    /**
+     * Checks if a flag is active on the current map.
+     * @param {string} flag
+     * @returns {boolean}
+     */
+    hasFlag(flag) {
+        return this._flags.has(flag);
     }
 }

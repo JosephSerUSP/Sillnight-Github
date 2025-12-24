@@ -156,6 +156,22 @@ export class ExploreSystem {
         this.mapGroup.clear();
         // Access Game_Map data directly
         if (!window.$gameMap) return;
+
+        // Update Material Colors based on Visual Data
+        const visuals = window.$gameMap.visuals;
+        if (visuals) {
+            if (visuals.floorColor !== undefined) this.matFloor.color.setHex(visuals.floorColor);
+            if (visuals.wallColor !== undefined) this.matWall.color.setHex(visuals.wallColor);
+            if (visuals.backgroundColor !== undefined) this.scene.background = new THREE.Color(visuals.backgroundColor);
+            if (visuals.fogColor !== undefined) this.scene.fog.color.setHex(visuals.fogColor);
+        } else {
+            // Fallback default
+            this.matFloor.color.setHex(0x333333);
+            this.matWall.color.setHex(0x1a1a1a);
+            this.scene.background = new THREE.Color(0x050510);
+            this.scene.fog.color.setHex(0x051015);
+        }
+
         const mapData = window.$gameMap._data;
 
         const map = mapData;
