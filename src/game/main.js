@@ -2,7 +2,7 @@ import { Data } from '../assets/data/data.js';
 import { DataManager } from './DataManager.js';
 import { Log } from './log.js';
 import * as Systems from './systems.js';
-import { SceneManager, InputManager, BattleManager, RenderManager } from './managers.js';
+import { SceneManager, InputManager, BattleManager, RenderManager, TransitionManager } from './managers.js';
 import { Scene_Explore, Scene_Battle } from './scenes.js';
 import { Window_HUD } from './window/hud.js';
 import { Window_Party } from './window/party.js';
@@ -48,6 +48,9 @@ export const Game = {
     SceneManager: new SceneManager(),
     BattleManager: BattleManager,
     RenderManager: new RenderManager(),
+    Managers: {
+        Transition: new TransitionManager()
+    },
     Windows: {},
     Classes: {
         Game_Actor,
@@ -55,7 +58,8 @@ export const Game = {
     },
     ui: {
         mode: 'EXPLORE',
-        formationMode: false
+        formationMode: false,
+        transitioning: false
     },
     Input: null, // InputManager instance
 
@@ -121,6 +125,8 @@ export const Game = {
         console.log("Game.init: Windows created.");
 
         this.RenderManager.init();
+        this.Managers.Transition.init();
+
         Systems.Explore.init();
         Systems.Battle3D.init();
         await Systems.Effekseer.preload();
