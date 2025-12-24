@@ -1,5 +1,6 @@
 import { Game_Interpreter } from '../classes/Game_Interpreter.js';
 import { Data } from '../../assets/data/data.js';
+import { Services } from '../ServiceLocator.js';
 
 export class EventSystem {
     constructor() {
@@ -24,17 +25,21 @@ export class EventSystem {
      * @returns {Array<Object>} List of items/equipment.
      */
     generateShopStock() {
-        const shopData = Data.events.shop;
+        const eventRegistry = Services.get('EventDataRegistry');
+        const shopData = eventRegistry.get('shop');
+        const itemRegistry = Services.get('ItemRegistry');
+        const equipRegistry = Services.get('EquipmentRegistry');
+
         const stock = [];
         for (let i = 0; i < shopData.stock.count.items; i++) {
             const pool = shopData.stock.pools.items;
             const key = pool[Math.floor(Math.random() * pool.length)];
-            if (Data.items[key]) stock.push({ type: 'item', id: key });
+            if (itemRegistry.get(key)) stock.push({ type: 'item', id: key });
         }
         for (let i = 0; i < shopData.stock.count.equipment; i++) {
             const pool = shopData.stock.pools.equipment;
             const key = pool[Math.floor(Math.random() * pool.length)];
-            if (Data.equipment[key]) stock.push({ type: 'equip', id: key });
+            if (equipRegistry.get(key)) stock.push({ type: 'equip', id: key });
         }
         return stock;
     }
@@ -45,10 +50,13 @@ export class EventSystem {
      * @returns {Object} { speciesId, level, cost: { type, value, id? } }
      */
     generateRecruit(floor = 1) {
+        const creatureRegistry = Services.get('CreatureRegistry');
+        const itemRegistry = Services.get('ItemRegistry');
+
         // Pick a creature
-        const speciesList = Object.keys(Data.creatures).filter(id => id !== 'summoner'); // Exclude player class
+        const speciesList = creatureRegistry.getAll().filter(c => c.id !== 'summoner' && !c.id.startsWith('base_')).map(c => c.id);
         const speciesId = speciesList[Math.floor(Math.random() * speciesList.length)];
-        const def = Data.creatures[speciesId];
+        const def = creatureRegistry.get(speciesId);
 
         // Determine Level
         const level = Math.max(1, floor + Math.floor(Math.random() * 3) - 1); // Floor -1 to +1
@@ -69,7 +77,8 @@ export class EventSystem {
             // Pick a random cheap item for now
             const items = ['potionSmall', 'reviveLeaf'];
             const item = items[Math.floor(Math.random() * items.length)];
-            const itemName = Data.items[item]?.name || item;
+            const itemData = itemRegistry.get(item);
+            const itemName = itemData?.name || item;
             cost = { type: 'ITEM', id: item, name: itemName, value: 1 };
         }
 

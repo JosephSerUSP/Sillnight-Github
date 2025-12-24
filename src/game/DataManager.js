@@ -2,6 +2,7 @@
 import { Game_Party } from './classes/Game_Party.js';
 import { Game_Map } from './classes/Game_Map.js';
 import { Data } from '../assets/data/data.js';
+import { Services } from './ServiceLocator.js';
 
 /**
  * Static class responsible for creating and managing the initial game state.
@@ -34,7 +35,9 @@ export class DataManager {
 
         // Use logic from objects.js to select creatures
          if (!creatures || creatures.length === 0) {
-            const allCreatureIds = Object.keys(Data.creatures);
+            const creatureRegistry = Services.get('CreatureRegistry');
+            const allCreatureIds = creatureRegistry.getAll().map(c => c.id).filter(id => id !== 'summoner' && !id.startsWith('base_'));
+
             if (allCreatureIds.length > 0) {
                 const randomSpeciesId = allCreatureIds[Math.floor(Math.random() * allCreatureIds.length)];
                 const randomLevel = 1 + Math.floor(Math.random() * 3);

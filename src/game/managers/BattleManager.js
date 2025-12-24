@@ -98,7 +98,15 @@ export const BattleManager = {
      */
     async startEncounter() {
         const floor = window.$gameMap.floor;
-        const dungeon = Data.dungeons.default;
+        const dungeonRegistry = Services.get('DungeonRegistry');
+        // 'default' is the ID of the dungeon in dungeon.js
+        const dungeon = dungeonRegistry.get('default');
+
+        if (!dungeon) {
+            console.error("Default dungeon data not found!");
+            return;
+        }
+
         const enc = dungeon.encounters;
         const pool = enc.pools.find(p => floor >= p.floors[0] && floor <= p.floors[1]);
         const enemyTypes = pool ? pool.enemies : [];

@@ -120,8 +120,11 @@ export class Game_Interpreter {
         const id = params.id;
         const amount = params.amount || 1;
         if (window.$gameParty) {
-            import('../../assets/data/data.js').then(({ Data }) => {
-                const item = Data.items[id] || Data.equipment[id];
+            import('../ServiceLocator.js').then(({ Services }) => {
+                const itemRegistry = Services.get('ItemRegistry');
+                const equipRegistry = Services.get('EquipmentRegistry');
+
+                const item = itemRegistry.get(id) || equipRegistry.get(id);
                 window.$gameParty.gainItem(id, amount);
                 if (window.Game.Windows.Party) window.Game.Windows.Party.refresh();
 
