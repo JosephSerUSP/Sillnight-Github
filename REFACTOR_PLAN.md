@@ -12,7 +12,7 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
 ### 1.1. The Registry System
 **Goal:** Centralized, efficient access to game data (Items, Creatures, Skills) with support for "Inheritance" and "Mixins" in data.
 *   **Problem:** Currently, data is imported directly as raw JSON/JS objects. Modding or dynamic patching is hard.
-*   **Current Status (Phase 1):** `TraitRegistry` and `EffectRegistry` exist to handle *logic execution*, but data loading is still direct via `Data` object.
+*   **Current Status (Phase 2 Done):** Registries are implemented and active. `Game_Battler` loads stats via `CreatureRegistry`. Inheritance logic is working.
 *   **Solution:** `Registry` classes.
     *   `CreatureRegistry`: Loads creature definitions, resolves inheritance (e.g., "Goblin Archer" inherits "Goblin").
     *   `ItemRegistry`, `SkillRegistry`.
@@ -69,6 +69,7 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
     *   `BSPGenerator`: Room-based.
     *   `CellularAutomataGenerator`: Cave-like.
     *   `WFCGenerator`: Wave Function Collapse for structure.
+*   **Status:** `BSPGenerator` is implemented and used by `Game_Map`.
 
 ### 3.2. Dynamic Populators
 **Goal:** Smart placement of content.
@@ -84,6 +85,7 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
 *   **Commands:** `ShowMessage`, `MoveCamera`, `Wait`, `Battle`, `Choice`.
 *   **Interpreter:** Executes these commands async.
 *   **Data-Driven:** Events are JSON arrays of commands, loaded from `events.js` or generated procedurally.
+*   **Current Status:** `Game_Interpreter` exists and handles basic commands (`BATTLE`, `SHOP`, `RECRUIT`). Needs expansion for complex narrative logic.
 
 ### 4.2. Variable Store & Quest System
 *   `Game_Variables` / `Game_Switches`: Persistent state tracking.
@@ -101,19 +103,21 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
 
 ## Roadmap
 
-### Phase 1: Core Foundation (In Progress / Partial)
+### Phase 1: Core Foundation (Done)
 1.  Implement **EventBus** (Done: `BattleObserver`).
 2.  Implement **Registry** logic handlers (Done: `TraitRegistry`, `EffectRegistry`).
-3.  Refactor `BattleManager` to use EventBus (Partial: Logging/Numbers decoupled, Animations/Flow still coupled).
+3.  Refactor `BattleManager` to use EventBus (Partial).
 
-### Phase 2: The Data Engine (Next Priority)
-1.  Implement **Registry** data loaders (Move off direct `Data` object access).
-2.  Migrate `creatures.js` and `skills.js` to a schema that supports inheritance.
-3.  Refactor `Game_Battler` to load stats via Registry lookups.
+### Phase 2: The Data Engine (Done)
+1.  Implement **Registry** data loaders (Done: `CreatureRegistry`, `SkillRegistry`, `ItemRegistry` implemented and verified).
+2.  Migrate `creatures.js` and `skills.js` to a schema that supports inheritance (Done).
+3.  Refactor `Game_Battler` to load stats via Registry lookups (Done: `Game_Actor`, `Game_Enemy` use Registries).
 
-### Phase 3: The World
-1.  Refactor `Game_Map` to use `MapGenerator` strategies.
-2.  Implement `EventInterpreter` for complex interactions.
+### Phase 3: The World (In Progress)
+1.  Refactor `Game_Map` to use `MapGenerator` strategies (Done: `BSPGenerator` linked).
+2.  Implement `EventInterpreter` for complex interactions. (Next Priority)
+    - Expand `Game_Interpreter` to support conditional logic (`IF/ELSE`, `CHECK_VAR`).
+    - Implement `Game_Variables` and `Game_Switches`.
 
 ### Phase 4: Polish
 1.  Reactive UI components.

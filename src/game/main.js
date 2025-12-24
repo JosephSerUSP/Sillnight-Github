@@ -24,6 +24,8 @@ import { DungeonRegistry } from './registries/DungeonRegistry.js';
 import { EventDataRegistry } from './registries/EventDataRegistry.js';
 import { Game_Actor } from './classes/Game_Actor.js';
 import { Game_Enemy } from './classes/Game_Enemy.js';
+import { Game_Variables } from './classes/Game_Variables.js';
+import { Game_Switches } from './classes/Game_Switches.js';
 
 /**
  * Core game bootstrapper; keeps entrypoint slim while delegating to managers/scenes.
@@ -77,6 +79,8 @@ export const Game = {
         Services.register('ItemRegistry', new ItemRegistry());
         Services.register('DungeonRegistry', new DungeonRegistry());
         Services.register('EventDataRegistry', new EventDataRegistry());
+        Services.register('GameVariables', new Game_Variables());
+        Services.register('GameSwitches', new Game_Switches());
         console.log("Game.init: Services registered.");
 
         // Load Data into Registries
