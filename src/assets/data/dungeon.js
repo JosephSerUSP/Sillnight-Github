@@ -5,7 +5,9 @@ export const Dungeons = {
             floorColor: 0x333333,
             wallColor: 0x1a1a1a,
             backgroundColor: 0x050510,
-            fogColor: 0x051015
+            fogColor: 0x051015,
+            fogDensity: 0.05,
+            playerLightIntensity: 1.5
         },
         // Default map parameters. These can be overridden on a per-floor basis.
         map: {

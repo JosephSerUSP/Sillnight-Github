@@ -146,7 +146,13 @@ export class ExploreSystem {
         modifyMaterialWithFog(this.matWall, true);
 
         this.initialized = true;
-        this.rebuildLevel();
+        // Don't call rebuildLevel() here, it depends on Game_Map which might not be ready.
+        // Game.init calls it after setupNewGame().
+        // But if we are re-initializing, we might need it.
+        // Wait, the original code called it. I will keep it for now but be careful.
+        if (window.$gameMap) {
+             this.rebuildLevel();
+        }
         this.animate();
     }
 
@@ -164,12 +170,34 @@ export class ExploreSystem {
             if (visuals.wallColor !== undefined) this.matWall.color.setHex(visuals.wallColor);
             if (visuals.backgroundColor !== undefined) this.scene.background = new THREE.Color(visuals.backgroundColor);
             if (visuals.fogColor !== undefined) this.scene.fog.color.setHex(visuals.fogColor);
+            if (visuals.fogDensity !== undefined) this.scene.fog.density = visuals.fogDensity;
+            if (visuals.playerLightIntensity !== undefined) this.playerLight.intensity = visuals.playerLightIntensity;
+
+            // Handle Textures
+            if (visuals.floorTexture === 'pearlescent') {
+                if (!this.matFloor.map) {
+                    this.matFloor.map = this.generatePearlescentTexture();
+                    this.matFloor.needsUpdate = true;
+                }
+            } else {
+                if (this.matFloor.map) {
+                    this.matFloor.map = null;
+                    this.matFloor.needsUpdate = true;
+                }
+            }
+
         } else {
             // Fallback default
             this.matFloor.color.setHex(0x333333);
             this.matWall.color.setHex(0x1a1a1a);
             this.scene.background = new THREE.Color(0x050510);
             this.scene.fog.color.setHex(0x051015);
+            this.scene.fog.density = 0.05;
+            this.playerLight.intensity = 1.5;
+            if (this.matFloor.map) {
+                this.matFloor.map = null;
+                this.matFloor.needsUpdate = true;
+            }
         }
 
         const mapData = window.$gameMap._data;
@@ -657,6 +685,55 @@ export class ExploreSystem {
                 Systems.Effekseer.update(this.camera);
             }
         }
+    }
+
+    /**
+     * Generates a procedural pearlescent noise texture.
+     * @returns {THREE.CanvasTexture}
+     */
+    generatePearlescentTexture() {
+        const size = 256;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        // Fill background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, size, size);
+
+        // Add soft colored noise
+        for (let i = 0; i < 2000; i++) {
+            const x = Math.random() * size;
+            const y = Math.random() * size;
+            const radius = Math.random() * 20 + 10;
+            const hue = Math.random() * 60 + 180; // Cyans and Blues
+            const alpha = Math.random() * 0.05;
+
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = `hsla(${hue}, 100%, 80%, ${alpha})`;
+            ctx.fill();
+        }
+
+        // Add some pink/purple highlights
+        for (let i = 0; i < 1000; i++) {
+            const x = Math.random() * size;
+            const y = Math.random() * size;
+            const radius = Math.random() * 15 + 5;
+            const hue = Math.random() * 60 + 280; // Purples and Pinks
+            const alpha = Math.random() * 0.05;
+
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = `hsla(${hue}, 100%, 80%, ${alpha})`;
+            ctx.fill();
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        return texture;
     }
 
     /**

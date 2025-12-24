@@ -2,10 +2,13 @@ export const Maps = {
     hub: {
         flags: ['NO_MP_DRAIN'],
         visual: {
-            floorColor: 0xe0e0e0,
+            floorColor: 0xf0f0f5,
             wallColor: 0xffffff,
             backgroundColor: 0xddddff,
-            fogColor: 0xddddff
+            fogColor: 0xddddff,
+            fogDensity: 0.15,
+            playerLightIntensity: 0.0,
+            floorTexture: 'pearlescent'
         },
         width: 12,
         height: 12,
