@@ -11,5 +11,9 @@ export const Config = {
     },
     Battle: {
         TurnDelay: 400
+    },
+    Rewards: {
+        baseGoldPerEnemy: 20,
+        baseXpPerEnemy: 5
     }
 };

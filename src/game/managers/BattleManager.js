@@ -356,10 +356,28 @@ export const BattleManager = {
                 if (Systems.Observer) Systems.Observer.fire('onBattleEnd', [...this.allies, ...this.enemies].filter(u => u && u.hp > 0));
                 Systems.Battle3D.setFocus('victory');
 
-                const gold = this.enemies.length * Config.baseGoldPerEnemy * window.$gameMap.floor;
-                const baseXp = this.enemies.length * Config.baseXpPerEnemy * window.$gameMap.floor;
+                const floorMultiplier = window.$gameMap.floor || 1;
 
-                window.$gameParty.gainGold(gold);
+                // Calculate rewards dynamically
+                let totalGold = 0;
+                let totalXp = 0;
+
+                this.enemies.forEach(e => {
+                   if (e) {
+                       totalGold += (typeof e.goldValue === 'function' ? e.goldValue() : 20);
+                       totalXp += (typeof e.xpValue === 'function' ? e.xpValue() : 5);
+                   }
+                });
+
+                // Apply floor multiplier to total or per enemy?
+                // Previous logic applied it to total.
+                // "const gold = this.enemies.length * Config.baseGoldPerEnemy * window.$gameMap.floor;"
+                // So let's keep that logic: scale by floor.
+
+                totalGold = Math.floor(totalGold * floorMultiplier);
+                totalXp = Math.floor(totalXp * floorMultiplier);
+
+                window.$gameParty.gainGold(totalGold);
                 window.Game.Windows.HUD.refresh();
 
                 // 1. Capture snapshots and Apply XP
@@ -369,7 +387,7 @@ export const BattleManager = {
                 this.allies.forEach(p => {
                     if (!p) return;
 
-                    const pXp = Math.round(baseXp * (1 + p.xpRate));
+                    const pXp = Math.round(totalXp * (1 + p.xpRate));
                     finalXpMap.set(p.uid, pXp);
 
                     // Snapshot stats before XP
@@ -414,8 +432,8 @@ export const BattleManager = {
 
                 // 2. Show Victory Window
                 await window.Game.Windows.Victory.show({
-                    xp: baseXp, // Show base, maybe note bonuses? Simplicity: base
-                    gold: gold,
+                    xp: totalXp,
+                    gold: totalGold,
                     drops: [], // Todo: drops
                     party: this.allies.filter(Boolean)
                 });
