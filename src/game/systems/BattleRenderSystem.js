@@ -14,7 +14,15 @@ export class BattleRenderSystem {
         this.groundMesh = null;
         this.defaultGround = 'src/assets/images/battlefield/floors/RuinedTile1.png';
         this.currentGroundPath = null;
-        this.cameraState = { angle: -Math.PI / 4, targetAngle: -Math.PI / 4, targetX: 0, targetY: 0 };
+        this.cameraState = {
+            angle: -Math.PI / 4,
+            targetAngle: -Math.PI / 4,
+            targetX: 0,
+            targetY: 0,
+            zoom: false,
+            intro: false,
+            height: 16 // Standard height
+        };
     }
 
     /** Initializes the 3D scene. */
@@ -207,27 +215,27 @@ export class BattleRenderSystem {
 
     /**
      * Moves the camera focus to a specific target type.
-     * @param {string} type - 'ally', 'enemy', 'victory', 'unit', or default.
+     * @param {string} type - 'ally', 'enemy', 'victory', 'unit', 'INTRO' or default.
      * @param {string} [targetUid] - The UID of the unit to focus on (if type is 'unit').
      */
     setFocus(type, targetUid) {
         const BASE = -Math.PI / 4;
         const SHIFT = Math.PI / 12;
+        this.cameraState.zoom = false;
+        this.cameraState.intro = false;
+
         if (type === 'ally') {
             this.cameraState.targetAngle = BASE - SHIFT;
             this.cameraState.targetX = 0;
             this.cameraState.targetY = 0;
-            this.cameraState.zoom = false;
         } else if (type === 'enemy') {
             this.cameraState.targetAngle = BASE + SHIFT;
             this.cameraState.targetX = 0;
             this.cameraState.targetY = 0;
-            this.cameraState.zoom = false;
         } else if (type === 'victory') {
             this.cameraState.targetAngle = this.cameraState.angle + Math.PI * 2;
             this.cameraState.targetX = 0;
             this.cameraState.targetY = -3.5;
-            this.cameraState.zoom = false;
         } else if (type === 'unit' && targetUid) {
             const sprite = this.sprites[targetUid];
             if (sprite) {
@@ -236,6 +244,13 @@ export class BattleRenderSystem {
                 this.cameraState.targetY = sprite.position.y;
                 this.cameraState.zoom = true;
             }
+        } else if (type === 'INTRO') {
+            this.cameraState.angle = BASE - Math.PI / 4; // Start rotated slightly
+            this.cameraState.targetAngle = BASE; // End at normal base
+            this.cameraState.intro = true;
+            // Set initial position for intro
+            this.cameraState.height = 5.0; // Start Low
+            // Target Height will be set in animate or playIntro
         } else {
             if (this.cameraState.angle > Math.PI * 2 || this.cameraState.angle < -Math.PI * 2) {
                 this.cameraState.angle = BASE;
@@ -243,8 +258,24 @@ export class BattleRenderSystem {
             this.cameraState.targetAngle = BASE;
             this.cameraState.targetX = 0;
             this.cameraState.targetY = 0;
-            this.cameraState.zoom = false;
         }
+    }
+
+    /**
+     * Triggers the intro camera sequence.
+     * "camera rises vertically while rotating around the battlefield slightly, all while zooming out and easing into the final position"
+     */
+    playIntro() {
+        this.setFocus('INTRO');
+        // Manual control of animation variables for the intro duration
+        // We rely on animate() to interpolate towards targetAngle and targetHeight (implicit)
+        // Reset angle to start offset
+        const BASE = -Math.PI / 4;
+        this.cameraState.angle = BASE - (Math.PI / 6);
+        this.cameraState.targetAngle = BASE;
+
+        // Start height low, zoom close (R small)
+        // Handled in animate() via intro state.
     }
 
     /**
@@ -277,10 +308,14 @@ export class BattleRenderSystem {
     animate() {
         requestAnimationFrame(() => this.animate());
         const cs = this.cameraState;
+
+        // Interpolate Angle
         if (window.Game.ui.mode === 'BATTLE_WIN') {
             cs.angle += 0.005;
         } else {
-            cs.angle += (cs.targetAngle - cs.angle) * 0.05;
+            // Slower smoothing for intro
+            const speed = cs.intro ? 0.02 : 0.05;
+            cs.angle += (cs.targetAngle - cs.angle) * speed;
         }
 
         // Drive Scene Updates
@@ -288,19 +323,60 @@ export class BattleRenderSystem {
             window.Game.SceneManager.update();
         }
 
-        // If zooming in (for level up), reduce R and Z height
-        let R = 28.28;
-        let Z_HEIGHT = 16;
+        // Target Camera settings
+        let targetR = 28.28;
+        let targetZ = 16.0;
 
         if (cs.zoom) {
-            R = 10.0;
-            Z_HEIGHT = 5.0;
+            targetR = 10.0;
+            targetZ = 5.0;
         }
 
-        this.camera.position.x = cs.targetX + Math.cos(cs.angle) * R;
-        this.camera.position.y = cs.targetY + Math.sin(cs.angle) * R;
-        // Smooth Z transition could be added here, but direct assignment for now
-        this.camera.position.z = this.camera.position.z + (Z_HEIGHT - this.camera.position.z) * 0.1;
+        if (cs.intro) {
+            // Start state (approximate, since we only set targets here)
+            // We want to ease OUT.
+            // If angle is far from target, we are in early intro.
+            // Angle goes from (Base - PI/6) -> Base.
+            // Let's use angle progress to drive height/zoom.
+
+            const dist = Math.abs(cs.targetAngle - cs.angle);
+            const totalDist = Math.PI / 6;
+            const p = 1.0 - Math.min(1.0, dist / totalDist); // 0 -> 1
+
+            // "camera rises vertically" (Z goes Low -> High)
+            // "zooming out" (R goes Small -> Large)
+
+            // Start R: 15, Start Z: 4
+            // End R: 28.28, End Z: 16
+
+            // Easing
+            const ease = p * (2 - p); // Quad out
+
+            // Override targets based on progress
+            // We don't modify targetR/targetZ directly, we modify current pos.
+            // But we use the interpolation logic below.
+
+            // Let's just set the 'current' values to interpolate towards normal.
+            // Actually, let's just cheat and assume start values.
+
+            // If intro is active, we are transitioning.
+            // Once we are close enough, disable intro flag? No need.
+
+             // Start values
+            const startR = 12.0;
+            const startZ = 4.0;
+
+            // Interpolate targets
+            targetR = startR + (28.28 - startR) * ease;
+            targetZ = startZ + (16.0 - startZ) * ease;
+        }
+
+        this.camera.position.x = cs.targetX + Math.cos(cs.angle) * targetR;
+        this.camera.position.y = cs.targetY + Math.sin(cs.angle) * targetR;
+
+        // Smooth Z transition
+        const zSpeed = cs.intro ? 0.02 : 0.1;
+        this.camera.position.z = this.camera.position.z + (targetZ - this.camera.position.z) * zSpeed;
 
         this.camera.lookAt(cs.targetX, cs.targetY, 2);
 
