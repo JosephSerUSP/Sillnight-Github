@@ -2,6 +2,7 @@ import { Data } from '../../assets/data/data.js';
 import { Log } from '../log.js';
 import { Game_Interpreter } from '../classes/Game_Interpreter.js';
 import { modifyMaterialWithFog } from '../materials/FogMaterial.js';
+import { MaterialFactory } from '../materials/MaterialFactory.js';
 import { Config } from '../Config.js';
 import * as Systems from '../systems.js';
 
@@ -138,26 +139,13 @@ export class ExploreSystem {
 
         this.particles = new ParticleSystem(this.scene);
 
-        // Initialize Materials with Fog Shader
-        // Note: modifyMaterialWithFog(material, displace=false)
-        // Hub uses displacement for effect, but it's handled via rebuildLevel logic if needed.
-        // Actually, if we want displacement in Hub (for transient fading), we should enable it here or rebuild logic?
-        // modifyMaterialWithFog injects shader code. We enabled displacement for walls (true) but not floor (false).
-        // The prompt says "when moving away from a tile, it warps and fades back".
-        // This implies displacement on the FLOOR too potentially? Or just walls?
-        // "it warps and fades back into invisible" usually refers to the geometry in FoW.
-        // Let's enable displacement for floor too, but control uMaxOffset via uniform.
-        this.matFloor = new THREE.MeshLambertMaterial({ color: 0x333333 });
-        modifyMaterialWithFog(this.matFloor, true); // Enable displacement for floor
-
-        this.matWall = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
-        modifyMaterialWithFog(this.matWall, true);
+        // Initialize Materials using MaterialFactory
+        // Note: modifyMaterialWithFog is called inside factory if requested
+        this.matFloor = MaterialFactory.create('default', true, true);
+        this.matWall = MaterialFactory.create('default_wall', true, true);
 
         this.initialized = true;
-        // Don't call rebuildLevel() here, it depends on Game_Map which might not be ready.
-        // Game.init calls it after setupNewGame().
-        // But if we are re-initializing, we might need it.
-        // Wait, the original code called it. I will keep it for now but be careful.
+
         if (window.$gameMap) {
              this.rebuildLevel();
         }
@@ -179,44 +167,37 @@ export class ExploreSystem {
         this.fogFadeRadius = visuals && visuals.fogFadeRadius !== undefined ? visuals.fogFadeRadius : 2;
 
         if (visuals) {
-            if (visuals.floorColor !== undefined) this.matFloor.color.setHex(visuals.floorColor);
-            if (visuals.wallColor !== undefined) this.matWall.color.setHex(visuals.wallColor);
             if (visuals.backgroundColor !== undefined) this.scene.background = new THREE.Color(visuals.backgroundColor);
             if (visuals.fogColor !== undefined) this.scene.fog.color.setHex(visuals.fogColor);
             if (visuals.fogDensity !== undefined) this.scene.fog.density = visuals.fogDensity;
             if (visuals.playerLightIntensity !== undefined) this.playerLight.intensity = visuals.playerLightIntensity;
 
-            // Handle Textures
-            const pearlescent = this.generatePearlescentTexture();
-
-            if (visuals.floorTexture === 'pearlescent') {
-                this.matFloor.map = pearlescent;
-                this.matFloor.needsUpdate = true;
+            // Materials
+            if (visuals.floorMaterial) {
+                this.matFloor = MaterialFactory.create(visuals.floorMaterial, true, true);
             } else {
-                this.matFloor.map = null;
-                this.matFloor.needsUpdate = true;
+                // Fallback or Color Override
+                this.matFloor = MaterialFactory.create('default', true, true);
+                if (visuals.floorColor !== undefined) this.matFloor.color.setHex(visuals.floorColor);
             }
 
-            if (visuals.wallTexture === 'pearlescent') {
-                this.matWall.map = pearlescent;
-                this.matWall.needsUpdate = true;
+            if (visuals.wallMaterial) {
+                this.matWall = MaterialFactory.create(visuals.wallMaterial, true, true);
             } else {
-                this.matWall.map = null;
-                this.matWall.needsUpdate = true;
+                 this.matWall = MaterialFactory.create('default_wall', true, true);
+                 if (visuals.wallColor !== undefined) this.matWall.color.setHex(visuals.wallColor);
             }
 
+            // REMOVED: Legacy texture generation and assignment
         } else {
-            // Fallback default
-            this.matFloor.color.setHex(0x333333);
-            this.matWall.color.setHex(0x1a1a1a);
+            // Default Fallback
+            this.matFloor = MaterialFactory.create('default', true, true);
+            this.matWall = MaterialFactory.create('default_wall', true, true);
+
             this.scene.background = new THREE.Color(0x050510);
             this.scene.fog.color.setHex(0x051015);
             this.scene.fog.density = 0.05;
             this.playerLight.intensity = 1.5;
-            this.matFloor.map = null;
-            this.matFloor.needsUpdate = true;
-            this.matWall.map = null;
-            this.matWall.needsUpdate = true;
         }
 
         const mapData = window.$gameMap._data;
@@ -227,31 +208,23 @@ export class ExploreSystem {
         const count = width * height;
 
         // --- FOG TEXTURE SETUP ---
-        // Create DataTexture for fog of war
-        // Use RGBAFormat (4 channels) for reliable Vertex Shader sampling
         const size = width * height;
-        const data = new Uint8Array(size * 4); // Initialized to 0 (hidden)
+        const data = new Uint8Array(size * 4);
 
-        // Initialize simulation arrays (still scalar)
-        this.fogValues = new Float32Array(size); // For smooth lerping
-        this.fogTarget = new Uint8Array(size);   // Target values
+        this.fogValues = new Float32Array(size);
+        this.fogTarget = new Uint8Array(size);
 
         this.fogTexture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.UnsignedByteType);
         this.fogTexture.magFilter = THREE.LinearFilter;
         this.fogTexture.minFilter = THREE.LinearFilter;
         this.fogTexture.needsUpdate = true;
 
-        // Populate initial fogTarget based on map visited state
-        // This ensures saving/loading preserves "fully visited" tiles,
-        // though partial analog states are reset to 0 or 255.
         const gMap = window.$gameMap;
         const isTransient = visuals && visuals.fogType === 'transient';
 
         for (let y = 0; y < height; y++) {
              const texRow = (height - 1) - y;
              for (let x = 0; x < width; x++) {
-                 // If transient, we start at 0 (hidden) and let updateFogTarget handle visibility
-                 // If not transient (Dungeon), we respect visited state
                  let val = 0;
                  if (!isTransient) {
                      const visited = gMap.isVisited(x, y);
@@ -262,33 +235,30 @@ export class ExploreSystem {
              }
         }
 
-        // Perform an initial distance update to set immediate surroundings
-        // Ensure playerMesh exists before using it
         if (this.playerMesh) {
              this.updateFogTarget();
         }
 
-        // Populate fogValues instantly on rebuild to prevent fade-in on load
         for (let i = 0; i < size; i++) {
             this.fogValues[i] = this.fogTarget[i];
             const val = this.fogTarget[i];
             const px = i * 4;
-            data[px] = val;     // R
-            data[px + 1] = val; // G
-            data[px + 2] = val; // B
-            data[px + 3] = 255; // A (Full opacity in texture, though we use R for logic)
+            data[px] = val;
+            data[px + 1] = val;
+            data[px + 2] = val;
+            data[px + 3] = 255;
         }
         this.fogTexture.needsUpdate = true;
 
-        // Update Static Materials
+        // Update Materials with Fog Uniforms
         const updateMat = (mat) => {
+            // Note: Shader uniform injection happens after compilation, handled in animate loop
+            // but we can try setting them if already compiled
             if (mat && mat.userData.shader) {
                 mat.userData.shader.uniforms.uFogMap.value = this.fogTexture;
                 mat.userData.shader.uniforms.uMapSize.value.set(width, height);
             }
         };
-        updateMat(this.matFloor);
-        updateMat(this.matWall);
         // -------------------------
 
         const geoFloor = new THREE.PlaneGeometry(0.95, 0.95);
@@ -325,13 +295,12 @@ export class ExploreSystem {
                             const h = maxH * (numSteps - s) / numSteps;
                             const yPos = h / 2;
                             const zPos = y - 0.4 + (s * sliceW) + (sliceW / 2);
-                            const mat = new THREE.MeshPhongMaterial({ color: 0x00ffaa, flatShading: true });
-                            // Apply fog to stairs too
-                            modifyMaterialWithFog(mat);
+
+                            const mat = MaterialFactory.create({ type: 'Phong', color: 0x00ffaa, flatShading: true }, true, false);
+
                             const step = new THREE.Mesh(new THREE.BoxGeometry(0.8, h, sliceW * 0.9), mat);
                             step.position.set(x, yPos, zPos);
 
-                            // Store material for update
                             step.userData.isFogObject = true;
 
                             this.mapGroup.add(step);
@@ -357,7 +326,6 @@ export class ExploreSystem {
         this.mapGroup.add(this.instancedFloor);
         this.mapGroup.add(this.instancedWalls);
 
-        // Initial dynamic sync
         this.syncDynamic();
 
         const startX = window.$gameMap.playerPos.x;
@@ -369,13 +337,9 @@ export class ExploreSystem {
         this.isAnimating = false;
     }
 
-    /**
-     * Updates fog target values based on distance from the player's current position.
-     * Uses Accumulative Reveal logic: Visibility only increases, never decreases.
-     */
     updateFogTarget() {
         if (!this.fogTarget || !window.$gameMap) return;
-        if (!this.playerMesh) return; // Guard against missing player mesh
+        if (!this.playerMesh) return;
 
         const map = window.$gameMap;
         const w = map.width;
@@ -383,9 +347,8 @@ export class ExploreSystem {
         const visuals = map.visuals;
         const isTransient = visuals && visuals.fogType === 'transient';
 
-        // Use current interpolated position for smooth gradients
         const px = this.playerMesh.position.x;
-        const py = this.playerMesh.position.z; // Z is Y in grid coords
+        const py = this.playerMesh.position.z;
 
         const revealR = this.fogRevealRadius;
         const fadeR = this.fogFadeRadius;
@@ -393,12 +356,10 @@ export class ExploreSystem {
         for (let y = 0; y < h; y++) {
             const texRow = (h - 1) - y;
             for (let x = 0; x < w; x++) {
-                // Distance from player
                 const dx = x - px;
                 const dy = y - py;
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
-                // Calculate dynamic visibility
                 let val = 0.0;
                 if (dist <= revealR) {
                     val = 1.0;
@@ -409,28 +370,19 @@ export class ExploreSystem {
                 if (val < 0) val = 0;
                 if (val > 1) val = 1;
 
-                // Scale to 0-255
                 const byteVal = Math.floor(val * 255);
                 const idx = texRow * w + x;
 
-                // Accumulate or Overwrite based on transient type
                 if (isTransient) {
-                    // In transient mode, we don't accumulate. We set the value directly.
-                    // This allows it to fade back to 0 when the player leaves.
                     this.fogTarget[idx] = byteVal;
                 } else {
-                    // Standard Accumulative Reveal
                     this.fogTarget[idx] = Math.max(this.fogTarget[idx], byteVal);
                 }
             }
         }
     }
 
-    /**
-     * Synchronizes dynamic elements (enemies, loot, etc.) without rebuilding static geometry.
-     */
     syncDynamic() {
-        // Remove existing dynamic objects
         if (!this.dynamicGroup) {
             this.dynamicGroup = new THREE.Group();
             this.scene.add(this.dynamicGroup);
@@ -439,13 +391,11 @@ export class ExploreSystem {
 
         if (!window.$gameMap) return;
 
-        // Iterate over active events
         const events = window.$gameMap.events;
 
         for (const event of events) {
             if (event.isErased) continue;
 
-            // Render visual representation
             const visual = event.visual;
             const x = event.x;
             const y = event.y;
@@ -472,21 +422,19 @@ export class ExploreSystem {
                 }
 
                 if (visual.type !== 'TRAP') {
-                    const mat = new THREE.MeshPhongMaterial({ color: color });
-                    modifyMaterialWithFog(mat);
+                    // Use MaterialFactory for dynamic objects
+                    const mat = MaterialFactory.create({ type: 'Phong', color: color }, true, false);
 
                     const mesh = new THREE.Mesh(geo, mat);
                     mesh.position.set(x, 0.3, y);
-                    mesh.userData.isFogObject = true; // Mark for uniform updates
+                    mesh.userData.isFogObject = true;
                     this.dynamicGroup.add(mesh);
                 }
             }
         }
     }
 
-    /** Resizes the canvas to match the window dimensions. */
     resize() {
-        // Handled by RenderManager mostly, but we update camera aspect
         if (!this.camera) return;
         const targetW = Config.Resolution.RenderWidth;
         const targetH = Config.Resolution.RenderHeight;
@@ -496,11 +444,6 @@ export class ExploreSystem {
         this.camera.updateProjectionMatrix();
     }
 
-    /**
-     * Moves the player in the given direction.
-     * @param {number} dx - The change in X.
-     * @param {number} dy - The change in Y.
-     */
     move(dx, dy) {
         if (window.Game.ui.mode !== 'EXPLORE' || window.Game.ui.formationMode) return;
         if (this.isAnimating) return;
@@ -509,43 +452,32 @@ export class ExploreSystem {
         const newY = window.$gameMap.playerPos.y + dy;
         const tile = window.$gameMap.tileAt(newX, newY);
 
-        if (tile !== 1) { // Not a wall
-            // Update Logical Position
+        if (tile !== 1) {
             window.$gameMap._playerPos = { x: newX, y: newY };
 
             if (window.$gameParty) {
                 window.$gameParty.onMapStep();
             }
 
-            // Update Map Visited State (logical only)
             window.$gameMap.updateVisibility(newX, newY, this.fogRevealRadius);
 
-            // Trigger Animation
             this.moveLerpStart.copy(this.playerMesh.position);
             this.moveLerpEnd.set(newX, 0.5, newY);
             this.moveLerpProgress = 0;
             this.playerTarget.set(newX, 0.5, newY);
             this.isAnimating = true;
 
-            // Trigger events after delay or checkTile handles it
             this.checkTile(newX, newY);
         }
     }
 
-    /**
-     * Checks the tile the player landed on and triggers its effect.
-     * @param {number} x
-     * @param {number} y
-     */
     checkTile(x, y) {
-        // Check for static tile events (Stairs)
         const tile = window.$gameMap.tileAt(x, y);
         if (tile === 3) {
             this.resolveStaticTile(tile);
             return;
         }
 
-        // Check for dynamic events
         const event = window.$gameMap.eventAt(x, y);
         if (event && !event.isErased) {
              if (event.trigger === 'TOUCH' || event.trigger === 'ACTION') {
@@ -555,14 +487,9 @@ export class ExploreSystem {
 
         window.Game.Windows.HUD.refresh();
 
-        // Post-execution cleanup/sync
         setTimeout(() => this.syncDynamic(), 300);
     }
 
-    /**
-     * Resolves static tile effects (Stairs).
-     * @param {number} code
-     */
     resolveStaticTile(code) {
         const map = window.$gameMap;
         if (code === 3) {
@@ -573,9 +500,6 @@ export class ExploreSystem {
         }
     }
 
-    /**
-     * Main animation loop.
-     */
     animate() {
         if (window.Game.ui.mode === 'EXPLORE') {
             requestAnimationFrame(() => this.animate());
@@ -583,21 +507,18 @@ export class ExploreSystem {
             requestAnimationFrame(() => this.animate());
         }
 
-        // DRIVE SCENE UPDATE LOOP HERE
         if (window.Game && window.Game.SceneManager) {
             window.Game.SceneManager.update();
         }
 
         if (!this.scene || !this.camera) return;
 
-        // Calculate fog targets based on current player mesh position (smooth interpolation)
         this.updateFogTarget();
 
-        // --- FOG ANIMATION ---
         if (this.fogValues && this.fogTarget && this.fogTexture) {
             let fogChanged = false;
             const texData = this.fogTexture.image.data;
-            const lerpFactor = 0.2; // Faster response for distance gradients
+            const lerpFactor = 0.2;
 
             for(let i = 0; i < this.fogValues.length; i++) {
                 const target = this.fogTarget[i];
@@ -608,10 +529,9 @@ export class ExploreSystem {
                     this.fogValues[i] = current;
                     const val = Math.floor(current);
                     const px = i * 4;
-                    texData[px] = val;      // R
-                    texData[px + 1] = val;  // G
-                    texData[px + 2] = val;  // B
-                    // Alpha (texData[px+3]) remains 255 from initialization
+                    texData[px] = val;
+                    texData[px + 1] = val;
+                    texData[px + 2] = val;
                     fogChanged = true;
                 } else if (current !== target) {
                     current = target;
@@ -628,59 +548,37 @@ export class ExploreSystem {
                 this.fogTexture.needsUpdate = true;
             }
         }
-        // ---------------------
 
-        // Helper to update uniforms on a material/object
         const updateUniforms = (obj) => {
             if (obj && obj.material && obj.material.userData.shader && this.fogTexture) {
                 const s = obj.material.userData.shader;
                 s.uniforms.uFogMap.value = this.fogTexture;
-                // Assuming map size hasn't changed without rebuildLevel
                 if (window.$gameMap) {
                      s.uniforms.uMapSize.value.set(window.$gameMap.width, window.$gameMap.height);
                 }
             }
         };
 
-        // Update Shader Uniforms for Dynamic Objects
-        // We traverse dynamic group
         this.dynamicGroup.traverse((child) => {
             if (child.userData.isFogObject) {
                 updateUniforms(child);
             }
         });
 
-        // Also Stairs in mapGroup have isFogObject
         this.mapGroup.traverse((child) => {
             if (child.userData.isFogObject) {
                 updateUniforms(child);
             }
         });
 
-        // Update Static Floor/Wall Materials (InstancedMesh)
-        // These are not traversed by dynamicGroup or mapGroup traversal above.
-        // We must ensure their uniforms are set once the shader compiles.
-        if (this.matFloor && this.matFloor.userData.shader && this.fogTexture) {
-            this.matFloor.userData.shader.uniforms.uFogMap.value = this.fogTexture;
-            if (window.$gameMap) {
-                this.matFloor.userData.shader.uniforms.uMapSize.value.set(window.$gameMap.width, window.$gameMap.height);
-            }
-        }
-        if (this.matWall && this.matWall.userData.shader && this.fogTexture) {
-            this.matWall.userData.shader.uniforms.uFogMap.value = this.fogTexture;
-            if (window.$gameMap) {
-                this.matWall.userData.shader.uniforms.uMapSize.value.set(window.$gameMap.width, window.$gameMap.height);
-            }
-        }
+        if (this.matFloor) updateUniforms({ material: this.matFloor });
+        if (this.matWall) updateUniforms({ material: this.matWall });
 
-        // Movement Interpolation
         if (this.moveLerpProgress < 1) {
             this.moveLerpProgress += 0.06;
             if (this.moveLerpProgress > 1) this.moveLerpProgress = 1;
 
             this.playerMesh.position.lerpVectors(this.moveLerpStart, this.moveLerpEnd, this.moveLerpProgress);
-
-            // Rotate player mesh
             this.playerMesh.rotation.y = this.moveLerpProgress * Math.PI * 2;
 
             if (this.moveLerpProgress === 1) {
@@ -691,11 +589,9 @@ export class ExploreSystem {
             this.playerMesh.position.lerp(this.playerTarget, 0.3);
         }
 
-        // Bobbing effect
         this.playerMesh.position.y = 0.5 + Math.sin(Date.now() * 0.005) * 0.05;
         this.playerLight.position.copy(this.playerMesh.position).add(new THREE.Vector3(0, 1, 0));
 
-        // Camera follow
         const lx = this.playerTarget.x;
         const lz = this.playerTarget.z;
         this.cameraLookCurrent.x += (lx - this.cameraLookCurrent.x) * 0.1;
@@ -712,7 +608,6 @@ export class ExploreSystem {
 
         this.particles.update();
 
-        // Render using shared renderer
         const renderer = window.Game.RenderManager.getRenderer();
         if (renderer && window.Game.ui.mode === 'EXPLORE') {
             renderer.render(this.scene, this.camera);
@@ -720,60 +615,5 @@ export class ExploreSystem {
                 Systems.Effekseer.update(this.camera);
             }
         }
-    }
-
-    /**
-     * Generates a procedural pearlescent noise texture.
-     * @returns {THREE.CanvasTexture}
-     */
-    generatePearlescentTexture() {
-        const size = 512;
-        const canvas = document.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext('2d');
-
-        // Base off-white
-        ctx.fillStyle = '#f5f5fa';
-        ctx.fillRect(0, 0, size, size);
-
-        // Function to add soft gradient blobs
-        const addBlob = (hue, s, l, alpha, minR, maxR) => {
-            const x = Math.random() * size;
-            const y = Math.random() * size;
-            const r = Math.random() * (maxR - minR) + minR;
-            const grd = ctx.createRadialGradient(x, y, 0, x, y, r);
-            grd.addColorStop(0, `hsla(${hue}, ${s}%, ${l}%, ${alpha})`);
-            grd.addColorStop(1, `hsla(${hue}, ${s}%, ${l}%, 0)`);
-            ctx.fillStyle = grd;
-            ctx.beginPath();
-            ctx.arc(x, y, r, 0, Math.PI * 2);
-            ctx.fill();
-        };
-
-        // Layers of colors for pearlescent effect
-        // Cyans/Greens
-        for (let i = 0; i < 50; i++) addBlob(170 + Math.random()*20, 80, 80, 0.1, 50, 150);
-        // Pinks/Purples
-        for (let i = 0; i < 50; i++) addBlob(280 + Math.random()*40, 80, 85, 0.1, 50, 150);
-        // Yellow/Gold highlights
-        for (let i = 0; i < 30; i++) addBlob(40 + Math.random()*20, 90, 90, 0.08, 30, 80);
-        // White shine
-        for (let i = 0; i < 40; i++) addBlob(0, 0, 100, 0.15, 20, 60);
-
-        const texture = new THREE.CanvasTexture(canvas);
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.RepeatWrapping;
-        return texture;
-    }
-
-    /**
-     * Helper to get generateFloor access if called from outside?
-     */
-    generateAndRebuild() {
-         if (window.$gameMap) {
-             window.$gameMap.generateFloor();
-             this.rebuildLevel();
-         }
     }
 }
