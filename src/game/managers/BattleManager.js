@@ -68,13 +68,24 @@ export const BattleManager = {
      */
     async _startEncounterWithEnemies(enemies) {
         Systems.sceneHooks?.onBattleStart?.();
-        if (window.Game && window.Game.ui) {
-            window.Game.ui.mode = 'BATTLE';
-        }
+
+        // IMPORTANT: Do NOT set mode to BATTLE yet.
+        // We want ExploreSystem to keep rendering the last frame so we can capture it.
 
         // 1. Transition Out (Swirl -> Black)
         if (window.Game && window.Game.TransitionManager) {
-            await window.Game.TransitionManager.startBattleTransition();
+            // Capture the current frame from the renderer
+            const renderer = window.Game.RenderManager.getRenderer();
+            if (renderer) {
+                await window.Game.TransitionManager.startBattleTransition(renderer.domElement);
+            } else {
+                 await window.Game.TransitionManager.startBattleTransition();
+            }
+        }
+
+        // NOW set the mode, stopping ExploreSystem and starting BattleSystem logic
+        if (window.Game && window.Game.ui) {
+            window.Game.ui.mode = 'BATTLE';
         }
 
         // 2. Switch Scene (Hidden)
@@ -107,7 +118,6 @@ export const BattleManager = {
         Services.events.emit('battle:start', { enemies: this.enemies });
 
         // Brief delay before first round starts to allow player to see enemies
-        // Reduce delay since we had a long intro
         setTimeout(() => this.nextRound(), 500);
     },
 

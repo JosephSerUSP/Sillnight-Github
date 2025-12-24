@@ -16,7 +16,8 @@ export class TransitionManager {
         this.buffer = null;
 
         // Texture for screen capture (optional, if we want to distort the previous frame)
-        // For now, we will use procedural patterns on black/transparent.
+        this.capturedTexture = null;
+        this.hasCapture = false;
     }
 
     init() {
@@ -27,7 +28,7 @@ export class TransitionManager {
         this.canvas.style.inset = '0';
         this.canvas.style.width = '100%';
         this.canvas.style.height = '100%';
-        this.canvas.style.zIndex = '9999'; // Below CRT (which is 9999 in css? wait, crt is 9999. Let's adjust.)
+        this.canvas.style.zIndex = '9999';
         this.canvas.style.pointerEvents = 'none';
         this.canvas.style.display = 'none';
 
@@ -55,9 +56,6 @@ export class TransitionManager {
 
     resize() {
         if (!this.canvas) return;
-        // Match internal logic resolution or container size?
-        // Since this is a fullscreen effect over the container, we should match the canvas size to the CSS size or a fixed high res?
-        // Let's use the logic resolution for pixel consistency: 960x540
         this.canvas.width = 960;
         this.canvas.height = 540;
         this.gl.viewport(0, 0, 960, 540);
@@ -77,6 +75,31 @@ export class TransitionManager {
         this.buffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
         gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+    }
+
+    /**
+     * Captures the contents of another canvas (the game renderer) into a texture.
+     * @param {HTMLCanvasElement} sourceCanvas
+     */
+    capture(sourceCanvas) {
+        if (!sourceCanvas) return;
+        const gl = this.gl;
+
+        if (!this.capturedTexture) {
+            this.capturedTexture = gl.createTexture();
+        }
+
+        gl.bindTexture(gl.TEXTURE_2D, this.capturedTexture);
+        // Upload the canvas to the texture
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sourceCanvas);
+
+        // Set parameters
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+        this.hasCapture = true;
     }
 
     compileShader(src, type) {
@@ -114,10 +137,16 @@ export class TransitionManager {
 
     /**
      * Start battle transition: Swirl + Fade to Black.
+     * @param {HTMLCanvasElement} [sourceCanvas] - If provided, captures screen for distortion.
      */
-    async startBattleTransition() {
+    async startBattleTransition(sourceCanvas) {
         this.type = 'BATTLE_START';
         this.duration = 1500;
+        if (sourceCanvas) {
+            this.capture(sourceCanvas);
+        } else {
+            this.hasCapture = false;
+        }
         return this.run();
     }
 
@@ -126,7 +155,8 @@ export class TransitionManager {
      */
     async startBattleIntro() {
         this.type = 'BATTLE_INTRO';
-        this.duration = 1500; // Slower reveal
+        this.duration = 1500;
+        this.hasCapture = false; // No capture needed for intro (revealing new scene)
         return this.run();
     }
 
@@ -136,6 +166,7 @@ export class TransitionManager {
     async startMapTransitionOut() {
         this.type = 'MAP_OUT';
         this.duration = 1000;
+        this.hasCapture = false;
         return this.run();
     }
 
@@ -145,11 +176,12 @@ export class TransitionManager {
     async startMapTransitionIn() {
         this.type = 'MAP_IN';
         this.duration = 1000;
+        this.hasCapture = false;
         return this.run();
     }
 
     async run() {
-        if (this.isActive) return; // Prevent overlap
+        if (this.isActive) return;
         this.isActive = true;
         this.canvas.style.display = 'block';
         this.startTime = performance.now();
@@ -211,10 +243,21 @@ export class TransitionManager {
         const uProgress = gl.getUniformLocation(this.program, 'uProgress');
         const uRes = gl.getUniformLocation(this.program, 'uResolution');
         const uTime = gl.getUniformLocation(this.program, 'uTime');
+        const uScreen = gl.getUniformLocation(this.program, 'uScreen');
+        const uHasCapture = gl.getUniformLocation(this.program, 'uHasCapture');
 
         gl.uniform1f(uProgress, progress);
         gl.uniform2f(uRes, this.canvas.width, this.canvas.height);
         gl.uniform1f(uTime, performance.now() / 1000.0);
+
+        if (this.hasCapture && this.capturedTexture) {
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, this.capturedTexture);
+            gl.uniform1i(uScreen, 0);
+            gl.uniform1i(uHasCapture, 1);
+        } else {
+            gl.uniform1i(uHasCapture, 0);
+        }
 
         const posAttrib = gl.getAttribLocation(this.program, 'position');
         gl.enableVertexAttribArray(posAttrib);
@@ -232,168 +275,87 @@ export class TransitionManager {
             uniform float uProgress;
             uniform vec2 uResolution;
             uniform float uTime;
+            uniform sampler2D uScreen;
+            uniform int uHasCapture;
         `;
 
         if (type === 'BATTLE_START') {
-            // Swirl + Fade to Black
-            // We can't easily capture the screen behind us in a separate canvas context without significant re-architecture (rendering scene to texture).
-            // However, the prompt asks for "screen has a swirl like blur".
-            // Since we can't distort the actual HTML elements behind the canvas without `backdrop-filter` (which is limited),
-            // and `backdrop-filter` doesn't support complex swirls, we might have to fake it or use a simpler effect.
-            // BUT: We can simulate the visual confusion.
-            // Let's render a "black hole" swirl that consumes the screen.
-            // Or: just a procedural swirl pattern that fades in opacity.
-
-            // "screen has a swirl like blur while it fades to black"
-            // We can overlay a swirling texture that increases in opacity.
-            // We can use a noise function to create a "blur" texture.
             return `${header}
 
             void main() {
-                vec2 uv = vUv - 0.5;
-                float dist = length(uv);
-                float angle = atan(uv.y, uv.x);
+                vec2 uv = vUv;
+                vec2 center = vec2(0.5, 0.5);
+                vec2 toCenter = center - uv;
+                float dist = length(toCenter);
+                float angle = atan(toCenter.y, toCenter.x);
 
-                // Swirl
-                float swirl = sin(dist * 10.0 - uTime * 5.0 + angle * 5.0);
+                // Twist logic: Rotate based on distance
+                // Twist increases with progress
+                float twistStrength = uProgress * 15.0;
+                float twist = twistStrength * dist;
+                float newAngle = angle + twist;
 
-                // Vignette closing in
-                // uProgress goes 0 -> 1
-                // We want transparency at 0, black at 1.
+                vec2 distortedUV = center - vec2(cos(newAngle), sin(newAngle)) * dist;
 
-                float alpha = uProgress;
+                vec4 texColor = vec4(0.0, 0.0, 0.0, 1.0);
 
-                // Add swirl distortion to opacity?
-                // Visualizing: The screen gets darker and darker.
-                // The prompt implies the IMAGE swirls. Since we don't have the image,
-                // we will create a visual effect that distracts/covers it.
-                // Simulating "blur" with noise.
+                if (uHasCapture == 1) {
+                    // Check bounds to avoid sampling outside [0,1] wrapping
+                    if (distortedUV.x >= 0.0 && distortedUV.x <= 1.0 && distortedUV.y >= 0.0 && distortedUV.y <= 1.0) {
+                         texColor = texture2D(uScreen, distortedUV);
+                    } else {
+                         texColor = vec4(0.0, 0.0, 0.0, 1.0);
+                    }
+                }
 
-                gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);
+                // Fade to black based on progress
+                // uProgress 0 -> 1.
+                // We want final image to be black.
+                // Twist happens, and simultaneously darkness consumes it.
 
-                // Let's add the swirl visual as a greyscale additive or subtractive pattern?
-                // Actually, just fading to black is boring.
-                // Let's make a "implosion" effect.
+                // Simple lerp to black
+                float fade = uProgress;
+                vec3 finalColor = mix(texColor.rgb, vec3(0.0), fade);
 
-                float radius = 1.0 - uProgress;
-                float swirlStrength = uProgress * 20.0;
-
-                // Just return black with increasing alpha.
-                // To support "swirl blur", we'd need the backbuffer.
-                // Given constraints, we will do a fancy "fade to black" pattern.
-
-                // Spiral pattern
-                float spiral = sin(dist * 30.0 + angle * 6.0 - uProgress * 20.0);
-                float mask = step(dist, uProgress * 1.5); // Circle expanding from center?
-
-                // Let's try: Screen starts clear. Then pixels getting pulled into center (simulated by overlaying swirling pixels).
-                // Just a simple black fade is safe, but let's try to match "swirl".
-
-                // We will render Black, but alpha is modulated by swirl.
-                // As progress increases, alpha goes to 1 everywhere.
-
-                float a = smoothstep(0.0, 1.0, uProgress * 1.5 - (1.0 - dist));
-                // Add swirl lines
-                float lines = sin(angle * 10.0 + dist * 40.0 * uProgress);
-
-                // Mix
-                vec3 col = vec3(0.0);
-                gl_FragColor = vec4(col, uProgress + (lines * 0.1 * uProgress));
+                gl_FragColor = vec4(finalColor, 1.0);
             }`;
         }
 
         if (type === 'BATTLE_INTRO') {
-            // Horizontal cut in.
-            // Screen is black (from previous transition).
-            // We reveal the center horizontally.
-            // uProgress 0 -> 1 (Reveal)
             return `${header}
             void main() {
                 float center = 0.5;
-                float halfHeight = uProgress * 0.6; // Expands to 0.6 (full height coverage needed > 0.5)
-
+                float halfHeight = uProgress * 0.6;
                 float distY = abs(vUv.y - center);
 
-                // If within the opening, alpha = 0. Else alpha = 1.
-                // Add a smooth edge.
-
-                float alpha = 1.0 - smoothstep(halfHeight - 0.05, halfHeight, distY);
-
-                // Invert: We want alpha 1 (Black) outside, 0 inside.
-                // Wait, smoothstep(edge0, edge1, x) returns 0 if x < edge0, 1 if x > edge1.
-                // So inside (distY < halfHeight), it's small.
-                // Let's rethink.
-
-                // Solid black where distY > halfHeight.
+                // Opening Mask: Black outside, Transparent inside.
                 float mask = smoothstep(halfHeight, halfHeight + 0.01, distY);
-
                 gl_FragColor = vec4(0.0, 0.0, 0.0, mask);
             }`;
         }
 
         if (type === 'MAP_OUT') {
-            // Diagonal swipe + Distort -> Fade Out (to Black)
-            // uProgress 0 -> 1
             return `${header}
             void main() {
-                // Diagonal: x + y
-                float diag = vUv.x + vUv.y; // Range 0 to 2
-                float threshold = uProgress * 2.5; // Move across
-
-                float mask = smoothstep(threshold - 0.2, threshold, diag);
-
-                // "Distort": We can add noise to the edge?
+                float diag = vUv.x + vUv.y;
+                float threshold = uProgress * 2.5;
                 float noise = sin(vUv.x * 20.0 + uTime) * 0.05;
 
-                float alpha = 1.0 - smoothstep(threshold - 0.2 + noise, threshold + noise, diag);
-
-                // Wait, we want to fade OUT to BLACK.
-                // So at progress 0: Transparent.
-                // At progress 1: Black.
-                // Swipe should fill with black.
-
-                // Current: mask is 1 when diag > threshold (uncovered).
-                // We want black where swipe HAS passed.
-                // Let's say swipe moves Top-Left to Bottom-Right.
-                // diag increases.
-                // If diag < threshold, it is BLACK.
-
-                float blackness = step(diag, threshold + noise);
-                // Smooth
-                blackness = smoothstep(threshold + noise - 0.1, threshold + noise, diag);
-                // Actually smoothstep(edge0, edge1, x). if x < edge0 (0), if x > edge1 (1).
-                // We want 1 where diag < threshold.
-                // so 1.0 - smoothstep.
-
+                // Swipe adds black
                 float a = 1.0 - smoothstep(threshold - 0.1 + noise, threshold + noise, diag);
-
                 gl_FragColor = vec4(0.0, 0.0, 0.0, a);
             }`;
         }
 
         if (type === 'MAP_IN') {
-             // Diagonal swipe Reveal (Black to Clear)
-             // Similar to Out but reversed or continuing?
-             // "similar diagonal swipe fades the screen back in"
-             // Usually this means the swipe continues, revealing the new map behind it.
-             // OR swipe reverses.
-             // Let's make it swipe OFF.
-             // Initially Full Black. Swipe removes black.
              return `${header}
             void main() {
                 float diag = vUv.x + vUv.y;
-                // Move threshold from -0.5 to 2.5
                 float threshold = (uProgress * 3.0) - 0.5;
-
                 float noise = sin(vUv.x * 20.0 + uTime) * 0.05;
 
-                // We want BLACK where diag > threshold. (Revealing from top-left)
-                // Or revealing from bottom-right?
-                // Let's reveal from Top-Left (same direction as fill).
-                // So area < threshold is Clear (0). Area > threshold is Black (1).
-
+                // Swipe removes black
                 float a = smoothstep(threshold - 0.1 + noise, threshold + noise, diag);
-
                 gl_FragColor = vec4(0.0, 0.0, 0.0, a);
             }`;
         }

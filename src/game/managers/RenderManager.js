@@ -16,7 +16,8 @@ export class RenderManager {
 
         this.renderer = new THREE.WebGLRenderer({
             antialias: false,
-            alpha: false
+            alpha: false,
+            preserveDrawingBuffer: true // Required for screen capture transitions
         });
 
         this.renderer.setPixelRatio(1); // Force 1:1 pixel ratio
