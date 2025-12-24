@@ -1,5 +1,6 @@
 import { Log } from '../log.js';
 import * as Systems from '../systems.js';
+import { Services } from '../ServiceLocator.js';
 
 /**
  * Interpreter for executing event commands.
@@ -22,7 +23,7 @@ export class Game_Interpreter {
         this._list = list || [];
         this._index = 0;
         this._eventId = eventId;
-        this.execute();
+        return this.execute();
     }
 
     /**
@@ -113,6 +114,98 @@ export class Game_Interpreter {
     }
 
     /**
+     * Change a game variable.
+     * { code: 'CHANGE_VARIABLE', id: 1, operation: 'set', operand: 10 }
+     */
+    command_CHANGE_VARIABLE(params) {
+        const variables = Services.get('GameVariables');
+        if (!variables) return;
+
+        const id = params.id;
+        const op = params.operation || 'set';
+        // TODO: Support operand as variable reference if needed
+        let operand = params.operand || 0;
+
+        let current = variables.value(id);
+
+        switch (op) {
+            case 'set': current = operand; break;
+            case 'add': current += operand; break;
+            case 'sub': current -= operand; break;
+            case 'mul': current *= operand; break;
+            case 'div': current = Math.floor(current / operand); break;
+            case 'mod': current %= operand; break;
+        }
+
+        variables.setValue(id, current);
+    }
+
+    /**
+     * Change a game switch.
+     * { code: 'CHANGE_SWITCH', id: 'mySwitch', value: true }
+     */
+    command_CHANGE_SWITCH(params) {
+        const switches = Services.get('GameSwitches');
+        if (!switches) return;
+
+        const id = params.id;
+        const val = params.value;
+
+        if (val === 'toggle') {
+            switches.setValue(id, !switches.value(id));
+        } else {
+            switches.setValue(id, !!val);
+        }
+    }
+
+    /**
+     * Conditional Branch.
+     * { code: 'IF', condition: { type: 'switch', id: 'A', value: true }, then: [...], else: [...] }
+     */
+    async command_IF(params) {
+        const condition = params.condition;
+        const result = this._checkCondition(condition);
+
+        const branch = result ? params.then : params.else;
+        if (branch && branch.length > 0) {
+            // Create a child interpreter for the branch to keep recursion clean
+            // The child interpreter will execute its list then return, allowing the parent to continue
+            const interpreter = new Game_Interpreter(this._depth + 1);
+            await interpreter.setup(branch, this._eventId);
+        }
+    }
+
+    _checkCondition(condition) {
+        if (!condition) return true;
+
+        if (condition.type === 'switch') {
+            const switches = Services.get('GameSwitches');
+            if (!switches) return false;
+            // Checks if switch matches value (default true)
+            const target = condition.value !== false;
+            return switches.value(condition.id) === target;
+        } else if (condition.type === 'variable') {
+            const variables = Services.get('GameVariables');
+            if (!variables) return false;
+
+            const val = variables.value(condition.id);
+            const target = condition.value;
+            const op = condition.op || '==';
+
+            switch (op) {
+                case '==': return val == target;
+                case '>=': return val >= target;
+                case '<=': return val <= target;
+                case '>': return val > target;
+                case '<': return val < target;
+                case '!=': return val != target;
+                default: return false;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Give an item to the party.
      * { code: 'GIVE_ITEM', id: 'potion', amount: 1 }
      */
@@ -120,25 +213,24 @@ export class Game_Interpreter {
         const id = params.id;
         const amount = params.amount || 1;
         if (window.$gameParty) {
-            import('../ServiceLocator.js').then(({ Services }) => {
-                const itemRegistry = Services.get('ItemRegistry');
-                const equipRegistry = Services.get('EquipmentRegistry');
+            const itemRegistry = Services.get('ItemRegistry');
+            const equipRegistry = Services.get('EquipmentRegistry');
 
-                const item = itemRegistry.get(id) || equipRegistry.get(id);
-                window.$gameParty.gainItem(id, amount);
-                if (window.Game.Windows.Party) window.Game.Windows.Party.refresh();
+            // Fallback for registries not loaded or mocked
+            const item = (itemRegistry && itemRegistry.get(id)) || (equipRegistry && equipRegistry.get(id));
+            window.$gameParty.gainItem(id, amount);
+            if (window.Game.Windows.Party) window.Game.Windows.Party.refresh();
 
-                if (item) {
-                     Log.loot(`Found ${item.name}!`);
-                } else {
-                     Log.loot(`Received ${amount}x ${id}.`);
-                }
+            if (item) {
+                    Log.loot(`Found ${item.name}!`);
+            } else {
+                    Log.loot(`Received ${amount}x ${id}.`);
+            }
 
-                if (window.$gameMap && window.$gameMap.playerPos && Systems.Effekseer) {
-                    const pos = { x: window.$gameMap.playerPos.x, y: 0.5, z: window.$gameMap.playerPos.y };
-                    Systems.Effekseer.play('MAP_Find', pos);
-                }
-            });
+            if (window.$gameMap && window.$gameMap.playerPos && Systems.Effekseer) {
+                const pos = { x: window.$gameMap.playerPos.x, y: 0.5, z: window.$gameMap.playerPos.y };
+                Systems.Effekseer.play('MAP_Find', pos);
+            }
         }
     }
 
