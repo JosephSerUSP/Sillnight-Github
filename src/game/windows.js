@@ -107,11 +107,17 @@ export class Window_Base {
     /** Shows the window by removing the 'hidden' class. */
     show() {
         if (this.root) this.root.classList.remove('hidden');
+        if (window.Game && window.Game.SceneManager) {
+            window.Game.SceneManager.registerWindow(this);
+        }
     }
 
     /** Hides the window by adding the 'hidden' class. */
     hide() {
         if (this.root) this.root.classList.add('hidden');
+        if (window.Game && window.Game.SceneManager) {
+            window.Game.SceneManager.unregisterWindow(this);
+        }
     }
 
     /** Refreshes the window content. Intended to be overridden. */
@@ -222,5 +228,13 @@ export class Window_Selectable extends Window_Base {
         if (this._handlers[handler]) {
             this._handlers[handler](...args);
         }
+    }
+
+    handleInput(event) {
+        if (event.key === 'Escape') {
+            this.hide();
+            return true; // Input was handled
+        }
+        return false; // Input was not handled
     }
 }
