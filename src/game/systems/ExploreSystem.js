@@ -140,8 +140,8 @@ export class ExploreSystem {
         this.particles = new ParticleSystem(this.scene);
 
         // Initialize Materials using MaterialFactory
-        // Note: modifyMaterialWithFog is called inside factory if requested
-        this.matFloor = MaterialFactory.create('default', true, true);
+        // Disable displacement for floor (false)
+        this.matFloor = MaterialFactory.create('default', true, false);
         this.matWall = MaterialFactory.create('default_wall', true, true);
 
         this.initialized = true;
@@ -174,10 +174,11 @@ export class ExploreSystem {
 
             // Materials
             if (visuals.floorMaterial) {
-                this.matFloor = MaterialFactory.create(visuals.floorMaterial, true, true);
+                // Ensure displacement is false for floor
+                this.matFloor = MaterialFactory.create(visuals.floorMaterial, true, false);
             } else {
                 // Fallback or Color Override
-                this.matFloor = MaterialFactory.create('default', true, true);
+                this.matFloor = MaterialFactory.create('default', true, false);
                 if (visuals.floorColor !== undefined) this.matFloor.color.setHex(visuals.floorColor);
             }
 
@@ -191,7 +192,7 @@ export class ExploreSystem {
             // REMOVED: Legacy texture generation and assignment
         } else {
             // Default Fallback
-            this.matFloor = MaterialFactory.create('default', true, true);
+            this.matFloor = MaterialFactory.create('default', true, false);
             this.matWall = MaterialFactory.create('default_wall', true, true);
 
             this.scene.background = new THREE.Color(0x050510);
