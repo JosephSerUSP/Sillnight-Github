@@ -9,7 +9,7 @@ export class Window_Shop extends Window_Selectable {
         this._resolve = null;
         super.initialize();
         this.root.id = 'window-shop';
-        this.root.className = 'absolute inset-0 bg-black/90 p-4 z-50 flex flex-col hidden';
+        this.root.className = 'absolute inset-0 bg-black/90 p-4 z-50 hidden';
     }
 
     defineLayout() {
@@ -32,12 +32,14 @@ export class Window_Shop extends Window_Selectable {
                 container.appendChild(this.root);
             }
 
-            super.show();
+            this.root.style.display = 'flex';
+            this.root.classList.add('flex-col');
         });
     }
 
     hide() {
-        super.hide();
+        this.root.style.display = 'none';
+        this.root.classList.remove('flex-col');
         if (this._resolve) {
             this._resolve();
             this._resolve = null;
