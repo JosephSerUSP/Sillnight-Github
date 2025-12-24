@@ -63,6 +63,11 @@ export class Scene_Explore extends Scene_Base {
     handleInput(e) {
         if (!window.Game || !window.Game.ui || window.Game.ui.mode !== 'EXPLORE') return false;
 
+        // If a window is open, don't process scene-level input
+        if (window.Game.SceneManager && window.Game.SceneManager.windowStack.length > 0) {
+            return false;
+        }
+
         const Input = window.Game.Input;
         if (!Input) return false; // Safety check
 

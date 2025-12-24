@@ -20,8 +20,7 @@ export class SceneManager {
      * @param {Window_Base} window - The window to register.
      */
     registerWindow(window) {
-        // Avoid duplicates
-        this.unregisterWindow(window);
+        this.unregisterWindow(window); // Avoid duplicates
         this.windowStack.push(window);
     }
 

@@ -233,8 +233,8 @@ export class Window_Selectable extends Window_Base {
     handleInput(event) {
         if (event.key === 'Escape') {
             this.hide();
-            return true; // Input was handled
         }
-        return false; // Input was not handled
+        // Always consume input when a window is active
+        return true;
     }
 }
