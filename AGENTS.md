@@ -1,0 +1,1 @@
+Whenever executing a refactor plan, ALWAYS do the following: 1. Check whether the refactor document reflects the current state of the engine, 2. Execute the task 3. update the refactor document to reflect the current state of the refactor.
