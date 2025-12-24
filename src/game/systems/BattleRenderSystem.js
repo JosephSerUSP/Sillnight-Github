@@ -67,18 +67,16 @@ export class BattleRenderSystem {
         const loader = this.textureLoader || new THREE.TextureLoader();
 
         loader.load(resolved, (tex) => {
-            tex.wrapS = THREE.RepeatWrapping;
-            tex.wrapT = THREE.RepeatWrapping;
             tex.magFilter = THREE.NearestFilter;
             tex.minFilter = THREE.NearestFilter;
-            tex.repeat.set(15, 15);
 
             if (this.groundMesh) {
                 this.groundMesh.material.map = tex;
+                this.groundMesh.material.transparent = true;
                 this.groundMesh.material.needsUpdate = true;
             } else {
                 const geom = new THREE.PlaneGeometry(60, 60);
-                const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 1.0, metalness: 0.0 });
+                const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 1.0, metalness: 0.0, transparent: true });
                 this.groundMesh = new THREE.Mesh(geom, mat);
                 this.groundMesh.receiveShadow = true;
                 this.groundMesh.position.z = -0.05;
