@@ -12,8 +12,7 @@ export class EventDataRegistry extends Registry {
     }
 
     async load() {
-        const events = Data.events;
-        // Data.events seems to be an object like { treasure: {...}, ... }
+        const events = Data.events || {};
 
         for (const [key, def] of Object.entries(events)) {
              this.register(key, { ...def, id: key });
