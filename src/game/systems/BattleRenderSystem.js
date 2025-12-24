@@ -74,12 +74,14 @@ export class BattleRenderSystem {
                 this.groundMesh.material.map = tex;
                 this.groundMesh.material.transparent = true;
                 this.groundMesh.material.needsUpdate = true;
+                this.groundMesh.renderOrder = -1;
             } else {
                 const geom = new THREE.PlaneGeometry(60, 60);
                 const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 1.0, metalness: 0.0, transparent: true });
                 this.groundMesh = new THREE.Mesh(geom, mat);
                 this.groundMesh.receiveShadow = true;
                 this.groundMesh.position.z = -0.05;
+                this.groundMesh.renderOrder = -1;
                 if (this.scene) this.scene.add(this.groundMesh);
             }
         });
@@ -187,7 +189,8 @@ export class BattleRenderSystem {
                     new THREE.CircleGeometry(0.8, 16),
                     new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.5, transparent: true })
                 );
-                shadow.position.set(pos.x, pos.y, 0.05);
+                shadow.position.set(pos.x, pos.y, -0.04);
+                shadow.renderOrder = -0.5;
                 this.group.add(sprite);
                 this.group.add(shadow);
                 this.sprites[unit.uid] = sprite;
