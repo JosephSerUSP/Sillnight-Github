@@ -8,7 +8,7 @@ import { Config } from '../Config.js';
 /**
  * Manages the flow and state of battle.
  * Handles encounter setup, turn processing, and victory/defeat conditions.
- * Decoupled from UI via EventBus.
+ * Hybrid coupling: Uses EventBus for major events but retains direct UI references for specific flows.
  * @namespace BattleManager
  */
 export const BattleManager = {
