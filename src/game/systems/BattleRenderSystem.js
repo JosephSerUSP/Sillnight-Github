@@ -14,7 +14,10 @@ export class BattleRenderSystem {
         this.groundMesh = null;
         this.defaultGround = 'src/assets/images/battlefield/floors/RuinedTile1.png';
         this.currentGroundPath = null;
-        this.cameraState = { angle: -Math.PI / 4, targetAngle: -Math.PI / 4, targetX: 0, targetY: 0 };
+        this.cameraState = { angle: -Math.PI / 4, targetAngle: -Math.PI / 4, targetX: 0, targetY: 0, zoom: false };
+
+        // Intro Camera State
+        this.introState = null; // { startTime, duration, startPos, endPos, startAngle, endAngle }
     }
 
     /** Initializes the 3D scene. */
@@ -206,11 +209,97 @@ export class BattleRenderSystem {
     }
 
     /**
+     * Initializes the Intro sequence camera state.
+     * The camera rises vertically, rotates around the battlefield slightly, zooms out, and eases into position.
+     */
+    playIntro() {
+        const BASE = -Math.PI / 4;
+
+        // Start: Low angle, closer, slightly rotated
+        // End: Normal angle, normal distance
+
+        // We will animate properties manually in animate() or updateIntroCamera
+        // but we need to set the initial state so the first render is correct.
+
+        this.cameraState.angle = BASE - Math.PI / 8; // Start slightly rotated
+        this.cameraState.targetAngle = BASE; // End at base
+
+        // We define 'R' and 'Z' logic in animate(), but here we can setup an 'Intro Mode'
+        this.introState = {
+            active: true,
+            startTime: performance.now(),
+            duration: 2000,
+
+            // Parametric animation values (0 -> 1)
+            startAngle: BASE - Math.PI / 6,
+            endAngle: BASE,
+
+            startZ: 2.0, // Low
+            endZ: 16.0, // High (Normal)
+
+            startR: 12.0, // Zoomed In
+            endR: 28.28, // Normal
+
+            startYOffset: -5.0, // Look slightly lower?
+            endYOffset: 0
+        };
+
+        // Apply initial immediately
+        this.camera.position.z = this.introState.startZ;
+    }
+
+    /**
+     * Updates the camera based on the Intro state.
+     * Called by TransitionManager during the intro loop.
+     */
+    updateIntroCamera() {
+        if (!this.introState || !this.introState.active) return;
+
+        const now = performance.now();
+        const elapsed = now - this.introState.startTime;
+        const p = Math.min(1.0, elapsed / this.introState.duration);
+
+        // Ease Out Cubic
+        const ease = 1 - Math.pow(1 - p, 3);
+
+        const s = this.introState;
+
+        // Interpolate Values
+        const currentAngle = s.startAngle + (s.endAngle - s.startAngle) * ease;
+        const currentZ = s.startZ + (s.endZ - s.startZ) * ease;
+        const currentR = s.startR + (s.endR - s.startR) * ease;
+
+        // Update Camera Position
+        // Focus usually (0,0)
+        const targetX = 0;
+        const targetY = 0;
+
+        this.camera.position.x = targetX + Math.cos(currentAngle) * currentR;
+        this.camera.position.y = targetY + Math.sin(currentAngle) * currentR;
+        this.camera.position.z = currentZ;
+
+        // Look At
+        this.camera.lookAt(targetX, targetY, 2); // Look slightly up at units
+
+        // Sync internal state so when intro finishes, it doesn't snap
+        this.cameraState.angle = currentAngle;
+
+        if (p >= 1.0) {
+            this.introState.active = false;
+            // Ensure final values
+            this.cameraState.angle = s.endAngle;
+        }
+    }
+
+    /**
      * Moves the camera focus to a specific target type.
      * @param {string} type - 'ally', 'enemy', 'victory', 'unit', or default.
      * @param {string} [targetUid] - The UID of the unit to focus on (if type is 'unit').
      */
     setFocus(type, targetUid) {
+        // If in intro, ignore focus changes?
+        if (this.introState && this.introState.active) return;
+
         const BASE = -Math.PI / 4;
         const SHIFT = Math.PI / 12;
         if (type === 'ally') {
@@ -276,33 +365,48 @@ export class BattleRenderSystem {
      */
     animate() {
         requestAnimationFrame(() => this.animate());
+
+        // If external transition manager is running the show, we pause this loop
+        // to avoid fighting over the renderer/clearing buffers.
+        if (window.Game && window.Game.ui && window.Game.ui.transitioning) {
+            return;
+        }
+
         const cs = this.cameraState;
-        if (window.Game.ui.mode === 'BATTLE_WIN') {
-            cs.angle += 0.005;
+
+        // If we are in Intro mode but NOT transitioning (should happen only if transition ended but intro logic continues)
+        // ideally transition covers the whole intro duration.
+        if (this.introState && this.introState.active) {
+            this.updateIntroCamera();
         } else {
-            cs.angle += (cs.targetAngle - cs.angle) * 0.05;
+             // Standard Logic
+            if (window.Game.ui.mode === 'BATTLE_WIN') {
+                cs.angle += 0.005;
+            } else {
+                cs.angle += (cs.targetAngle - cs.angle) * 0.05;
+            }
+
+            // If zooming in (for level up), reduce R and Z height
+            let R = 28.28;
+            let Z_HEIGHT = 16;
+
+            if (cs.zoom) {
+                R = 10.0;
+                Z_HEIGHT = 5.0;
+            }
+
+            this.camera.position.x = cs.targetX + Math.cos(cs.angle) * R;
+            this.camera.position.y = cs.targetY + Math.sin(cs.angle) * R;
+            // Smooth Z transition could be added here, but direct assignment for now
+            this.camera.position.z = this.camera.position.z + (Z_HEIGHT - this.camera.position.z) * 0.1;
+
+            this.camera.lookAt(cs.targetX, cs.targetY, 2);
         }
 
         // Drive Scene Updates
         if (window.Game && window.Game.SceneManager) {
             window.Game.SceneManager.update();
         }
-
-        // If zooming in (for level up), reduce R and Z height
-        let R = 28.28;
-        let Z_HEIGHT = 16;
-
-        if (cs.zoom) {
-            R = 10.0;
-            Z_HEIGHT = 5.0;
-        }
-
-        this.camera.position.x = cs.targetX + Math.cos(cs.angle) * R;
-        this.camera.position.y = cs.targetY + Math.sin(cs.angle) * R;
-        // Smooth Z transition could be added here, but direct assignment for now
-        this.camera.position.z = this.camera.position.z + (Z_HEIGHT - this.camera.position.z) * 0.1;
-
-        this.camera.lookAt(cs.targetX, cs.targetY, 2);
 
         const renderer = window.Game.RenderManager.getRenderer();
         if (renderer && (window.Game.ui.mode === 'BATTLE' || window.Game.ui.mode === 'BATTLE_WIN')) {

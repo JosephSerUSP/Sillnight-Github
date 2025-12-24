@@ -494,21 +494,32 @@ export class ExploreSystem {
         setTimeout(() => this.syncDynamic(), 300);
     }
 
-    resolveStaticTile(code) {
+    async resolveStaticTile(code) {
         const map = window.$gameMap;
         if (code === 3) {
              map.floor++;
              Log.add('Descended...');
-             map.generateFloor();
-             this.rebuildLevel();
+
+             // Transition Hook
+             const TransitionManager = window.Game.Managers.Transition;
+             if (TransitionManager) {
+                 await TransitionManager.runMapTransfer(() => {
+                     map.generateFloor();
+                     this.rebuildLevel();
+                 });
+             } else {
+                 map.generateFloor();
+                 this.rebuildLevel();
+             }
         }
     }
 
     animate() {
-        if (window.Game.ui.mode === 'EXPLORE') {
-            requestAnimationFrame(() => this.animate());
-        } else {
-            requestAnimationFrame(() => this.animate());
+        requestAnimationFrame(() => this.animate());
+
+        // If transitioning, pause this loop (let TransitionManager control renderer)
+        if (window.Game && window.Game.ui && window.Game.ui.transitioning) {
+            return;
         }
 
         if (window.Game && window.Game.SceneManager) {

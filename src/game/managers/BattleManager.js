@@ -68,6 +68,14 @@ export const BattleManager = {
      */
     async _startEncounterWithEnemies(enemies) {
         Systems.sceneHooks?.onBattleStart?.();
+
+        const TransitionManager = window.Game.Managers.Transition;
+
+        // 1. Swirl Transition (Capture Explore State)
+        if (TransitionManager && Systems.Explore.scene && Systems.Explore.camera) {
+            await TransitionManager.runBattleStart(Systems.Explore.scene, Systems.Explore.camera);
+        }
+
         if (window.Game && window.Game.ui) {
             window.Game.ui.mode = 'BATTLE';
         }
@@ -75,9 +83,8 @@ export const BattleManager = {
         // Wait for scene switch (handles DOM race conditions)
         await window.Game.Scenes.battle.switchScene(true);
 
-        Systems.Battle3D.cameraState.angle = -Math.PI / 4;
-        Systems.Battle3D.cameraState.targetAngle = -Math.PI / 4;
-        Systems.Battle3D.setFocus('neutral');
+        // 2. Setup Battle Scene & Camera Intro
+        Systems.Battle3D.playIntro(); // Reset camera to Intro state
         Systems.Battle3D.resize();
 
         const allies = window.$gameParty.activeSlots.filter(u => u !== null);
@@ -89,8 +96,13 @@ export const BattleManager = {
         // Emit battle start event
         Services.events.emit('battle:start', { enemies: this.enemies });
 
+        // 3. Run Intro Sequence (Cut In + Camera Move)
+        if (TransitionManager) {
+             await TransitionManager.runBattleIntro();
+        }
+
         // Brief delay before first round starts to allow player to see enemies
-        setTimeout(() => this.nextRound(), 1000);
+        setTimeout(() => this.nextRound(), 500); // Reduced delay since intro takes time
     },
 
     /**
