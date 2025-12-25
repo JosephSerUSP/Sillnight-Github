@@ -28,7 +28,7 @@ export class TransitionManager {
         this.canvas.style.inset = '0';
         this.canvas.style.width = '100%';
         this.canvas.style.height = '100%';
-        this.canvas.style.zIndex = '9999';
+        this.canvas.style.zIndex = '9'; // Above game (0) but below UI (10)
         this.canvas.style.pointerEvents = 'none';
         this.canvas.style.display = 'none';
 
@@ -283,41 +283,93 @@ export class TransitionManager {
             return `${header}
 
             void main() {
-                vec2 uv = vUv;
+                // Fix Orientation: WebGL texture vs Canvas coordinate mismatch
+                vec2 uv = vec2(vUv.x, 1.0 - vUv.y);
+
                 vec2 center = vec2(0.5, 0.5);
                 vec2 toCenter = center - uv;
                 float dist = length(toCenter);
-                float angle = atan(toCenter.y, toCenter.x);
 
-                // Twist logic: Rotate based on distance
-                // Twist increases with progress
-                float twistStrength = uProgress * 15.0;
-                float twist = twistStrength * dist;
-                float newAngle = angle + twist;
+                // Spiral Blur Effect
+                // Combines Zoom Blur (moving towards center) with Swirl (rotation)
 
-                vec2 distortedUV = center - vec2(cos(newAngle), sin(newAngle)) * dist;
+                vec4 accColor = vec4(0.0);
+                float totalWeight = 0.0;
 
-                vec4 texColor = vec4(0.0, 0.0, 0.0, 1.0);
+                // Strength parameters
+                float zoomAmount = uProgress * 0.3;     // How much to zoom in
+                float twistAmount = uProgress * 3.0;    // How much to twist (swirl)
+                float samples = 30.0;                   // More samples for smoother swirl
 
-                if (uHasCapture == 1) {
-                    // Check bounds to avoid sampling outside [0,1] wrapping
-                    if (distortedUV.x >= 0.0 && distortedUV.x <= 1.0 && distortedUV.y >= 0.0 && distortedUV.y <= 1.0) {
-                         texColor = texture2D(uScreen, distortedUV);
-                    } else {
-                         texColor = vec4(0.0, 0.0, 0.0, 1.0);
+                for (float i = 0.0; i < 30.0; i++) {
+                    float t = i / samples;
+
+                    // 1. Zoom Scale (1.0 -> smaller)
+                    float scale = 1.0 - (zoomAmount * t);
+
+                    // 2. Rotation Angle (increases with t and distance for swirl)
+                    float angle = twistAmount * t * (1.0 + dist);
+                    float s = sin(angle);
+                    float c = cos(angle);
+
+                    // Rotate the vector to center
+                    vec2 rotatedVec = vec2(
+                        toCenter.x * c - toCenter.y * s,
+                        toCenter.x * s + toCenter.y * c
+                    );
+
+                    // Calculate sample position
+                    // We move from 'uv' towards 'center' along the curved path
+                    vec2 sampleUV = center - rotatedVec * scale;
+
+                    if (uHasCapture == 1) {
+                        // Clamp to valid range
+                        vec2 clampedUV = clamp(sampleUV, 0.0, 1.0);
+                        vec4 sColor = texture2D(uScreen, clampedUV);
+
+                        // Additive Weighting
+                        // Center samples (t=0) are sharpest, outer (t=1) are most distorted.
+                        // We weight them equally for a blur, or taper off.
+                        // Pure average for now.
+                        accColor += sColor;
+                        totalWeight += 1.0;
                     }
                 }
 
-                // Fade to black based on progress
-                // uProgress 0 -> 1.
-                // We want final image to be black.
-                // Twist happens, and simultaneously darkness consumes it.
+                vec4 texColor = vec4(0.0, 0.0, 0.0, 1.0);
+                if (totalWeight > 0.0) {
+                    texColor = accColor / totalWeight;
+                }
 
-                // Simple lerp to black
-                float fade = uProgress;
-                vec3 finalColor = mix(texColor.rgb, vec3(0.0), fade);
+                // Color Grading: Additive Pop -> Burn -> Black
 
-                gl_FragColor = vec4(finalColor, 1.0);
+                // 1. Saturation (Ramps up)
+                float gray = dot(texColor.rgb, vec3(0.299, 0.587, 0.114));
+                float satLevel = 1.0 + (uProgress * 3.0);
+                vec3 satColor = mix(vec3(gray), texColor.rgb, satLevel);
+
+                // 2. Contrast (Burn effect)
+                // Ramp contrast up as we fade.
+                float contrastStrength = 1.0 + (uProgress * 1.5); // 1.0 -> 2.5
+                vec3 contrastColor = (satColor - 0.5) * contrastStrength + 0.5;
+
+                // 3. Brightness Curve (Pop then Fade)
+                // We want a "pop" at the start (uProgress 0.0 -> 0.3) then fade to 0.
+
+                // Pop curve: Starts at 1.0, peaks around 1.3 at progress 0.2, then decays.
+                // Using sine for a smooth bump.
+                float pop = sin(uProgress * 3.14159) * 0.4; // Boosts up to +0.4
+
+                // Fade curve: Standard inverse linear or smoothstep
+                float fade = 1.0 - smoothstep(0.2, 0.9, uProgress);
+
+                // Combine: Base Brightness (1.0) + Pop, then multiplied by fade
+                float finalBrightness = (1.0 + pop) * fade;
+
+                vec3 finalColor = contrastColor * finalBrightness;
+
+                // Hard clamp to prevent negative values from contrast math
+                gl_FragColor = vec4(max(vec3(0.0), finalColor), 1.0);
             }`;
         }
 
