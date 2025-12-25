@@ -12,8 +12,11 @@ export class TransitionManager {
         this.type = null; // 'BATTLE_START', 'BATTLE_INTRO', 'MAP_OUT', 'MAP_IN'
         this.resolvePromise = null;
 
-        // Quad buffer
+        // Quad buffer (standard)
         this.buffer = null;
+
+        // Shatter buffers (for BATTLE_START)
+        this.shatterBuffers = null; // { pos, centroid, random, uv, count }
 
         // Texture for screen capture (optional, if we want to distort the previous frame)
         this.capturedTexture = null;
@@ -49,6 +52,7 @@ export class TransitionManager {
         }
 
         this.setupBuffers();
+        this.setupShatterBuffers();
         this.resize();
 
         window.addEventListener('resize', () => this.resize());
@@ -75,6 +79,105 @@ export class TransitionManager {
         this.buffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
         gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+    }
+
+    setupShatterBuffers() {
+        const gl = this.gl;
+        const cols = 16;
+        const rows = 9;
+
+        // Generate perturbed grid
+        const points = []; // [y][x] -> {x, y} (normalized 0..1)
+        for (let y = 0; y <= rows; y++) {
+            const row = [];
+            for (let x = 0; x <= cols; x++) {
+                let px = x / cols;
+                let py = y / rows;
+
+                // Perturb inner points
+                if (x > 0 && x < cols && y > 0 && y < rows) {
+                    const ampX = (1.0 / cols) * 0.4;
+                    const ampY = (1.0 / rows) * 0.4;
+                    px += (Math.random() - 0.5) * 2.0 * ampX;
+                    py += (Math.random() - 0.5) * 2.0 * ampY;
+                }
+                row.push({ x: px, y: py });
+            }
+            points.push(row);
+        }
+
+        const positions = [];
+        const centroids = [];
+        const randoms = []; // x: speed, y: rotation, z: delay
+        const uvs = [];
+
+        for (let y = 0; y < rows; y++) {
+            for (let x = 0; x < cols; x++) {
+                // Quad p1, p2, p3, p4
+                const p1 = points[y][x];
+                const p2 = points[y][x + 1];
+                const p3 = points[y + 1][x];
+                const p4 = points[y + 1][x + 1];
+
+                // Two triangles: T1(p1, p2, p3), T2(p2, p4, p3)
+                // Actually standard quad indices: (0,1,2), (1,3,2)
+                // p1(0,0), p2(1,0), p3(0,1), p4(1,1)
+
+                const addTriangle = (v1, v2, v3) => {
+                    // Centroid
+                    const cx = (v1.x + v2.x + v3.x) / 3.0;
+                    const cy = (v1.y + v2.y + v3.y) / 3.0;
+
+                    // Convert to clip space (-1 to 1) for position, 0-1 for UV
+                    const makeVert = (v) => {
+                        positions.push(v.x * 2 - 1, v.y * 2 - 1);
+                        uvs.push(v.x, v.y);
+                        centroids.push(cx * 2 - 1, cy * 2 - 1); // Centroid in clip space
+
+                        // Randoms per triangle (same for all 3 verts)
+                        // x: speed (0.8 - 1.5)
+                        // y: rotation speed (-1 to 1)
+                        // z: delay (based on x position? or random?)
+                        // User said: "fragments move to the left".
+                        // Let's randomize speed.
+                        // Add some delay based on X to make it ripple? Or random?
+                        // "Fractured for a few frames" -> Global delay handled in shader.
+                        // Let's just put random values.
+                    };
+
+                    const speed = 0.5 + Math.random() * 1.5;
+                    const rot = (Math.random() - 0.5) * 4.0;
+                    const delay = Math.random() * 0.5; // Random start delay
+
+                    makeVert(v1); randoms.push(speed, rot, delay);
+                    makeVert(v2); randoms.push(speed, rot, delay);
+                    makeVert(v3); randoms.push(speed, rot, delay);
+                };
+
+                addTriangle(p1, p2, p3);
+                addTriangle(p2, p4, p3);
+            }
+        }
+
+        this.shatterBuffers = {
+            position: gl.createBuffer(),
+            centroid: gl.createBuffer(),
+            random: gl.createBuffer(),
+            uv: gl.createBuffer(),
+            count: positions.length / 2
+        };
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.shatterBuffers.position);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.shatterBuffers.centroid);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(centroids), gl.STATIC_DRAW);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.shatterBuffers.random);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(randoms), gl.STATIC_DRAW);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.shatterBuffers.uv);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uvs), gl.STATIC_DRAW);
     }
 
     /**
@@ -136,8 +239,8 @@ export class TransitionManager {
     // --- TRANSITION METHODS ---
 
     /**
-     * Start battle transition: Swirl + Fade to Black.
-     * @param {HTMLCanvasElement} [sourceCanvas] - If provided, captures screen for distortion.
+     * Start battle transition: Shatter -> Fly Left -> Reveal Black.
+     * @param {HTMLCanvasElement} [sourceCanvas] - If provided, captures screen for effect.
      */
     async startBattleTransition(sourceCanvas) {
         this.type = 'BATTLE_START';
@@ -156,7 +259,7 @@ export class TransitionManager {
     async startBattleIntro() {
         this.type = 'BATTLE_INTRO';
         this.duration = 1500;
-        this.hasCapture = false; // No capture needed for intro (revealing new scene)
+        this.hasCapture = false;
         return this.run();
     }
 
@@ -186,16 +289,9 @@ export class TransitionManager {
         this.canvas.style.display = 'block';
         this.startTime = performance.now();
 
-        // Select Shader
+        // Select Shaders
         const fs = this.getFragmentShader(this.type);
-        const vs = `
-            attribute vec2 position;
-            varying vec2 vUv;
-            void main() {
-                vUv = position * 0.5 + 0.5;
-                gl_Position = vec4(position, 0.0, 1.0);
-            }
-        `;
+        const vs = this.getVertexShader(this.type);
 
         if (this.program) this.gl.deleteProgram(this.program);
         this.program = this.createProgram(vs, fs);
@@ -225,6 +321,7 @@ export class TransitionManager {
         this.isActive = false;
         if (this.type === 'BATTLE_START' || this.type === 'MAP_OUT') {
             // Keep canvas visible (black)
+            // Note: BATTLE_START leaves the screen black (fragments flew away).
         } else {
             // Hide canvas (revealed)
             this.canvas.style.display = 'none';
@@ -250,6 +347,7 @@ export class TransitionManager {
         gl.uniform2f(uRes, this.canvas.width, this.canvas.height);
         gl.uniform1f(uTime, performance.now() / 1000.0);
 
+        // Bind Texture
         if (this.hasCapture && this.capturedTexture) {
             gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_2D, this.capturedTexture);
@@ -259,12 +357,103 @@ export class TransitionManager {
             gl.uniform1i(uHasCapture, 0);
         }
 
-        const posAttrib = gl.getAttribLocation(this.program, 'position');
-        gl.enableVertexAttribArray(posAttrib);
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
-        gl.vertexAttribPointer(posAttrib, 2, gl.FLOAT, false, 0, 0);
+        // --- Render Logic Based on Type ---
+        if (this.type === 'BATTLE_START') {
+            // Render SHATTER mesh
+            // Clear background to Black so gaps reveal blackness
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
 
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
+            if (this.shatterBuffers) {
+                const enableAttr = (name, buffer, size) => {
+                    const loc = gl.getAttribLocation(this.program, name);
+                    if (loc !== -1) {
+                        gl.enableVertexAttribArray(loc);
+                        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+                        gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
+                    }
+                };
+
+                enableAttr('position', this.shatterBuffers.position, 2);
+                enableAttr('aCentroid', this.shatterBuffers.centroid, 2);
+                enableAttr('aRandom', this.shatterBuffers.random, 3);
+                enableAttr('aUv', this.shatterBuffers.uv, 2);
+
+                gl.drawArrays(gl.TRIANGLES, 0, this.shatterBuffers.count);
+            }
+        } else {
+            // Standard QUAD render
+            // Map transitions use alpha, so clear to transparent
+            gl.clearColor(0.0, 0.0, 0.0, 0.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            const posAttrib = gl.getAttribLocation(this.program, 'position');
+            gl.enableVertexAttribArray(posAttrib);
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+            gl.vertexAttribPointer(posAttrib, 2, gl.FLOAT, false, 0, 0);
+
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+        }
+    }
+
+    getVertexShader(type) {
+        if (type === 'BATTLE_START') {
+            return `
+            precision mediump float;
+            attribute vec2 position;
+            attribute vec2 aCentroid;
+            attribute vec3 aRandom; // x: speed, y: rotation speed, z: delay
+            attribute vec2 aUv;
+
+            uniform float uProgress;
+            varying vec2 vUv;
+            varying float vVisible;
+
+            void main() {
+                vUv = aUv;
+
+                // Crack Logic
+                // Delay movement
+                float startMove = 0.2;
+                float activeTime = max(0.0, uProgress - startMove - (aRandom.z * 0.1));
+
+                // Displacement
+                // Move Left (-x) + some random Y drift
+                vec2 dir = vec2(-1.0, (aRandom.y * 0.2));
+                vec2 offset = dir * activeTime * aRandom.x * 2.5;
+
+                // Rotation
+                float angle = activeTime * aRandom.y * 5.0;
+                float s = sin(angle);
+                float c = cos(angle);
+                mat2 rot = mat2(c, -s, s, c);
+
+                vec2 pos = position;
+
+                // Rotate around centroid
+                vec2 local = pos - aCentroid;
+                local = rot * local;
+                pos = aCentroid + local + offset;
+
+                // Shrink slightly to show cracks initially
+                float shrink = 1.0 - smoothstep(0.0, 0.3, uProgress) * 0.02;
+                // Or simply scale local
+                pos = aCentroid + (local * shrink) + offset;
+
+                gl_Position = vec4(pos, 0.0, 1.0);
+            }
+            `;
+        }
+
+        // Default Quad Shader
+        return `
+            attribute vec2 position;
+            varying vec2 vUv;
+            void main() {
+                vUv = position * 0.5 + 0.5;
+                gl_Position = vec4(position, 0.0, 1.0);
+            }
+        `;
     }
 
     getFragmentShader(type) {
@@ -281,43 +470,13 @@ export class TransitionManager {
 
         if (type === 'BATTLE_START') {
             return `${header}
-
             void main() {
-                vec2 uv = vUv;
-                vec2 center = vec2(0.5, 0.5);
-                vec2 toCenter = center - uv;
-                float dist = length(toCenter);
-                float angle = atan(toCenter.y, toCenter.x);
-
-                // Twist logic: Rotate based on distance
-                // Twist increases with progress
-                float twistStrength = uProgress * 15.0;
-                float twist = twistStrength * dist;
-                float newAngle = angle + twist;
-
-                vec2 distortedUV = center - vec2(cos(newAngle), sin(newAngle)) * dist;
-
+                // Simple texture lookup
                 vec4 texColor = vec4(0.0, 0.0, 0.0, 1.0);
-
                 if (uHasCapture == 1) {
-                    // Check bounds to avoid sampling outside [0,1] wrapping
-                    if (distortedUV.x >= 0.0 && distortedUV.x <= 1.0 && distortedUV.y >= 0.0 && distortedUV.y <= 1.0) {
-                         texColor = texture2D(uScreen, distortedUV);
-                    } else {
-                         texColor = vec4(0.0, 0.0, 0.0, 1.0);
-                    }
+                    texColor = texture2D(uScreen, vUv);
                 }
-
-                // Fade to black based on progress
-                // uProgress 0 -> 1.
-                // We want final image to be black.
-                // Twist happens, and simultaneously darkness consumes it.
-
-                // Simple lerp to black
-                float fade = uProgress;
-                vec3 finalColor = mix(texColor.rgb, vec3(0.0), fade);
-
-                gl_FragColor = vec4(finalColor, 1.0);
+                gl_FragColor = texColor;
             }`;
         }
 
