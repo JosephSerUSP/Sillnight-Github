@@ -263,8 +263,8 @@ export const BattleManager = {
             } else if (itemRegistry.get(chosen)) {
                 actionData = itemRegistry.get(chosen);
             } else {
-                // Fallback: Case-insensitive search (Legacy support)
-                // This is expensive and should be deprecated, but kept for safety during migration
+                // @deprecated: Fallback for Legacy case-insensitive search
+                // TODO: Remove this once all data files are normalized to exact case IDs.
                 const chosenLower = chosen.toLowerCase();
                 const allSkillIds = skillRegistry.getAll().map(s => s.id);
                 const skillKey = allSkillIds.find(k => k.toLowerCase() === chosenLower);
@@ -378,7 +378,8 @@ export const BattleManager = {
                 // Replaces: window.Game.Windows.BattleLog.showBanner('VICTORY');
                 Services.events.emit('battle:victory', { xp: 0, gold: 0, party: [] }); // Dummy event for now
 
-                window.Game.Windows.BattleLog.showBanner('VICTORY'); // Keeping direct call for now as Victory UI is complex
+                // Legacy/Hybrid: Direct UI call. Should eventually subscribe to 'battle:victory'.
+                window.Game.Windows.BattleLog.showBanner('VICTORY');
                 window.Game.ui.mode = 'BATTLE_WIN';
                 Systems.sceneHooks?.onBattleEnd?.();
                 if (Systems.Observer) Systems.Observer.fire('onBattleEnd', [...this.allies, ...this.enemies].filter(u => u && u.hp > 0));
