@@ -16,7 +16,7 @@ export class TransitionManager {
         this.buffer = null;
 
         // Shatter buffers (for BATTLE_START)
-        this.shatterBuffers = null; // { pos, centroid, random, uv, count }
+        this.shatterBuffers = null; // { pos, centroid, random, uv, bary, count }
 
         // Texture for screen capture (optional, if we want to distort the previous frame)
         this.capturedTexture = null;
@@ -110,6 +110,7 @@ export class TransitionManager {
         const centroids = [];
         const randoms = []; // x: speed, y: rotation, z: delay
         const uvs = [];
+        const barys = []; // Barycentric coordinates
 
         for (let y = 0; y < rows; y++) {
             for (let x = 0; x < cols; x++) {
@@ -120,31 +121,37 @@ export class TransitionManager {
                 const p4 = points[y + 1][x + 1];
 
                 // Two triangles: T1(p1, p2, p3), T2(p2, p4, p3)
-                // Actually standard quad indices: (0,1,2), (1,3,2)
-                // p1(0,0), p2(1,0), p3(0,1), p4(1,1)
 
                 const addTriangle = (v1, v2, v3) => {
                     // Centroid
                     const cx = (v1.x + v2.x + v3.x) / 3.0;
                     const cy = (v1.y + v2.y + v3.y) / 3.0;
 
-                    // Convert to clip space (-1 to 1) for position, 0-1 for UV
-                    const makeVert = (v) => {
-                        positions.push(v.x * 2 - 1, v.y * 2 - 1);
-
-                        // FLIP Y for UV to fix upside-down texture issue
-                        uvs.push(v.x, 1.0 - v.y);
-
-                        centroids.push(cx * 2 - 1, cy * 2 - 1); // Centroid in clip space
-                    };
-
+                    // Randoms per triangle
                     const speed = 0.5 + Math.random() * 1.5;
                     const rot = (Math.random() - 0.5) * 4.0;
-                    const delay = Math.random() * 0.5; // Random start delay
+                    const delay = Math.random() * 0.5;
 
-                    makeVert(v1); randoms.push(speed, rot, delay);
-                    makeVert(v2); randoms.push(speed, rot, delay);
-                    makeVert(v3); randoms.push(speed, rot, delay);
+                    // Vertex 1
+                    positions.push(v1.x * 2 - 1, v1.y * 2 - 1);
+                    uvs.push(v1.x, 1.0 - v1.y); // Flipped Y
+                    centroids.push(cx * 2 - 1, cy * 2 - 1);
+                    randoms.push(speed, rot, delay);
+                    barys.push(1, 0, 0);
+
+                    // Vertex 2
+                    positions.push(v2.x * 2 - 1, v2.y * 2 - 1);
+                    uvs.push(v2.x, 1.0 - v2.y);
+                    centroids.push(cx * 2 - 1, cy * 2 - 1);
+                    randoms.push(speed, rot, delay);
+                    barys.push(0, 1, 0);
+
+                    // Vertex 3
+                    positions.push(v3.x * 2 - 1, v3.y * 2 - 1);
+                    uvs.push(v3.x, 1.0 - v3.y);
+                    centroids.push(cx * 2 - 1, cy * 2 - 1);
+                    randoms.push(speed, rot, delay);
+                    barys.push(0, 0, 1);
                 };
 
                 addTriangle(p1, p2, p3);
@@ -157,6 +164,7 @@ export class TransitionManager {
             centroid: gl.createBuffer(),
             random: gl.createBuffer(),
             uv: gl.createBuffer(),
+            bary: gl.createBuffer(),
             count: positions.length / 2
         };
 
@@ -171,12 +179,11 @@ export class TransitionManager {
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.shatterBuffers.uv);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uvs), gl.STATIC_DRAW);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.shatterBuffers.bary);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(barys), gl.STATIC_DRAW);
     }
 
-    /**
-     * Captures the contents of another canvas (the game renderer) into a texture.
-     * @param {HTMLCanvasElement} sourceCanvas
-     */
     capture(sourceCanvas) {
         if (!sourceCanvas) return;
         const gl = this.gl;
@@ -186,10 +193,8 @@ export class TransitionManager {
         }
 
         gl.bindTexture(gl.TEXTURE_2D, this.capturedTexture);
-        // Upload the canvas to the texture
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sourceCanvas);
 
-        // Set parameters
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
@@ -229,12 +234,6 @@ export class TransitionManager {
         return program;
     }
 
-    // --- TRANSITION METHODS ---
-
-    /**
-     * Start battle transition: Shatter -> Fly Left -> Reveal Black.
-     * @param {HTMLCanvasElement} [sourceCanvas] - If provided, captures screen for effect.
-     */
     async startBattleTransition(sourceCanvas) {
         this.type = 'BATTLE_START';
         this.duration = 1500;
@@ -246,9 +245,6 @@ export class TransitionManager {
         return this.run();
     }
 
-    /**
-     * Start battle intro: Horizontal Cut In (Opening from black).
-     */
     async startBattleIntro() {
         this.type = 'BATTLE_INTRO';
         this.duration = 1500;
@@ -256,9 +252,6 @@ export class TransitionManager {
         return this.run();
     }
 
-    /**
-     * Map Transfer Out: Diagonal Swipe + Distort -> Black
-     */
     async startMapTransitionOut() {
         this.type = 'MAP_OUT';
         this.duration = 1000;
@@ -266,9 +259,6 @@ export class TransitionManager {
         return this.run();
     }
 
-    /**
-     * Map Transfer In: Diagonal Swipe Reveal -> Clear
-     */
     async startMapTransitionIn() {
         this.type = 'MAP_IN';
         this.duration = 1000;
@@ -282,7 +272,6 @@ export class TransitionManager {
         this.canvas.style.display = 'block';
         this.startTime = performance.now();
 
-        // Select Shaders
         const fs = this.getFragmentShader(this.type);
         const vs = this.getVertexShader(this.type);
 
@@ -314,9 +303,7 @@ export class TransitionManager {
         this.isActive = false;
         if (this.type === 'BATTLE_START' || this.type === 'MAP_OUT') {
             // Keep canvas visible (black)
-            // Note: BATTLE_START leaves the screen black (fragments flew away).
         } else {
-            // Hide canvas (revealed)
             this.canvas.style.display = 'none';
         }
         if (this.resolvePromise) {
@@ -340,7 +327,6 @@ export class TransitionManager {
         gl.uniform2f(uRes, this.canvas.width, this.canvas.height);
         gl.uniform1f(uTime, performance.now() / 1000.0);
 
-        // Bind Texture
         if (this.hasCapture && this.capturedTexture) {
             gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_2D, this.capturedTexture);
@@ -350,10 +336,8 @@ export class TransitionManager {
             gl.uniform1i(uHasCapture, 0);
         }
 
-        // --- Render Logic Based on Type ---
         if (this.type === 'BATTLE_START') {
             // Render SHATTER mesh
-            // Clear background to Black so gaps reveal blackness
             gl.clearColor(0.0, 0.0, 0.0, 1.0);
             gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -371,12 +355,12 @@ export class TransitionManager {
                 enableAttr('aCentroid', this.shatterBuffers.centroid, 2);
                 enableAttr('aRandom', this.shatterBuffers.random, 3);
                 enableAttr('aUv', this.shatterBuffers.uv, 2);
+                enableAttr('aBary', this.shatterBuffers.bary, 3);
 
                 gl.drawArrays(gl.TRIANGLES, 0, this.shatterBuffers.count);
             }
         } else {
             // Standard QUAD render
-            // Map transitions use alpha, so clear to transparent
             gl.clearColor(0.0, 0.0, 0.0, 0.0);
             gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -397,22 +381,27 @@ export class TransitionManager {
             attribute vec2 aCentroid;
             attribute vec3 aRandom; // x: speed, y: rotation speed, z: delay
             attribute vec2 aUv;
+            attribute vec3 aBary;
 
             uniform float uProgress;
             varying vec2 vUv;
-            varying float vVisible;
+            varying vec3 vBary;
+            varying vec3 vRandom;
+            varying float vPhase;
 
             void main() {
                 vUv = aUv;
+                vBary = aBary;
+                vRandom = aRandom;
 
                 // Crack Logic
                 // Delay movement
                 float startMove = 0.2;
                 float activeTime = max(0.0, uProgress - startMove - (aRandom.z * 0.1));
+                vPhase = activeTime; // Pass to frag for glow timing
 
                 // Displacement
                 // Move Left (-x) + some random Y drift
-                // INCREASED SPEED: 2.5 -> 5.0 to ensure exit
                 vec2 dir = vec2(-1.0, (aRandom.y * 0.2));
                 vec2 offset = dir * activeTime * aRandom.x * 5.0;
 
@@ -431,7 +420,6 @@ export class TransitionManager {
 
                 // Shrink slightly to show cracks initially
                 float shrink = 1.0 - smoothstep(0.0, 0.3, uProgress) * 0.02;
-                // Or simply scale local
                 pos = aCentroid + (local * shrink) + offset;
 
                 gl_Position = vec4(pos, 0.0, 1.0);
@@ -439,7 +427,6 @@ export class TransitionManager {
             `;
         }
 
-        // Default Quad Shader
         return `
             attribute vec2 position;
             varying vec2 vUv;
@@ -451,7 +438,6 @@ export class TransitionManager {
     }
 
     getFragmentShader(type) {
-        // Common uniforms
         const header = `
             precision mediump float;
             varying vec2 vUv;
@@ -464,13 +450,48 @@ export class TransitionManager {
 
         if (type === 'BATTLE_START') {
             return `${header}
+            varying vec3 vBary;
+            varying vec3 vRandom;
+            varying float vPhase;
+
             void main() {
-                // Simple texture lookup
-                vec4 texColor = vec4(0.0, 0.0, 0.0, 1.0);
-                if (uHasCapture == 1) {
-                    texColor = texture2D(uScreen, vUv);
+                if (uHasCapture == 0) {
+                    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+                    return;
                 }
-                gl_FragColor = texColor;
+
+                // Base Image
+                vec4 texColor = texture2D(uScreen, vUv);
+
+                // Glow / Flash (at start of shatter)
+                // Pulse quickly when phase starts
+                float flash = smoothstep(0.0, 0.05, vPhase) * (1.0 - smoothstep(0.05, 0.4, vPhase));
+
+                // Edge Highlight (Glint)
+                // Use barycentric coords to find distance to edge
+                float dist = min(vBary.x, min(vBary.y, vBary.z));
+                float edge = 1.0 - smoothstep(0.0, 0.03, dist); // Thin glowing edge
+
+                // Reflection (Fake Environment)
+                // Sample same texture but distorted by "view" angle (simulated by rotation)
+                // Moving the sample UV creates the "glassy" reflection effect
+                vec2 reflUV = vUv + vec2(vPhase * vRandom.y * 0.5, vPhase * 0.1);
+                vec4 reflection = texture2D(uScreen, reflUV);
+
+                // Composition
+                vec3 finalColor = texColor.rgb;
+
+                // Add Reflection (Glassy look)
+                finalColor += reflection.rgb * 0.2;
+
+                // Add Flash Tint (Cyan/White)
+                vec3 glowColor = vec3(0.6, 0.9, 1.0); // Cyan
+                finalColor += glowColor * flash * 0.8;
+
+                // Add Edge Glint (White)
+                finalColor += vec3(1.0) * edge * (0.3 + flash * 2.0);
+
+                gl_FragColor = vec4(finalColor, 1.0);
             }`;
         }
 
@@ -480,8 +501,6 @@ export class TransitionManager {
                 float center = 0.5;
                 float halfHeight = uProgress * 0.6;
                 float distY = abs(vUv.y - center);
-
-                // Opening Mask: Black outside, Transparent inside.
                 float mask = smoothstep(halfHeight, halfHeight + 0.01, distY);
                 gl_FragColor = vec4(0.0, 0.0, 0.0, mask);
             }`;
@@ -493,8 +512,6 @@ export class TransitionManager {
                 float diag = vUv.x + vUv.y;
                 float threshold = uProgress * 2.5;
                 float noise = sin(vUv.x * 20.0 + uTime) * 0.05;
-
-                // Swipe adds black
                 float a = 1.0 - smoothstep(threshold - 0.1 + noise, threshold + noise, diag);
                 gl_FragColor = vec4(0.0, 0.0, 0.0, a);
             }`;
@@ -506,13 +523,11 @@ export class TransitionManager {
                 float diag = vUv.x + vUv.y;
                 float threshold = (uProgress * 3.0) - 0.5;
                 float noise = sin(vUv.x * 20.0 + uTime) * 0.05;
-
-                // Swipe removes black
                 float a = smoothstep(threshold - 0.1 + noise, threshold + noise, diag);
                 gl_FragColor = vec4(0.0, 0.0, 0.0, a);
             }`;
         }
 
-        return `${header} void main() { gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); }`; // Error pink
+        return `${header} void main() { gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); }`;
     }
 }
