@@ -84,29 +84,37 @@ export class TransitionManager {
     }
 
     setupShatterBuffers() {
-        const cols = 20;
-        const rows = 12;
+        // Voronoi-like clustering
+        // 1. Define Grid
+        const cols = 64;
+        const rows = 36;
         const w = 2.0 / cols;
         const h = 2.0 / rows;
-        const vertices = [];
 
-        // Generate Grid
+        // 2. Generate Seeds
+        const numSeeds = 150;
+        const seeds = [];
+        for(let i=0; i<numSeeds; i++) {
+            seeds.push({
+                id: i,
+                x: -1.0 + Math.random() * 2.0,
+                y: -1.0 + Math.random() * 2.0,
+                tris: [], // List of triangles belonging to this seed
+                cx: 0, cy: 0, // Centroid
+                speed: 0.5 + Math.random() * 2.5,
+                rotSpeed: (Math.random() - 0.5) * 6.0
+            });
+        }
+
+        // 3. Generate Grid Triangles and assign to nearest seed
         const grid = [];
         for(let y=0; y<=rows; y++) {
             for(let x=0; x<=cols; x++) {
-                let px = -1.0 + x * w;
-                let py = -1.0 + y * h;
-                // Jitter internal vertices
-                if (x > 0 && x < cols && y > 0 && y < rows) {
-                    px += (Math.random() - 0.5) * w * 0.4;
-                    py += (Math.random() - 0.5) * h * 0.4;
-                }
-                grid.push({x: px, y: py});
+                grid.push({ x: -1.0 + x*w, y: -1.0 + y*h });
             }
         }
         const getP = (x, y) => grid[y * (cols + 1) + x];
 
-        // Generate Triangles
         for(let y=0; y<rows; y++) {
             for(let x=0; x<cols; x++) {
                 const p0 = getP(x, y);
@@ -114,28 +122,71 @@ export class TransitionManager {
                 const p2 = getP(x, y+1);
                 const p3 = getP(x+1, y+1);
 
-                // Randomize split direction
-                const flip = Math.random() > 0.5;
-                const t1 = flip ? [p0, p1, p3] : [p0, p1, p2];
-                const t2 = flip ? [p0, p3, p2] : [p1, p3, p2];
+                // Split quad into 2 triangles
+                const t1 = [p0, p1, p2]; // Top-Left
+                const t2 = [p1, p3, p2]; // Bottom-Right
 
                 [t1, t2].forEach(tri => {
-                    const cx = (tri[0].x + tri[1].x + tri[2].x) / 3;
-                    const cy = (tri[0].y + tri[1].y + tri[2].y) / 3;
-                    const speed = 0.5 + Math.random() * 1.5;
-                    const rotSpeed = (Math.random() - 0.5) * 8.0;
+                    // Find center of triangle
+                    const tx = (tri[0].x + tri[1].x + tri[2].x) / 3;
+                    const ty = (tri[0].y + tri[1].y + tri[2].y) / 3;
 
-                    tri.forEach(v => {
-                        vertices.push(v.x, v.y, cx, cy, speed, rotSpeed);
-                    });
+                    // Find nearest seed
+                    let closest = null;
+                    let minD = Infinity;
+
+                    // Optimization: Check only subset? No, brute force is fine for setup (150 * 4000 = 600k ops, instant)
+                    for(const s of seeds) {
+                        const dx = tx - s.x;
+                        const dy = ty - s.y;
+                        const d = dx*dx + dy*dy;
+                        if(d < minD) {
+                            minD = d;
+                            closest = s;
+                        }
+                    }
+
+                    if(closest) {
+                        closest.tris.push(tri);
+                    }
                 });
             }
         }
 
-        this.shatterVertexCount = vertices.length / 6;
+        // 4. Calculate Centroids for each Seed Group and Build Buffer
+        const finalVertices = [];
+
+        seeds.forEach(s => {
+            if (s.tris.length === 0) return;
+
+            // Calculate actual centroid of the cluster
+            let sumX = 0, sumY = 0, count = 0;
+            s.tris.forEach(tri => {
+                tri.forEach(v => {
+                    sumX += v.x;
+                    sumY += v.y;
+                    count++;
+                });
+            });
+            s.cx = sumX / count;
+            s.cy = sumY / count;
+
+            // Add vertices
+            s.tris.forEach(tri => {
+                tri.forEach(v => {
+                    finalVertices.push(
+                        v.x, v.y,           // position
+                        s.cx, s.cy,         // centroid
+                        s.speed, s.rotSpeed // randoms
+                    );
+                });
+            });
+        });
+
+        this.shatterVertexCount = finalVertices.length / 6;
         this.shatterBuffer = this.gl.createBuffer();
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.shatterBuffer);
-        this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(vertices), this.gl.STATIC_DRAW);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(finalVertices), this.gl.STATIC_DRAW);
     }
 
     /**
@@ -198,7 +249,7 @@ export class TransitionManager {
 
     async startBattleTransition(sourceCanvas) {
         this.type = 'BATTLE_START';
-        this.duration = 2000; // Increased duration for the crack effect
+        this.duration = 2000;
         if (sourceCanvas) {
             this.capture(sourceCanvas);
         } else {
@@ -280,9 +331,7 @@ export class TransitionManager {
         const gl = this.gl;
         gl.useProgram(this.program);
 
-        // Clear background:
-        // For BATTLE_START (Shatter), we want opaque black to fill gaps.
-        // For others (Overlay/Fade), we want transparent background so we can see the game.
+        // Clear background
         if (this.type === 'BATTLE_START') {
             gl.clearColor(0.0, 0.0, 0.0, 1.0);
         } else {
@@ -360,25 +409,26 @@ export class TransitionManager {
                 }
 
                 void main() {
+                    // Fix upside down UVs: WebGL textures from canvas are Y-inverted relative to clip space
+                    // We map -1..1 to 0..1
                     vUv = position * 0.5 + 0.5;
+                    vUv.y = 1.0 - vUv.y; // Correct orientation
 
                     // Timeline:
-                    // 0.0-0.1: Initial Crack (Flash/Shrink)
-                    // 0.1-0.3: Hold
-                    // 0.3-1.0: Fly
+                    // 0.0-0.2: Initial Crack (Flash/Shrink)
+                    // 0.2-0.4: Hold
+                    // 0.4-1.0: Fly
 
-                    float flyT = smoothstep(0.3, 1.0, uProgress);
+                    float flyT = smoothstep(0.4, 1.0, uProgress);
 
                     // Shrink slightly to show cracks immediately
-                    float shrink = uProgress > 0.02 ? 0.98 : 1.0;
+                    // Reduce gap size by making shrink closer to 1.0
+                    float shrink = uProgress > 0.05 ? 0.99 : 1.0;
 
                     // Movement
-                    // Move left (negative X)
                     vec2 moveDir = vec2(-1.0, 0.0);
-                    // Add slight Y random drift
                     moveDir.y += (aRandoms.x - 1.0) * 0.2;
 
-                    // Quadratic acceleration for satisfying "pop"
                     vec2 translation = moveDir * flyT * flyT * 3.0 * aRandoms.x;
 
                     // Rotation
@@ -387,7 +437,6 @@ export class TransitionManager {
                     // Apply
                     vec2 local = (position - aCentroid) * shrink;
 
-                    // Correct aspect for rotation
                     local.x *= uAspect;
                     local = rotate(local, angle);
                     local.x /= uAspect;
@@ -422,11 +471,12 @@ export class TransitionManager {
         if (type === 'BATTLE_START') {
             return `${header}
             void main() {
-                // Just map the texture. The geometry moves, carrying the texture.
-
                 vec4 color = vec4(0.0);
                 if (uHasCapture > 0.5) {
-                    color = texture2D(uScreen, vUv);
+                    // Check bounds to avoid wrapping artifacts
+                    if(vUv.x >= 0.0 && vUv.x <= 1.0 && vUv.y >= 0.0 && vUv.y <= 1.0) {
+                        color = texture2D(uScreen, vUv);
+                    }
                 }
                 gl_FragColor = color;
             }`;
@@ -438,8 +488,6 @@ export class TransitionManager {
                 float center = 0.5;
                 float halfHeight = uProgress * 0.6;
                 float distY = abs(vUv.y - center);
-
-                // Opening Mask: Black outside, Transparent inside.
                 float mask = smoothstep(halfHeight, halfHeight + 0.01, distY);
                 gl_FragColor = vec4(0.0, 0.0, 0.0, mask);
             }`;
@@ -451,8 +499,6 @@ export class TransitionManager {
                 float diag = vUv.x + vUv.y;
                 float threshold = uProgress * 2.5;
                 float noise = sin(vUv.x * 20.0 + uTime) * 0.05;
-
-                // Swipe adds black
                 float a = 1.0 - smoothstep(threshold - 0.1 + noise, threshold + noise, diag);
                 gl_FragColor = vec4(0.0, 0.0, 0.0, a);
             }`;
@@ -464,8 +510,6 @@ export class TransitionManager {
                 float diag = vUv.x + vUv.y;
                 float threshold = (uProgress * 3.0) - 0.5;
                 float noise = sin(vUv.x * 20.0 + uTime) * 0.05;
-
-                // Swipe removes black
                 float a = smoothstep(threshold - 0.1 + noise, threshold + noise, diag);
                 gl_FragColor = vec4(0.0, 0.0, 0.0, a);
             }`;
