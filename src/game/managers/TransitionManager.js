@@ -283,35 +283,54 @@ export class TransitionManager {
             return `${header}
 
             void main() {
-                vec2 uv = vUv;
+                // Fix Orientation: WebGL texture vs Canvas coordinate mismatch
+                vec2 uv = vec2(vUv.x, 1.0 - vUv.y);
+
                 vec2 center = vec2(0.5, 0.5);
                 vec2 toCenter = center - uv;
                 float dist = length(toCenter);
 
-                // Blur effect (Zoom Blur)
-                // We accumulate samples along the vector towards the center to create a "rushing" effect
+                // Spiral Blur Effect
+                // Combines Zoom Blur (moving towards center) with Swirl (rotation)
 
                 vec4 accColor = vec4(0.0);
                 float totalWeight = 0.0;
 
-                // Strength increases with progress
-                float blurStrength = uProgress * 0.3;
-                float samples = 20.0;
+                // Strength parameters
+                float zoomAmount = uProgress * 0.3;     // How much to zoom in
+                float twistAmount = uProgress * 3.0;    // How much to twist (swirl)
+                float samples = 30.0;                   // More samples for smoother swirl
 
-                for (float i = 0.0; i < 20.0; i++) {
+                for (float i = 0.0; i < 30.0; i++) {
                     float t = i / samples;
-                    // scale < 1.0 zooms IN (stretches center out), avoiding edge clipping
-                    float scale = 1.0 - (blurStrength * t);
-                    vec2 sampleUV = center - toCenter * scale;
+
+                    // 1. Zoom Scale (1.0 -> smaller)
+                    float scale = 1.0 - (zoomAmount * t);
+
+                    // 2. Rotation Angle (increases with t and distance for swirl)
+                    float angle = twistAmount * t * (1.0 + dist);
+                    float s = sin(angle);
+                    float c = cos(angle);
+
+                    // Rotate the vector to center
+                    vec2 rotatedVec = vec2(
+                        toCenter.x * c - toCenter.y * s,
+                        toCenter.x * s + toCenter.y * c
+                    );
+
+                    // Calculate sample position
+                    // We move from 'uv' towards 'center' along the curved path
+                    vec2 sampleUV = center - rotatedVec * scale;
 
                     if (uHasCapture == 1) {
-                        // Clamp UVs to be safe
+                        // Clamp to valid range
                         vec2 clampedUV = clamp(sampleUV, 0.0, 1.0);
                         vec4 sColor = texture2D(uScreen, clampedUV);
 
-                        // Additive stacking simulation:
-                        // To look "additive", we could weigh brighter samples more, or just sum them.
-                        // Here we just average for smooth blur.
+                        // Additive Weighting
+                        // Center samples (t=0) are sharpest, outer (t=1) are most distorted.
+                        // We weight them equally for a blur, or taper off.
+                        // Pure average for now.
                         accColor += sColor;
                         totalWeight += 1.0;
                     }
