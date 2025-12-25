@@ -72,8 +72,16 @@ export const BattleManager = {
         // IMPORTANT: Do NOT set mode to BATTLE yet.
         // We want ExploreSystem to keep rendering the last frame so we can capture it.
 
-        // 1. Transition Out (Swirl -> Black)
+        // 1. Transition Out (Blur -> Black)
         if (window.Game && window.Game.TransitionManager) {
+            // UI Fade Out: "Interface pops off" fix
+            // We set the UI to fade out via CSS transition while the WebGL transition runs.
+            const uiLayer = document.getElementById('ui-layer');
+            if (uiLayer) {
+                uiLayer.style.transition = 'opacity 1s ease-out';
+                uiLayer.style.opacity = '0';
+            }
+
             // Capture the current frame from the renderer
             const renderer = window.Game.RenderManager.getRenderer();
             if (renderer) {
@@ -81,6 +89,7 @@ export const BattleManager = {
             } else {
                  await window.Game.TransitionManager.startBattleTransition();
             }
+
         }
 
         // NOW set the mode, stopping ExploreSystem and starting BattleSystem logic
@@ -102,6 +111,15 @@ export const BattleManager = {
 
         // 4. Reveal (Intro Transition: Black -> Cut In)
         if (window.Game && window.Game.TransitionManager) {
+            // Restore UI Opacity smoothly with the intro
+            const uiLayer = document.getElementById('ui-layer');
+            if (uiLayer) {
+                uiLayer.style.transition = 'opacity 1.0s ease-in';
+                // Force reflow
+                void uiLayer.offsetWidth;
+                uiLayer.style.opacity = '1';
+            }
+
             // Start the intro animation (it's async, runs in parallel with camera)
             const introPromise = window.Game.TransitionManager.startBattleIntro();
 
@@ -109,6 +127,11 @@ export const BattleManager = {
             Systems.Battle3D.playIntro();
 
             await introPromise;
+
+            // Clean up transition property
+            if (uiLayer) {
+                uiLayer.style.transition = '';
+            }
         } else {
              // Fallback if no TM
              Systems.Battle3D.setFocus('neutral');

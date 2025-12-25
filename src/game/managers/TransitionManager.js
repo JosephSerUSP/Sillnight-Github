@@ -28,7 +28,7 @@ export class TransitionManager {
         this.canvas.style.inset = '0';
         this.canvas.style.width = '100%';
         this.canvas.style.height = '100%';
-        this.canvas.style.zIndex = '9999';
+        this.canvas.style.zIndex = '9'; // Above game (0) but below UI (10)
         this.canvas.style.pointerEvents = 'none';
         this.canvas.style.display = 'none';
 
@@ -287,35 +287,53 @@ export class TransitionManager {
                 vec2 center = vec2(0.5, 0.5);
                 vec2 toCenter = center - uv;
                 float dist = length(toCenter);
-                float angle = atan(toCenter.y, toCenter.x);
 
-                // Twist logic: Rotate based on distance
-                // Twist increases with progress
-                float twistStrength = uProgress * 15.0;
-                float twist = twistStrength * dist;
-                float newAngle = angle + twist;
+                // Blur effect (Zoom Blur)
+                // We accumulate samples along the vector towards the center to create a "rushing" effect
 
-                vec2 distortedUV = center - vec2(cos(newAngle), sin(newAngle)) * dist;
+                vec4 accColor = vec4(0.0);
+                float totalWeight = 0.0;
 
-                vec4 texColor = vec4(0.0, 0.0, 0.0, 1.0);
+                // Strength increases with progress
+                float blurStrength = uProgress * 0.3;
+                float samples = 20.0;
 
-                if (uHasCapture == 1) {
-                    // Check bounds to avoid sampling outside [0,1] wrapping
-                    if (distortedUV.x >= 0.0 && distortedUV.x <= 1.0 && distortedUV.y >= 0.0 && distortedUV.y <= 1.0) {
-                         texColor = texture2D(uScreen, distortedUV);
-                    } else {
-                         texColor = vec4(0.0, 0.0, 0.0, 1.0);
+                for (float i = 0.0; i < 20.0; i++) {
+                    float t = i / samples;
+                    // scale < 1.0 zooms IN (stretches center out), avoiding edge clipping
+                    float scale = 1.0 - (blurStrength * t);
+                    vec2 sampleUV = center - toCenter * scale;
+
+                    if (uHasCapture == 1) {
+                        // Clamp UVs to be safe
+                        vec2 clampedUV = clamp(sampleUV, 0.0, 1.0);
+                        vec4 sColor = texture2D(uScreen, clampedUV);
+
+                        // Additive stacking simulation:
+                        // To look "additive", we could weigh brighter samples more, or just sum them.
+                        // Here we just average for smooth blur.
+                        accColor += sColor;
+                        totalWeight += 1.0;
                     }
                 }
 
-                // Fade to black based on progress
-                // uProgress 0 -> 1.
-                // We want final image to be black.
-                // Twist happens, and simultaneously darkness consumes it.
+                vec4 texColor = vec4(0.0, 0.0, 0.0, 1.0);
+                if (totalWeight > 0.0) {
+                    texColor = accColor / totalWeight;
+                }
 
-                // Simple lerp to black
-                float fade = uProgress;
-                vec3 finalColor = mix(texColor.rgb, vec3(0.0), fade);
+                // "Turning down the brightness gradually while increasing the saturation"
+
+                // 1. Increase Saturation
+                float gray = dot(texColor.rgb, vec3(0.299, 0.587, 0.114));
+                float satLevel = 1.0 + (uProgress * 4.0); // Ramping up saturation significantly
+                vec3 satColor = mix(vec3(gray), texColor.rgb, satLevel);
+
+                // 2. Brightness / Fade to Black
+                // Fade out as progress goes 0 -> 1
+                float brightness = 1.0 - smoothstep(0.0, 0.9, uProgress);
+
+                vec3 finalColor = satColor * brightness;
 
                 gl_FragColor = vec4(finalColor, 1.0);
             }`;
