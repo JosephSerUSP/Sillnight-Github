@@ -131,18 +131,11 @@ export class TransitionManager {
                     // Convert to clip space (-1 to 1) for position, 0-1 for UV
                     const makeVert = (v) => {
                         positions.push(v.x * 2 - 1, v.y * 2 - 1);
-                        uvs.push(v.x, v.y);
-                        centroids.push(cx * 2 - 1, cy * 2 - 1); // Centroid in clip space
 
-                        // Randoms per triangle (same for all 3 verts)
-                        // x: speed (0.8 - 1.5)
-                        // y: rotation speed (-1 to 1)
-                        // z: delay (based on x position? or random?)
-                        // User said: "fragments move to the left".
-                        // Let's randomize speed.
-                        // Add some delay based on X to make it ripple? Or random?
-                        // "Fractured for a few frames" -> Global delay handled in shader.
-                        // Let's just put random values.
+                        // FLIP Y for UV to fix upside-down texture issue
+                        uvs.push(v.x, 1.0 - v.y);
+
+                        centroids.push(cx * 2 - 1, cy * 2 - 1); // Centroid in clip space
                     };
 
                     const speed = 0.5 + Math.random() * 1.5;
@@ -419,8 +412,9 @@ export class TransitionManager {
 
                 // Displacement
                 // Move Left (-x) + some random Y drift
+                // INCREASED SPEED: 2.5 -> 5.0 to ensure exit
                 vec2 dir = vec2(-1.0, (aRandom.y * 0.2));
-                vec2 offset = dir * activeTime * aRandom.x * 2.5;
+                vec2 offset = dir * activeTime * aRandom.x * 5.0;
 
                 // Rotation
                 float angle = activeTime * aRandom.y * 5.0;
