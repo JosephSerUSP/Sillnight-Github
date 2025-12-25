@@ -341,20 +341,35 @@ export class TransitionManager {
                     texColor = accColor / totalWeight;
                 }
 
-                // "Turning down the brightness gradually while increasing the saturation"
+                // Color Grading: Additive Pop -> Burn -> Black
 
-                // 1. Increase Saturation
+                // 1. Saturation (Ramps up)
                 float gray = dot(texColor.rgb, vec3(0.299, 0.587, 0.114));
-                float satLevel = 1.0 + (uProgress * 4.0); // Ramping up saturation significantly
+                float satLevel = 1.0 + (uProgress * 3.0);
                 vec3 satColor = mix(vec3(gray), texColor.rgb, satLevel);
 
-                // 2. Brightness / Fade to Black
-                // Fade out as progress goes 0 -> 1
-                float brightness = 1.0 - smoothstep(0.0, 0.9, uProgress);
+                // 2. Contrast (Burn effect)
+                // Ramp contrast up as we fade.
+                float contrastStrength = 1.0 + (uProgress * 1.5); // 1.0 -> 2.5
+                vec3 contrastColor = (satColor - 0.5) * contrastStrength + 0.5;
 
-                vec3 finalColor = satColor * brightness;
+                // 3. Brightness Curve (Pop then Fade)
+                // We want a "pop" at the start (uProgress 0.0 -> 0.3) then fade to 0.
 
-                gl_FragColor = vec4(finalColor, 1.0);
+                // Pop curve: Starts at 1.0, peaks around 1.3 at progress 0.2, then decays.
+                // Using sine for a smooth bump.
+                float pop = sin(uProgress * 3.14159) * 0.4; // Boosts up to +0.4
+
+                // Fade curve: Standard inverse linear or smoothstep
+                float fade = 1.0 - smoothstep(0.2, 0.9, uProgress);
+
+                // Combine: Base Brightness (1.0) + Pop, then multiplied by fade
+                float finalBrightness = (1.0 + pop) * fade;
+
+                vec3 finalColor = contrastColor * finalBrightness;
+
+                // Hard clamp to prevent negative values from contrast math
+                gl_FragColor = vec4(max(vec3(0.0), finalColor), 1.0);
             }`;
         }
 
