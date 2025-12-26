@@ -668,6 +668,29 @@ export class BattleRenderSystem {
             apply: (step) => {
                 context.onApply?.();
                 return wait(step?.duration || 0);
+            },
+            focus: (step) => {
+                const who = step.target === 'target' && targets.length > 0 ? targets[0].uid : uid;
+                this.setFocus('unit', who);
+                return wait(step.duration || 0);
+            },
+            reset_focus: (step) => {
+                this.setFocus('neutral');
+                return wait(step.duration || 0);
+            },
+            dim: (step) => {
+                const who = step.target === 'target' && targets.length > 0 ? targets[0].uid : uid;
+                this.dimOthers(who);
+                return wait(step.duration || 0);
+            },
+            undim: (step) => {
+                this.resetVisuals();
+                return wait(step.duration || 0);
+            },
+            reset_visuals: (step) => {
+                this.resetVisuals();
+                this.setFocus('neutral');
+                return wait(step.duration || 0);
             }
         };
 
