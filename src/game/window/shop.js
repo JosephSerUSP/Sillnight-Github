@@ -1,7 +1,7 @@
 import { Window_Selectable } from '../windows.js';
 import { Services } from '../ServiceLocator.js';
 import { Log } from '../log.js';
-import { FlexLayout, GridLayout } from '../layout/index.js';
+import { FlexLayout } from '../layout/index.js';
 import { TextComponent, ButtonComponent } from '../layout/components.js';
 
 export class Window_Shop extends Window_Selectable {
@@ -9,12 +9,26 @@ export class Window_Shop extends Window_Selectable {
         this._resolve = null;
         super.initialize();
         this.root.id = 'window-shop';
-        this.root.className = 'absolute inset-0 bg-black/90 p-4 z-50 flex flex-col hidden';
+        // Base window styling (overlay) - removed flex from here so it doesn't conflict with hidden
+        this.root.className = 'absolute inset-0 bg-black/90 p-4 z-50 hidden';
+
+        // Ensure in DOM (consistent with recruit)
+        const container = document.getElementById('game-container');
+        if (container && !document.getElementById('window-shop')) {
+            container.appendChild(this.root);
+        }
     }
 
     defineLayout() {
-        // Main container layout
-        this.layout = new FlexLayout(this.root, { direction: 'column', gap: '1rem', padding: '1rem' });
+        // Create an internal container for layout to avoid setting styles on root
+        this.root.innerHTML = ''; // Clear previous
+
+        const content = document.createElement('div');
+        content.className = 'w-full h-full';
+        this.root.appendChild(content);
+
+        // Main container layout applies to the inner content div
+        this.layout = new FlexLayout(content, { direction: 'column', gap: '1rem', padding: '1rem' });
     }
 
     /**
@@ -27,11 +41,16 @@ export class Window_Shop extends Window_Selectable {
             this._resolve = resolve;
             this.items = stock || [];
 
+            // Re-check DOM insertion if needed (though init does it)
             const container = document.getElementById('game-container');
             if (container && !this.root.parentElement) {
                 container.appendChild(this.root);
             }
 
+            // Ensure layout is built
+            if (!this.layout) this.defineLayout();
+
+            this.refresh(); // Trigger population
             super.show();
         });
     }
@@ -45,6 +64,14 @@ export class Window_Shop extends Window_Selectable {
     }
 
     refresh() {
+        // Since we rebuild layout in defineLayout? No, just clear and add
+        // But defineLayout creates a new FlexLayout instance on the inner div
+        // If defineLayout was called in initialize, this.layout is ready.
+        // But if show() called defineLayout again (like in recruit), we might need to be careful.
+        // Window_Selectable calls refresh() on items set.
+
+        if (!this.layout) return;
+
         this.layout.clear();
 
         // Title
