@@ -509,8 +509,6 @@ export class ExploreSystem {
             this.moveLerpProgress = 0;
             this.playerTarget.set(newX, 0.5, newY);
             this.isAnimating = true;
-
-            this.checkTile(newX, newY);
         }
     }
 
@@ -633,6 +631,14 @@ export class ExploreSystem {
         if (this.matFloor) updateUniforms({ material: this.matFloor });
         if (this.matWall) updateUniforms({ material: this.matWall });
 
+        // Rotate Events
+        for (const mesh of this.eventMeshes.values()) {
+            const type = mesh.userData.visualType;
+            if (type === 'ENEMY' || type === 'NPC' || type === 'RECRUIT' || type === 'SHOP') {
+                mesh.rotation.y += 0.02;
+            }
+        }
+
         if (this.moveLerpProgress < 1) {
             this.moveLerpProgress += 0.06;
             if (this.moveLerpProgress > 1) this.moveLerpProgress = 1;
@@ -643,6 +649,7 @@ export class ExploreSystem {
             if (this.moveLerpProgress === 1) {
                 this.isAnimating = false;
                 this.playerMesh.rotation.y = 0;
+                this.checkTile(this.playerTarget.x, this.playerTarget.z);
             }
         } else {
             this.playerMesh.position.lerp(this.playerTarget, 0.3);
