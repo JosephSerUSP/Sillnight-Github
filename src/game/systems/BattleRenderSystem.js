@@ -641,14 +641,27 @@ export class BattleRenderSystem {
                 requestAnimationFrame(animateMove);
             }),
             effect: (step) => {
-                const boundSprites = step.bind === 'target' ? targets.map(t => this.sprites[t.uid]).filter(Boolean) : [sprite];
-                const plays = boundSprites.map(sp => {
+                let plays = [];
+                if (step.bind === 'center') {
+                    const center = averageTargetPosition();
+                    const validTargets = targets.map(t => this.sprites[t.uid]).filter(Boolean);
+                    const avgHeight = validTargets.length > 0
+                        ? validTargets.reduce((sum, s) => sum + s.userData.baseScale.y, 0) / validTargets.length
+                        : 2.0;
                     const anchor = step.anchor ?? 0.5;
-                    const zOffset = sp.position.z - sp.userData.baseZ;
-                    const zPos = zOffset + (sp.userData.baseScale.y * anchor);
-                    const pos = { x: sp.position.x, y: sp.position.y, z: zPos };
-                    return Systems.Effekseer.play(step.effect, pos);
-                });
+                    // For center, we treat z=0 as ground.
+                    const zPos = avgHeight * anchor;
+                    plays.push(Systems.Effekseer.play(step.effect, { x: center.x, y: center.y, z: zPos }));
+                } else {
+                    const boundSprites = step.bind === 'target' ? targets.map(t => this.sprites[t.uid]).filter(Boolean) : [sprite];
+                    plays = boundSprites.map(sp => {
+                        const anchor = step.anchor ?? 0.5;
+                        const zOffset = sp.position.z - sp.userData.baseZ;
+                        const zPos = zOffset + (sp.userData.baseScale.y * anchor);
+                        const pos = { x: sp.position.x, y: sp.position.y, z: zPos };
+                        return Systems.Effekseer.play(step.effect, pos);
+                    });
+                }
                 const hold = step.hold ?? 300;
                 return Promise.all(plays).then(() => wait(hold));
             },
