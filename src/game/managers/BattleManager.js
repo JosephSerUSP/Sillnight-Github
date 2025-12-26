@@ -159,6 +159,7 @@ export const BattleManager = {
     /**
      * Proceeds to the next round of combat.
      * Re-calculates turn order and checks win/loss conditions.
+     * NOTE: Logic sorts by unit Speed (agi) directly. Action Speed (asp) from gameDesign.md is not yet implemented.
      */
     nextRound() {
         this.roundCount++;
