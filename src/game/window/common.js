@@ -45,23 +45,35 @@ export function renderCreaturePanel(unit) {
     const hpColor = hpPct < 30 ? 'bg-red-600' : 'bg-green-600';
 
     // XP Progress
-    const getXpForNextLevel = (lvl) => Math.round(100 * Math.pow(lvl, 1.1));
-    const currentLvlXp = level > 1 ? getXpForNextLevel(level - 1) : 0;
-    const nextLvlXp = getXpForNextLevel(level);
-    const xpInCurrentLvl = (unit.exp || 0) - currentLvlXp;
-    const xpForThisLvl = nextLvlXp - currentLvlXp;
-    const xpPct = (xpInCurrentLvl / xpForThisLvl) * 100;
+    // Use unit's calculation if available (Game_Actor), otherwise fallback
+    let xpPct = 0;
+    if (typeof unit.currentLevelExp === 'function' && typeof unit.nextLevelExp === 'function') {
+        const currentLvlXp = unit.currentLevelExp();
+        const nextLvlXp = unit.nextLevelExp();
+        const currentExp = unit.currentExp ? unit.currentExp() : unit.exp || 0; // handle getter or prop
+
+        // Avoid division by zero if max level or weird state
+        if (nextLvlXp > currentLvlXp) {
+             const xpInCurrentLvl = currentExp - currentLvlXp;
+             const xpForThisLvl = nextLvlXp - currentLvlXp;
+             xpPct = (xpInCurrentLvl / xpForThisLvl) * 100;
+        } else {
+            xpPct = 100; // Cap at max
+        }
+    } else {
+        // Fallback for raw objects or incompatible types (e.g. Enemy)
+        // Enemies don't typically show XP bars, so 0 is fine.
+        // If it's a recruit offer (raw obj), we can't calculate XP % without species data and assumed EXP.
+        // Recruit offers are usually Level X with 0 XP towards next level (0%), so 0 is correct.
+        xpPct = 0;
+    }
+
+    // Clamp percentage
+    xpPct = Math.max(0, Math.min(100, xpPct));
 
     const maxMp = typeof unit.mmp === 'number' ? unit.mmp : (typeof unit.mmp === 'function' ? unit.mmp() : 0);
     const hasMp = maxMp > 0;
     const mpPct = hasMp ? (unit.mp / maxMp) * 100 : 0;
-
-    // Reduced sizes and removed explicit text-xs/text-sm where appropriate to inherit Window_Base style
-    // But specific small text like Lv/HP might need to remain relatively small or just inherit standardFontSize (12px).
-    // Let's use inherit where possible, but for "smaller" text use explicit scaling or classes.
-    // Window_Base sets 12px.
-    // text-xs is 0.75rem (12px).
-    // text-[10px] is smaller.
 
     return `
         <div class="flex justify-between text-gray-300">

@@ -55,7 +55,7 @@ export class Game_Actor extends Game_Battler {
     setup(speciesId, level) {
         this._speciesId = speciesId;
         this._level = level;
-        this._exp = this.expForLevel(this._level);
+        this._exp = this.currentLevelExp(); // Start with minimum EXP for this level
         const def = Services.get('CreatureRegistry').get(speciesId);
         if (!def) {
              console.error(`Actor species not found in registry: ${speciesId}`);
@@ -186,22 +186,43 @@ export class Game_Actor extends Game_Battler {
     /** @returns {number} The current total EXP. */
     currentExp() { return this._exp; }
 
-    /** @returns {number} The EXP required for the next level. */
+    /**
+     * Returns the accumulated EXP required to reach the *current* level.
+     * Used for gauge start point.
+     * @returns {number}
+     */
+    currentLevelExp() {
+        return this.expForLevel(this._level);
+    }
+
+    /**
+     * Returns the accumulated EXP required to reach the *next* level.
+     * Used for gauge end point and level up check.
+     * @returns {number}
+     */
     nextLevelExp() {
-         // Threshold to reach the *next* level (current level + 1)
          return this.expForLevel(this._level + 1);
     }
 
     /**
      * Calculates the EXP required to reach a specific level.
+     * Uses a cubic-like growth curve based on species 'xpCurve'.
      * @param {number} level - The target level.
-     * @returns {number} The EXP threshold.
+     * @returns {number} The total accumulated EXP required.
      */
     expForLevel(level) {
         if (level <= 1) return 0;
-        // Cumulative XP required to reach 'level'
-        // Using formula: 100 * (level-1)^1.1
-        return Math.round(100 * Math.pow(level - 1, 1.1));
+
+        const def = Services.get('CreatureRegistry').get(this._speciesId);
+        const curve = def ? (def.xpCurve || 10) : 10;
+
+        // Formula: Curve * 10 * (Level-1)^1.5
+        // Example with Curve 10:
+        // L1: 0
+        // L2: 10 * 10 * 1 = 100
+        // L3: 10 * 10 * 2.82 = 282
+        // L4: 10 * 10 * 5.2 = 520
+        return Math.floor(curve * 10 * Math.pow(level - 1, 1.5));
     }
 
     /**
