@@ -293,6 +293,16 @@ export class BattleRenderSystem {
     }
 
     /**
+     * Dims the ground mesh.
+     * @param {boolean} dim - Whether to dim the ground.
+     */
+    dimGround(dim) {
+        if (this.groundMesh) {
+            this.groundMesh.material.color.setHex(dim ? 0x555555 : 0xffffff);
+        }
+    }
+
+    /**
      * Resets all visual changes (opacity, etc).
      */
     resetVisuals() {
@@ -300,6 +310,7 @@ export class BattleRenderSystem {
             sprite.material.opacity = 1.0;
             sprite.material.color.setHex(0xffffff);
         });
+        this.dimGround(false);
     }
 
     /**
@@ -670,8 +681,12 @@ export class BattleRenderSystem {
                 return wait(step?.duration || 0);
             },
             focus: (step) => {
-                const who = step.target === 'target' && targets.length > 0 ? targets[0].uid : uid;
-                this.setFocus('unit', who);
+                if (step.target === 'enemy' || step.target === 'center') {
+                    this.setFocus('enemy');
+                } else {
+                    const who = step.target === 'target' && targets.length > 0 ? targets[0].uid : uid;
+                    this.setFocus('unit', who);
+                }
                 return wait(step.duration || 0);
             },
             reset_focus: (step) => {
@@ -681,6 +696,14 @@ export class BattleRenderSystem {
             dim: (step) => {
                 const who = step.target === 'target' && targets.length > 0 ? targets[0].uid : uid;
                 this.dimOthers(who);
+                return wait(step.duration || 0);
+            },
+            dim_ground: (step) => {
+                this.dimGround(true);
+                return wait(step.duration || 0);
+            },
+            reset_ground: (step) => {
+                this.dimGround(false);
                 return wait(step.duration || 0);
             },
             undim: (step) => {
