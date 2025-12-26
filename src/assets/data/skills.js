@@ -30,7 +30,7 @@ export const Skills = {
     },
 
     // --- Basic Skills ---
-    wait:   { id: 'wait',   name: 'Wait',        category: 'effect', target: 'self',         speed: 2,  effects: [] },
+    wait:   { id: 'wait',   name: 'Wait',        category: 'effect', target: 'self',         script: 'wait', speed: 2,  effects: [] },
     guard:  { id: 'guard',  name: 'Guard',       category: 'effect', target: 'self',         speed: 2,  effects: [{ type: 'add_status', status: 'guarding', chance: 1 }] },
 
     // --- Physical Skills ---

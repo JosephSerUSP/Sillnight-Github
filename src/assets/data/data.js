@@ -112,9 +112,12 @@ export const Data = {
             { type: 'apply' }
         ],
         apocalypse: [
-            { type: 'wait', duration: 300 },
+            { type: 'dim_ground', duration: 0 },
+            { type: 'jump', height: 0.5, duration: 400 },
+            { type: 'focus', target: 'enemy', duration: 400 },
             { type: 'effect', effect: 'Apocalypse', bind: 'center', anchor: 0.0, hold: 650 },
-            { type: 'apply' }
+            { type: 'apply' },
+            { type: 'reset_visuals', duration: 250 }
         ],
         curse: [
             { type: 'wait', duration: 220 },
@@ -173,9 +176,12 @@ export const Data = {
             { type: 'retreat', duration: 240 }
         ],
         diamondDust: [
-            { type: 'wait', duration: 200 },
+            { type: 'dim_ground', duration: 0 },
+            { type: 'jump', height: 0.5, duration: 400 },
+            { type: 'focus', target: 'enemy', duration: 400 },
             { type: 'effect', effect: 'IceWind', bind: 'center', anchor: 0.0, hold: 520 },
-            { type: 'apply' }
+            { type: 'apply' },
+            { type: 'reset_visuals', duration: 250 }
         ]
     },
 

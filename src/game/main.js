@@ -25,6 +25,7 @@ import { EventDataRegistry } from './registries/EventDataRegistry.js';
 import { Game_Actor } from './classes/Game_Actor.js';
 import { Game_Enemy } from './classes/Game_Enemy.js';
 import { Game_Event } from './classes/Game_Event.js';
+import { Game_Action } from './classes/Game_Action.js';
 import { Game_Variables } from './classes/Game_Variables.js';
 import { Game_Switches } from './classes/Game_Switches.js';
 
@@ -54,7 +55,8 @@ export const Game = {
     Classes: {
         Game_Actor,
         Game_Enemy,
-        Game_Event
+        Game_Event,
+        Game_Action
     },
     ui: {
         mode: 'EXPLORE',
