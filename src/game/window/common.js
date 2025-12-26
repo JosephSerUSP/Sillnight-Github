@@ -1,4 +1,5 @@
 import { resolveAssetPath } from '../core.js';
+import { Services } from '../ServiceLocator.js';
 
 /**
  * Generates the HTML markup for a unit's sprite.
@@ -45,23 +46,57 @@ export function renderCreaturePanel(unit) {
     const hpColor = hpPct < 30 ? 'bg-red-600' : 'bg-green-600';
 
     // XP Progress
-    const getXpForNextLevel = (lvl) => Math.round(100 * Math.pow(lvl, 1.1));
-    const currentLvlXp = level > 1 ? getXpForNextLevel(level - 1) : 0;
-    const nextLvlXp = getXpForNextLevel(level);
-    const xpInCurrentLvl = (unit.exp || 0) - currentLvlXp;
-    const xpForThisLvl = nextLvlXp - currentLvlXp;
-    const xpPct = (xpInCurrentLvl / xpForThisLvl) * 100;
+    // Use unit's calculation if available (Game_Actor), otherwise fallback
+    let xpPct = 0;
+    if (typeof unit.currentLevelExp === 'function' && typeof unit.nextLevelExp === 'function') {
+        const currentLvlXp = unit.currentLevelExp();
+        const nextLvlXp = unit.nextLevelExp();
+        const currentExp = unit.currentExp ? unit.currentExp() : unit.exp || 0; // handle getter or prop
+
+        // Avoid division by zero if max level or weird state
+        if (nextLvlXp > currentLvlXp) {
+             const xpInCurrentLvl = currentExp - currentLvlXp;
+             const xpForThisLvl = nextLvlXp - currentLvlXp;
+             xpPct = (xpInCurrentLvl / xpForThisLvl) * 100;
+        } else {
+            xpPct = 100; // Cap at max
+        }
+    } else {
+        // Fallback for raw objects (e.g. from save data not rehydrated)
+        // Try to calculate using the same logic if we have the data
+        const lvl = unit.level || 1;
+        const sId = unit.speciesId || unit._speciesId;
+        const totalXp = unit.exp || unit._exp || 0;
+
+        if (sId) {
+            const def = Services.get('CreatureRegistry').get(sId);
+            const curve = def ? (def.xpCurve || 10) : 10;
+            const expForLevel = (l) => {
+                if (l <= 1) return 0;
+                return Math.floor(curve * 10 * Math.pow(l - 1, 1.5));
+            };
+
+            const currentLvlXp = expForLevel(lvl);
+            const nextLvlXp = expForLevel(lvl + 1);
+
+            if (nextLvlXp > currentLvlXp) {
+                const xpInCurrentLvl = totalXp - currentLvlXp;
+                const xpForThisLvl = nextLvlXp - currentLvlXp;
+                xpPct = (xpInCurrentLvl / xpForThisLvl) * 100;
+            } else {
+                xpPct = 100;
+            }
+        } else {
+            xpPct = 0;
+        }
+    }
+
+    // Clamp percentage
+    xpPct = Math.max(0, Math.min(100, xpPct));
 
     const maxMp = typeof unit.mmp === 'number' ? unit.mmp : (typeof unit.mmp === 'function' ? unit.mmp() : 0);
     const hasMp = maxMp > 0;
     const mpPct = hasMp ? (unit.mp / maxMp) * 100 : 0;
-
-    // Reduced sizes and removed explicit text-xs/text-sm where appropriate to inherit Window_Base style
-    // But specific small text like Lv/HP might need to remain relatively small or just inherit standardFontSize (12px).
-    // Let's use inherit where possible, but for "smaller" text use explicit scaling or classes.
-    // Window_Base sets 12px.
-    // text-xs is 0.75rem (12px).
-    // text-[10px] is smaller.
 
     return `
         <div class="flex justify-between text-gray-300">

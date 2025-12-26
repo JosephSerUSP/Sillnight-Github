@@ -441,12 +441,37 @@ export class Window_CreatureModal extends Window_Selectable {
         this._ui.details.innerText = `Lv.${unit.level || 1} | ${def.race} | ${def.temperament}`;
 
         // XP Bar
-        // Simple visual mock for now, assuming next level needs 100 * level
-        const xpNeeded = (unit.level || 1) * 100;
-        const xpCurrent = unit.exp || 0;
-        const xpPct = Math.min(100, Math.max(0, (xpCurrent / xpNeeded) * 100));
-        this._ui.xpBar.style.width = `${xpPct}%`;
-        this._ui.xpText.innerText = `${xpCurrent} / ${xpNeeded} XP`;
+        let xpPct = 0;
+        let displayCurrent = 0;
+        let displayMax = 100;
+        let totalXp = unit.exp || 0;
+
+        if (typeof unit.currentLevelExp === 'function' && typeof unit.nextLevelExp === 'function') {
+            const currentLvlXp = unit.currentLevelExp();
+            const nextLvlXp = unit.nextLevelExp();
+
+            if (nextLvlXp > currentLvlXp) {
+                const xpInCurrentLvl = totalXp - currentLvlXp;
+                const xpForThisLvl = nextLvlXp - currentLvlXp;
+                xpPct = (xpInCurrentLvl / xpForThisLvl) * 100;
+
+                displayCurrent = xpInCurrentLvl;
+                displayMax = xpForThisLvl;
+            } else {
+                xpPct = 100;
+                displayCurrent = totalXp;
+                displayMax = totalXp;
+            }
+        } else {
+            // Fallback for objects without Actor methods
+            displayCurrent = totalXp;
+            // Best guess if we don't have curve data:
+            displayMax = (unit.level || 1) * 100;
+            xpPct = Math.min(100, Math.max(0, (displayCurrent / displayMax) * 100));
+        }
+
+        this._ui.xpBar.style.width = `${Math.max(0, Math.min(100, xpPct))}%`;
+        this._ui.xpText.innerText = `${displayCurrent} / ${displayMax} XP (Total: ${totalXp})`;
 
         // Stats
         this._ui.hp.innerText = `${unit.hp}/${maxhp}`;
