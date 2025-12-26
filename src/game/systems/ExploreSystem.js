@@ -94,6 +94,8 @@ export class ExploreSystem {
         this.fogRevealRadius = 2;
         this.fogFadeRadius = 2;
 
+        this.eventMeshes = new Map();
+
         /** @type {Game_Interpreter} */
         this.interpreter = new Game_Interpreter();
     }
@@ -388,20 +390,47 @@ export class ExploreSystem {
             this.dynamicGroup = new THREE.Group();
             this.scene.add(this.dynamicGroup);
         }
-        this.dynamicGroup.clear();
 
         if (!window.$gameMap) return;
 
         const events = window.$gameMap.events;
+        const activeIds = new Set();
 
         for (const event of events) {
             if (event.isErased) continue;
 
-            const visual = event.visual;
+            activeIds.add(event.id);
             const x = event.x;
             const y = event.y;
 
-            if (visual) {
+            const visual = event.visual;
+            let needsRebuild = false;
+
+            if (this.eventMeshes.has(event.id)) {
+                // Update existing mesh
+                const mesh = this.eventMeshes.get(event.id);
+
+                // Check for visual changes
+                const cachedType = mesh.userData.visualType;
+                const currentType = visual ? visual.type : null;
+
+                if (cachedType !== currentType) {
+                    needsRebuild = true;
+                    // Remove old mesh
+                    this.dynamicGroup.remove(mesh);
+                    if (mesh.geometry) mesh.geometry.dispose();
+                    this.eventMeshes.delete(event.id);
+                } else {
+                    // Just update position/visibility
+                    if (mesh.position.x !== x || mesh.position.z !== y) {
+                        mesh.position.set(x, 0.3, y);
+                    }
+                    if (!mesh.visible) mesh.visible = true;
+                }
+            }
+
+            if (!this.eventMeshes.has(event.id) && visual && visual.type !== 'TRAP') {
+                // Create new mesh
                 let color = 0xffffff;
                 let geo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
 
@@ -425,15 +454,25 @@ export class ExploreSystem {
                     geo = new THREE.CylinderGeometry(0.2, 0.2, 0.6, 8);
                 }
 
-                if (visual.type !== 'TRAP') {
-                    // Use MaterialFactory for dynamic objects
-                    const mat = MaterialFactory.create({ type: 'Phong', color: color }, true, false);
+                // Use MaterialFactory for dynamic objects
+                const mat = MaterialFactory.create({ type: 'Phong', color: color }, true, false);
 
-                    const mesh = new THREE.Mesh(geo, mat);
-                    mesh.position.set(x, 0.3, y);
-                    mesh.userData.isFogObject = true;
-                    this.dynamicGroup.add(mesh);
-                }
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.set(x, 0.3, y);
+                mesh.userData.isFogObject = true;
+                mesh.userData.visualType = visual.type; // Cache type
+                this.dynamicGroup.add(mesh);
+                this.eventMeshes.set(event.id, mesh);
+            }
+        }
+
+        // Cleanup erased or missing events
+        for (const [id, mesh] of this.eventMeshes) {
+            if (!activeIds.has(id)) {
+                this.dynamicGroup.remove(mesh);
+                if (mesh.geometry) mesh.geometry.dispose();
+                // Material is managed by factory, usually we don't dispose it here unless unique
+                this.eventMeshes.delete(id);
             }
         }
     }
@@ -490,8 +529,6 @@ export class ExploreSystem {
         }
 
         window.Game.Windows.HUD.refresh();
-
-        setTimeout(() => this.syncDynamic(), 300);
     }
 
     async resolveStaticTile(code) {
@@ -628,6 +665,7 @@ export class ExploreSystem {
         this.camera.position.y += (ty - this.camera.position.y) * 0.1;
         this.camera.lookAt(this.cameraLookCurrent.x, 0, this.cameraLookCurrent.z - 2);
 
+        this.syncDynamic();
         this.particles.update();
 
         const renderer = window.Game.RenderManager.getRenderer();
