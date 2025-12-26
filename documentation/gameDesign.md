@@ -56,11 +56,11 @@ Direct changes applied by Actions.
 
 ### 2.2. Traits
 Static modifiers found on Equipment, Passives, and States.
-*   **`hit`:** Hit chance modifier (Default 0 = 100%).
-*   **`eva`:** Evasion chance (Default 0 = 0%).
-*   **`cri`:** Crit chance (Default 0 = 0%).
-*   **`eleAdd` / `eleChg`:** Modify elemental alignment.
-*   **`paramMod`:** Modify core stats (`atk`, `def`, etc.).
+*   **`hit_bonus`:** Hit chance modifier (Default 0 = 100%).
+*   **`evade_chance`:** Evasion chance (Default 0 = 0%).
+*   **`crit_bonus_percent`:** Crit chance (Default 0 = 0%).
+*   **`element_change`:** Replaces all elements.
+*   **`PARAM_PLUS` / `PARAM_RATE`:** Modify core stats (`atk`, `def`, etc.).
 *   **`actionMod`:** Modify properties of actions (e.g., speed, cost).
 *   **`trigger: effect`:** Execute an Effect on condition (e.g., "Heal 10% HP on Battle Win").
 
@@ -82,7 +82,7 @@ The primary means of interaction in battle.
     *   **`ele` (Element):** Elemental alignment of the attack.
     *   **`cnd` (Condition):** Prerequisite (e.g., "HP < 50%", "Front Row").
 
-> **Implementation Gap:** Current `BattleManager` sorts by Unit Speed (`agi`). It needs to be refactored to sort by the selected Action's `asp` (with unit speed as a tiebreaker or secondary modifier).
+> **Implementation Gap:** Current `BattleManager` sorts by Unit Speed (`agi`). It needs to be refactored to sort by the selected Action's `asp` (with unit speed as a tiebreaker or secondary modifier). This feature is currently **NOT IMPLEMENTED**.
 
 ### 3.2. Trait Objects
 Entities that carry Traits.

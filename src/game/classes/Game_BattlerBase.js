@@ -172,6 +172,7 @@ export class Game_BattlerBase {
     /**
      * Calculates the value of a parameter.
      * Delegates calculation to the TraitRegistry, which aggregates traits.
+     * NOTE: Supports only standard parameters (0-7). Extended parameters like mpd/mxa/mxp (IDs 8-10) are defined in gameDesign.md but NOT yet implemented.
      * @param {number} paramId - 0:mhp, 1:mmp, 2:atk, 3:def, 4:mat, 5:mdf, 6:agi, 7:luk
      * @returns {number} The final parameter value.
      */
