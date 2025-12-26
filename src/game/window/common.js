@@ -1,4 +1,5 @@
 import { resolveAssetPath } from '../core.js';
+import { Services } from '../ServiceLocator.js';
 
 /**
  * Generates the HTML markup for a unit's sprite.
@@ -61,11 +62,33 @@ export function renderCreaturePanel(unit) {
             xpPct = 100; // Cap at max
         }
     } else {
-        // Fallback for raw objects or incompatible types (e.g. Enemy)
-        // Enemies don't typically show XP bars, so 0 is fine.
-        // If it's a recruit offer (raw obj), we can't calculate XP % without species data and assumed EXP.
-        // Recruit offers are usually Level X with 0 XP towards next level (0%), so 0 is correct.
-        xpPct = 0;
+        // Fallback for raw objects (e.g. from save data not rehydrated)
+        // Try to calculate using the same logic if we have the data
+        const lvl = unit.level || 1;
+        const sId = unit.speciesId || unit._speciesId;
+        const totalXp = unit.exp || unit._exp || 0;
+
+        if (sId) {
+            const def = Services.get('CreatureRegistry').get(sId);
+            const curve = def ? (def.xpCurve || 10) : 10;
+            const expForLevel = (l) => {
+                if (l <= 1) return 0;
+                return Math.floor(curve * 10 * Math.pow(l - 1, 1.5));
+            };
+
+            const currentLvlXp = expForLevel(lvl);
+            const nextLvlXp = expForLevel(lvl + 1);
+
+            if (nextLvlXp > currentLvlXp) {
+                const xpInCurrentLvl = totalXp - currentLvlXp;
+                const xpForThisLvl = nextLvlXp - currentLvlXp;
+                xpPct = (xpInCurrentLvl / xpForThisLvl) * 100;
+            } else {
+                xpPct = 100;
+            }
+        } else {
+            xpPct = 0;
+        }
     }
 
     // Clamp percentage
