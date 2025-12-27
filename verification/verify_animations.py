@@ -22,7 +22,7 @@ def verify_battle_animations():
         page.evaluate("""
             async () => {
                 const enemies = [
-                    new window.Game.Classes.Game_Enemy('slime', 0, 0, 1)
+                    new window.Game.Classes.Game_Enemy('goblin', 0, 0, 1)
                 ];
                 // Manually start encounter
                 await window.Game.BattleManager._startEncounterWithEnemies(enemies);
