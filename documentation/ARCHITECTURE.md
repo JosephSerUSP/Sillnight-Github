@@ -142,8 +142,8 @@ The game is data-driven, using a Registry pattern for logic execution and a Data
     *   `skills.js`: Effects, costs, animations.
     *   **Loader:** `DataManager` hydrates this raw JSON into the global `Data` object.
 *   **Registries (`src/game/registries/`):** Handle logic execution for data-driven behaviors.
-    *   **`TraitRegistry`:** Calculates final parameter values (`getParamValue`) by aggregating traits (Passives, Equipment) found on a battler. It handles event triggers like `onTurnStart`.
-    *   **`EffectRegistry`:** Handles the application of action effects (`apply`), executing logic for damage, healing, state addition, etc.
+    *   **`TraitRegistry`:** Calculates final parameter values (`getParamValue`) by aggregating traits (Passives, Equipment) found on a battler. (Future: Will handle event triggers like `onTurnStart`; currently these are handled directly by `Game_Battler`).
+    *   **`EffectRegistry`:** Handles the application of action effects (`apply`), applying the calculated results (damage, healing) and emitting events. Note: The logic for *evaluating* damage formulas resides in `Game_Action`.
 
 ---
 
