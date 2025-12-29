@@ -27,13 +27,13 @@ Units that fight in battle. They act autonomously based on user commands or AI.
 
 #### Core Parameters
 *   **`mhp` (Max HP):** Maximum health.
-*   **`mpd` (MP Drain):** (Creatures only) Amount of Summoner MP consumed per action/step.
+*   **`mpd` (MP Drain):** (Creatures only) Amount of Summoner MP consumed per action/step. (Planned / Not Implemented)
 *   **`atk` (Attack):** Multiplier for physical output (Base 10 = 100%).
 *   **`mat` (Magic):** Multiplier for magical output.
 *   **`def` (Defense):** Multiplier for incoming physical damage.
 *   **`mdf` (Resist):** Multiplier for incoming magical damage.
-*   **`mxa` (Max Actions):** Maximum number of learnable Actions (default 4).
-*   **`mxp` (Max Passives):** Maximum number of learnable Passives (default 2).
+*   **`mxa` (Max Actions):** Maximum number of learnable Actions (default 4). (Planned / Not Implemented)
+*   **`mxp` (Max Passives):** Maximum number of learnable Passives (default 2). (Planned / Not Implemented)
 *   **`ele` (Elements):** Array of aligned elements (e.g., `['Fire', 'Fire']` = Double Fire).
     *   **Offense:** 1.25x damage for each matching element instance.
     *   **Defense:** 1.25x damage taken for Weakness, 0.75x for Resistance.
@@ -77,7 +77,7 @@ The primary means of interaction in battle.
     *   **Spells:** Used by Summoner (Cost MP).
     *   **Items:** Consumable (Consumed on use).
 *   **Properties:**
-    *   **`asp` (Action Speed):** The **primary determinant** of turn order.
+    *   **`asp` (Action Speed):** The **primary determinant** of turn order. (Planned / Not Implemented)
         *   *Design Note:* Fast attacks (Dagger Slash) should act before slow attacks (Hammer Smash), regardless of who is using them.
     *   **`ele` (Element):** Elemental alignment of the attack.
     *   **`cnd` (Condition):** Prerequisite (e.g., "HP < 50%", "Front Row").
