@@ -264,23 +264,8 @@ export const BattleManager = {
             } else if (itemRegistry.get(chosen)) {
                 actionData = itemRegistry.get(chosen);
             } else {
-                // @deprecated: Fallback for Legacy case-insensitive search
-                // TODO: Remove this once all data files are normalized to exact case IDs.
-                const chosenLower = chosen.toLowerCase();
-                const allSkillIds = skillRegistry.getAll().map(s => s.id);
-                const skillKey = allSkillIds.find(k => k.toLowerCase() === chosenLower);
-
-                if (skillKey) {
-                    actionData = skillRegistry.get(skillKey);
-                } else {
-                    const allItemIds = itemRegistry.getAll().map(i => i.id);
-                    const itemKey = allItemIds.find(k => k.toLowerCase() === chosenLower);
-                    if (itemKey) {
-                        actionData = itemRegistry.get(itemKey);
-                    } else {
-                        actionData = skillRegistry.get('attack');
-                    }
-                }
+                console.warn(`Action '${chosen}' not found in registry. Defaulting to 'attack'.`);
+                actionData = skillRegistry.get('attack');
             }
 
             // Create Game_Action instance
