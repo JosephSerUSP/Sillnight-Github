@@ -1,3 +1,5 @@
+import { Services } from '../ServiceLocator.js';
+
 /**
  * Manages global game variables.
  * Variables are persistent numbers used for event logic (e.g., Quest Step ID).
@@ -29,13 +31,20 @@ export class Game_Variables {
      * @param {number} value - The new value.
      */
     setValue(id, value) {
+        let newValue;
         if (typeof value === 'number') {
-            this._data[id] = Math.floor(value);
+            newValue = Math.floor(value);
         } else {
              // Try parsing, fallback to 0
              const num = parseInt(value);
-             this._data[id] = isNaN(num) ? 0 : num;
+             newValue = isNaN(num) ? 0 : num;
         }
-        // TODO: Emit change event for reactive UI
+
+        // Only emit if changed (optional optimization, but good practice)
+        if (this._data[id] !== newValue) {
+            this._data[id] = newValue;
+            // Emit change event for reactive UI
+            Services.events.emit('variable:change', { id, value: newValue });
+        }
     }
 }
