@@ -271,13 +271,16 @@ export const BattleManager = {
                 const skillKey = allSkillIds.find(k => k.toLowerCase() === chosenLower);
 
                 if (skillKey) {
+                    console.warn(`[Deprecation] Action "${chosen}" found via case-insensitive lookup. Please normalize data to "${skillKey}".`);
                     actionData = skillRegistry.get(skillKey);
                 } else {
                     const allItemIds = itemRegistry.getAll().map(i => i.id);
                     const itemKey = allItemIds.find(k => k.toLowerCase() === chosenLower);
                     if (itemKey) {
+                        console.warn(`[Deprecation] Item "${chosen}" found via case-insensitive lookup. Please normalize data to "${itemKey}".`);
                         actionData = itemRegistry.get(itemKey);
                     } else {
+                        console.warn(`Action "${chosen}" not found in registries. Defaulting to attack.`);
                         actionData = skillRegistry.get('attack');
                     }
                 }
