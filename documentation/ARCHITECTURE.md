@@ -129,7 +129,7 @@ How a skill is executed.
 The game entities follow a prototype chain but rely heavily on "Traits" for stats.
 
 *   **`Game_BattlerBase`:** Handles HP, MP, and the `traits` array.
-    *   *Traits:* Instead of hardcoding `hit_rate = 95%`, we iterate traits: `traitsSum('hit_bonus')`. This allows equipment, passives, and buffs to all modify stats uniformly.
+    *   *Traits:* Instead of hardcoding `hit_rate = 95%`, we delegate to `TraitRegistry` which iterates traits: `registry.getParamValue(this, id)`. This allows equipment, passives, and buffs to all modify stats uniformly.
 *   **`Game_Battler`:** Adds `actions`, `speed`, and turn lifecycle (`onTurnStart`).
 *   **`Game_Actor`:** Adds `level`, `exp`, `equipment`.
 *   **`Game_Enemy`:** Adds `dropItems`, `ai_pattern`.

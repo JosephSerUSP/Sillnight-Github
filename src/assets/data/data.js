@@ -34,7 +34,10 @@ export const Data = {
         IceSpike: 'src/assets/effects/IceSpike.efkefc',
         MAP_Find: 'src/assets/effects/MAP_Find.efkefc',
         MAP_Trap: 'src/assets/effects/MAP_Trap.efkefc',
-        MAP_Shrine: 'src/assets/effects/MAP_Shrine.efkefc'
+        MAP_Shrine: 'src/assets/effects/MAP_Shrine.efkefc',
+        Guard: 'src/assets/effects/Guard.efkefc',
+        Comet: 'src/assets/effects/Comet.efkefc',
+        Tap: 'src/assets/effects/Tap.efkefc'
     },
 
     actionScripts: {
@@ -53,7 +56,8 @@ export const Data = {
             { type: 'retreat', duration: 220 }
         ],
         guard: [
-            { type: 'wait', duration: 350 },
+            { type: 'wait', duration: 200 },
+            { type: 'effect', effect: 'Guard', bind: 'self', anchor: 0.5, hold: 400 },
             { type: 'apply' }
         ],
         wait: [
@@ -94,23 +98,26 @@ export const Data = {
         ],
         tornado: [
             { type: 'wait', duration: 220 },
-            { type: 'effect', effect: 'Tornado', bind: 'target', anchor: 0.0, hold: 600 },
+            { type: 'effect', effect: 'Tornado', bind: 'center', anchor: 0.0, hold: 600 },
             { type: 'apply' }
         ],
         gravityWell: [
             { type: 'wait', duration: 250 },
-            { type: 'effect', effect: 'Tornado', bind: 'target', anchor: 0.0, hold: 580 },
+            { type: 'effect', effect: 'Tornado', bind: 'center', anchor: 0.0, hold: 580 },
             { type: 'apply' }
         ],
         hellfire: [
             { type: 'wait', duration: 280 },
-            { type: 'effect', effect: 'Apocalypse', bind: 'target', anchor: 0.0, hold: 640 },
+            { type: 'effect', effect: 'Apocalypse', bind: 'center', anchor: 0.0, hold: 640 },
             { type: 'apply' }
         ],
         apocalypse: [
-            { type: 'wait', duration: 300 },
-            { type: 'effect', effect: 'Apocalypse', bind: 'target', anchor: 0.0, hold: 650 },
-            { type: 'apply' }
+            { type: 'dim_ground', duration: 0 },
+            { type: 'jump', height: 0.5, duration: 400 },
+            { type: 'focus', target: 'enemy', duration: 400 },
+            { type: 'effect', effect: 'Apocalypse', bind: 'center', anchor: 0.0, hold: 650 },
+            { type: 'apply' },
+            { type: 'reset_visuals', duration: 250 }
         ],
         curse: [
             { type: 'wait', duration: 220 },
@@ -119,7 +126,7 @@ export const Data = {
         ],
         sleepMist: [
             { type: 'wait', duration: 220 },
-            { type: 'effect', effect: 'Curse', bind: 'target', anchor: 0.5, hold: 520 },
+            { type: 'effect', effect: 'Curse', bind: 'center', anchor: 0.5, hold: 520 },
             { type: 'apply' }
         ],
         anvil: [
@@ -141,7 +148,7 @@ export const Data = {
         ],
         cosmicRay: [
             { type: 'wait', duration: 200 },
-            { type: 'effect', effect: 'BasicHit', bind: 'target', anchor: 0.0, hold: 320 },
+            { type: 'effect', effect: 'Comet', bind: 'target', anchor: 0.0, hold: 320 },
             { type: 'apply' }
         ],
         shadowSpike: [
@@ -169,9 +176,12 @@ export const Data = {
             { type: 'retreat', duration: 240 }
         ],
         diamondDust: [
-            { type: 'wait', duration: 200 },
-            { type: 'effect', effect: 'IceWind', bind: 'target', anchor: 0.0, hold: 520 },
-            { type: 'apply' }
+            { type: 'dim_ground', duration: 0 },
+            { type: 'jump', height: 0.5, duration: 400 },
+            { type: 'focus', target: 'enemy', duration: 400 },
+            { type: 'effect', effect: 'IceWind', bind: 'center', anchor: 0.0, hold: 520 },
+            { type: 'apply' },
+            { type: 'reset_visuals', duration: 250 }
         ]
     },
 
