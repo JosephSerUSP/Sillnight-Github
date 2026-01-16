@@ -124,10 +124,11 @@ export class Game_Action {
      * Evaluates the damage formula and calculates final damage/healing.
      * Pipeline:
      * 1. Eval formula (Base)
-     * 2. Apply Stat Multiplier (ATK/DEF or MAT/MDF)
-     * 3. Apply Element Boost (STAB & Weakness)
-     * 4. Apply Critical Hit (RNG)
-     * 5. Apply Guarding (50% reduction)
+     * 2. Add Power Bonus (from traits)
+     * 3. Apply Stat Multiplier (ATK/DEF or MAT/MDF)
+     * 4. Apply Element Boost (STAB & Weakness)
+     * 5. Apply Critical Hit (RNG)
+     * 6. Apply Guarding (50% reduction)
      * @param {Game_Battler} target - The target battler.
      * @param {Object} effect - The specific effect being applied.
      * @returns {number} The final calculated value.

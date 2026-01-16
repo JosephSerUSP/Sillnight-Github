@@ -15,6 +15,7 @@ export class Game_BattlerBase {
         /** @type {boolean} Visibility flag. */
         this._hidden = false;
         /** @type {Array<number>} Additive bonuses for parameters (mhp, mmp, atk, def, mat, mdf, agi, luk). */
+        // Note: Does not currently include mpd, mxa, mxp as per gameDesign.md
         this._paramPlus = [0, 0, 0, 0, 0, 0, 0, 0];
         /** @type {Array<number>} IDs of active states. */
         this._states = [];

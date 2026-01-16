@@ -100,6 +100,7 @@ Strictly separates the "Brain" from the "Eyes".
     *   Executes actions (`Game_Action`).
     *   Determines results (Hit/Miss/Crit).
     *   *Note:* Currently operates in a **Hybrid** state, orchestrating `BattleRenderSystem` (e.g. `playAnim`) and waiting for completion callbacks. Visual feedback is a mix of `EventBus` events (logs) and direct UI window calls (Victory, LevelUp).
+    *   *Flow:* The transition to battle involves `TransitionManager` effects, explicit Mode switching (`Game.ui.mode = 'BATTLE'`), and Scene switching.
 *   **`BattleRenderSystem` (The Eyes):** Visualization.
     *   Listens to `BattleManager` events via `Observer`.
     *   Manages 3D sprites (`Spriteset_Battle`).
