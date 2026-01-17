@@ -37,6 +37,7 @@ Units that fight in battle. They act autonomously based on user commands or AI.
 *   **`ele` (Elements):** Array of aligned elements (e.g., `['Fire', 'Fire']` = Double Fire).
     *   **Offense:** 1.25x damage for each matching element instance.
     *   **Defense:** 1.25x damage taken for Weakness, 0.75x for Resistance.
+    *   **Cycle:** `G (Green) > B (Blue) > R (Red) > G`. `W (White) <> K (Black)` are mutually weak.
 
 > **Implementation Gap:** Current codebase uses standard RPG stats (`agi`, `luk`) and lacks `mpd`/`mxa`/`mxp`. `Game_BattlerBase` needs refactoring to support these design-specific parameters.
 
@@ -53,6 +54,7 @@ Direct changes applied by Actions.
 *   **`elementAdd`:** Adds an element to alignment.
 *   **`elementChange`:** Replaces all elements.
 *   **Standard RPG Effects:** Damage HP, Heal HP, Add State, Remove State.
+    *   *Note on Damage:* The engine evaluates the formula (e.g., `4 + 2 * a.lvl`) and then applies a **Stat Multiplier** `(User.atk / Target.def)` to the result.
 
 ### 2.2. Traits
 Static modifiers found on Equipment, Passives, and States.
