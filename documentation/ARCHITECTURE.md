@@ -91,6 +91,9 @@ Handles the dungeon crawling experience.
 *   **Rendering:** Uses `Three.js` `InstancedMesh` for high-performance rendering of thousands of floor/wall tiles.
 *   **Fog of War:** Implemented via a custom `ShaderMaterial`. A `DataTexture` tracks visibility states (Hidden, Visited, Visible), which is fed into the vertex shader to vertically displace (hide) or reveal geometry.
 *   **Interaction:** Uses raycasting or grid-based collision to trigger `Game_Event` objects (Shops, Enemies, Chests).
+*   **Transitions:** `TransitionManager` handles visual effects between scenes.
+    *   **Map:** Diagonal Swipe (with distortion).
+    *   **Battle:** Spiral Blur (Zoom + Swirl) to Black.
 
 ### 3.3. Battle System (`BattleManager` vs `BattleRenderSystem`)
 Strictly separates the "Brain" from the "Eyes".
@@ -118,6 +121,7 @@ How a skill is executed.
 3.  **Targeting:** `Game_Action` determines valid targets (e.g., "All Enemies").
 4.  **Application:** `action.apply(target)` is called for each target.
     *   **Formula Eval:** `Game_Action.evalDamageFormula()` parses the math (e.g., `a.mat * 4 - b.mdf * 2`).
+    *   **Stat Multiplier:** Applies a secondary scaling factor `(AttackStat / DefenseStat)` to the result of the formula.
     *   **Element Mod:** Checks `target.elements` vs `action.element` for multipliers.
     *   **Variance/Crit:** Applies RNG.
 5.  **Event Emission:** The result is passed to `EffectRegistry` via `BattleManager` callbacks. Events are fired:
