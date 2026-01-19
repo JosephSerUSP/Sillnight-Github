@@ -248,6 +248,8 @@ export class Game_BattlerBase {
 
     /**
      * Calculates the multiplicative value of all traits with a specific type.
+     * **Note:** This is a local helper for derived stats (e.g. hit, crit) and iterates
+     * trait objects directly, unlike `param()` which delegates to `TraitRegistry`.
      * @param {string} type - The trait type code.
      * @returns {number} The product of all values.
      */
@@ -257,6 +259,8 @@ export class Game_BattlerBase {
 
     /**
      * Calculates the additive sum of all traits with a specific type.
+     * **Note:** This is a local helper for derived stats (e.g. hit, crit) and iterates
+     * trait objects directly, unlike `param()` which delegates to `TraitRegistry`.
      * @param {string} type - The trait type code.
      * @returns {number} The sum of all values.
      */

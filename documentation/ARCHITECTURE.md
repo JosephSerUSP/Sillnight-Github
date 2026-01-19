@@ -83,7 +83,7 @@ Unlike traditional engines that render UI to a Canvas, Stillnight uses the DOM.
 *   **`LayoutManager`:** A composition system (`FlexLayout`, `GridLayout`) attached to windows to manage the positioning of children components.
 *   **`Window_Selectable`:** Extends `Window_Base` to handle list navigation (cursor movement, selection), essential for RPG menus.
 
-**Flow:** `Window_Party` updates via manual `refresh()` or direct hooks from Logic classes (e.g., `Game_BattlerBase` -> `window.Game.Windows.Party`).
+**Flow:** UI is currently transitioning to an EventBus model. However, legacy direct coupling exists: `Window_Party` updates via manual `refresh()` calls or direct hooks from Logic classes (e.g., `Game_BattlerBase` -> `window.Game.Windows.Party`).
 
 ### 3.2. Exploration System (`ExploreSystem`)
 Handles the dungeon crawling experience.
@@ -99,7 +99,7 @@ Strictly separates the "Brain" from the "Eyes".
     *   Calculates turn order (`queue`).
     *   Executes actions (`Game_Action`).
     *   Determines results (Hit/Miss/Crit).
-    *   *Note:* Currently operates in a **Hybrid** state, orchestrating `BattleRenderSystem` (e.g. `playAnim`) and waiting for completion callbacks. Visual feedback is a mix of `EventBus` events (logs) and direct UI window calls (Victory, LevelUp).
+    *   *Note:* Currently operates in a **Hybrid** state, orchestrating `BattleRenderSystem` (e.g. `playAnim`) and waiting for completion callbacks. Visual feedback is a mix of `EventBus` events (logs) and legacy direct UI window calls (e.g., `BattleLog.showBanner`, `Victory.show`).
 *   **`BattleRenderSystem` (The Eyes):** Visualization.
     *   Listens to `BattleManager` events via `Observer`.
     *   Manages 3D sprites (`Spriteset_Battle`).
@@ -116,10 +116,12 @@ How a skill is executed.
 1.  **Initiation:** `BattleManager.processNextTurn()` selects a unit and an action (e.g., "Fireball").
 2.  **Instantiation:** A `Game_Action` is created with the subject and the skill data.
 3.  **Targeting:** `Game_Action` determines valid targets (e.g., "All Enemies").
-4.  **Application:** `action.apply(target)` is called for each target.
-    *   **Formula Eval:** `Game_Action.evalDamageFormula()` parses the math (e.g., `a.mat * 4 - b.mdf * 2`).
-    *   **Element Mod:** Checks `target.elements` vs `action.element` for multipliers.
-    *   **Variance/Crit:** Applies RNG.
+4.  **Application:** `action.apply(target)` is called for each target, which delegates to `evalDamageFormula`.
+    *   **Formula Eval:** Calculates base damage (e.g., `a.atk * 4`).
+    *   **Stat Scaling:** Applies Stat Multiplier (User ATK / Target DEF).
+    *   **Element Mod:** Multiplies by 1.25x for Attacker Element and Target Weakness/Resistance.
+    *   **Crit:** Applies RNG for Critical Hits.
+    *   **Guard:** Halves damage if target is guarding.
 5.  **Event Emission:** The result is passed to `EffectRegistry` via `BattleManager` callbacks. Events are fired:
     *   `battle:action_used` (Starts animation)
     *   `battle:damage_dealt` (Shows number, reduces HP)
@@ -129,7 +131,9 @@ How a skill is executed.
 The game entities follow a prototype chain but rely heavily on "Traits" for stats.
 
 *   **`Game_BattlerBase`:** Handles HP, MP, and the `traits` array.
-    *   *Traits:* Instead of hardcoding `hit_rate = 95%`, we delegate to `TraitRegistry` which iterates traits: `registry.getParamValue(this, id)`. This allows equipment, passives, and buffs to all modify stats uniformly.
+    *   *Traits:* Uses a hybrid approach.
+        *   **Core Params (0-7):** Delegated to `TraitRegistry` (`registry.getParamValue(this, id)`) which aggregates Additive, Multiplicative, and Buff traits.
+        *   **Derived Stats (Crit, Hit):** Calculated via local helpers (`traitsSum`, `traitsPi`) that iterate over the battler's trait objects directly.
 *   **`Game_Battler`:** Adds `actions`, `speed`, and turn lifecycle (`onTurnStart`).
 *   **`Game_Actor`:** Adds `level`, `exp`, `equipment`.
 *   **`Game_Enemy`:** Adds `dropItems`, `ai_pattern`.

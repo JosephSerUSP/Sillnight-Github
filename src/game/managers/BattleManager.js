@@ -8,7 +8,12 @@ import { Config } from '../Config.js';
 /**
  * Manages the flow and state of battle.
  * Handles encounter setup, turn processing, and victory/defeat conditions.
- * Hybrid coupling: Uses EventBus for major events but retains direct UI references for specific flows.
+ *
+ * **Architecture Note:**
+ * Operates in a **Hybrid** state. While it emits standard events (e.g., `battle:turn_start`),
+ * it still retains direct "Legacy" references to UI components (like `window.Game.Windows.BattleLog`)
+ * and orchestrates `BattleRenderSystem` animations via callbacks rather than pure events.
+ *
  * @namespace BattleManager
  */
 export const BattleManager = {
@@ -214,6 +219,9 @@ export const BattleManager = {
     /**
      * Processes the next turn in the queue.
      * Executes AI actions or waits for animations.
+     *
+     * **Legacy Note:**
+     * Includes fallback logic for case-insensitive skill lookups (deprecated).
      */
     processNextTurn() {
             // Replaces: window.Game.Windows.Party.refresh();
@@ -377,7 +385,8 @@ export const BattleManager = {
          document.getElementById('battle-ui-overlay').innerHTML = '';
             if (win) {
                 // Replaces: window.Game.Windows.BattleLog.showBanner('VICTORY');
-                Services.events.emit('battle:victory', { xp: 0, gold: 0, party: [] }); // Dummy event for now
+                // Note: The payload is currently empty/dummy data.
+                Services.events.emit('battle:victory', { xp: 0, gold: 0, party: [] });
 
                 // Legacy/Hybrid: Direct UI call. Should eventually subscribe to 'battle:victory'.
                 window.Game.Windows.BattleLog.showBanner('VICTORY');
