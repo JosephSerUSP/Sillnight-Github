@@ -1,6 +1,7 @@
 import { Window_Base } from '../windows.js';
 import { FlexLayout } from '../layout/FlexLayout.js';
 import { TextComponent } from '../layout/components.js';
+import { Services } from '../ServiceLocator.js';
 
 /**
  * Heads-Up Display window.
@@ -14,6 +15,21 @@ export class Window_HUD extends Window_Base {
     initialize() {
         super.initialize();
         this.defineLayout();
+        this.setupSubscriptions();
+    }
+
+    setupSubscriptions() {
+        Services.events.on('party:gold_change', ({ amount }) => {
+            if (this._goldText) this._goldText.setHtml(`GOLD <span class="text-white">${amount}</span>`);
+        });
+        Services.events.on('map:floor_change', ({ floor }) => {
+            if (this._floorText) this._floorText.setHtml(`FLOOR <span class="text-white">${floor}</span>`);
+        });
+        Services.events.on('battler:mp_change', ({ unit, current, max }) => {
+            if (unit && unit.isSummoner && this._mpText) {
+                this._mpText.setHtml(`MP <span class="text-white">${current}/${max}</span>`);
+            }
+        });
     }
 
     defineLayout() {

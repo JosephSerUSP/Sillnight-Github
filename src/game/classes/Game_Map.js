@@ -56,6 +56,7 @@ export class Game_Map {
         this._floor = floor;
         this._events.clear();
         this.generateFloor();
+        Services.events.emit('map:floor_change', { floor: this._floor });
     }
 
     /**

@@ -2,7 +2,7 @@ import { Data } from '../assets/data/data.js';
 import { DataManager } from './DataManager.js';
 import { Log } from './log.js';
 import * as Systems from './systems.js';
-import { SceneManager, InputManager, BattleManager, RenderManager, TransitionManager } from './managers.js';
+import { SceneManager, InputManager, BattleManager, RenderManager, TransitionManager, AudioManager } from './managers.js';
 import { Scene_Explore, Scene_Battle } from './scenes.js';
 import { Window_HUD } from './window/hud.js';
 import { Window_Party } from './window/party.js';
@@ -51,6 +51,7 @@ export const Game = {
     BattleManager: BattleManager,
     RenderManager: new RenderManager(),
     TransitionManager: new TransitionManager(),
+    AudioManager: new AudioManager(),
     Windows: {},
     Classes: {
         Game_Actor,
@@ -86,6 +87,7 @@ export const Game = {
         Services.register('EventDataRegistry', new EventDataRegistry());
         Services.register('GameVariables', new Game_Variables());
         Services.register('GameSwitches', new Game_Switches());
+        Services.register('Audio', this.AudioManager);
         console.log("Game.init: Services registered.");
 
         // Load Data into Registries
@@ -114,6 +116,7 @@ export const Game = {
 
         // Initialize Transition Manager
         this.TransitionManager.init();
+        this.AudioManager.init();
 
         // Create windows
         this.Windows.HUD = new Window_HUD();

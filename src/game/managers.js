@@ -5,5 +5,6 @@ import { RenderManager } from './managers/RenderManager.js';
 import { SceneManager } from './managers/SceneManager.js';
 import { InputManager } from './managers/InputManager.js';
 import { TransitionManager } from './managers/TransitionManager.js';
+import { AudioManager } from './managers/AudioManager.js';
 
-export { DataManager, BattleManager, RenderManager, SceneManager, InputManager, TransitionManager };
+export { DataManager, BattleManager, RenderManager, SceneManager, InputManager, TransitionManager, AudioManager };

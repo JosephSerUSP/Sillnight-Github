@@ -1,6 +1,7 @@
 import { Game_Actor } from './Game_Actor.js';
 import { Game_Summoner } from './Game_Summoner.js';
 import { Config } from '../Config.js';
+import { Services } from '../ServiceLocator.js';
 
 /**
  * Manages the player's party, inventory, and gold.
@@ -66,6 +67,7 @@ export class Game_Party {
      */
     gainGold(amount) {
         this._gold += amount;
+        Services.events.emit('party:gold_change', { amount: this._gold });
     }
 
     /**
@@ -116,6 +118,7 @@ export class Game_Party {
      */
     loseGold(amount) {
         this._gold = Math.max(0, this._gold - amount);
+        Services.events.emit('party:gold_change', { amount: this._gold });
     }
 
     /**
@@ -152,6 +155,7 @@ export class Game_Party {
             this._activeSlots[emptyIdx] = actor;
             actor.slotIndex = emptyIdx;
         }
+        Services.events.emit('party:updated');
         return actor;
     }
 
@@ -169,6 +173,7 @@ export class Game_Party {
             if (slotIdx !== -1) {
                 this._activeSlots[slotIdx] = null;
             }
+            Services.events.emit('party:updated');
         }
     }
 
@@ -186,6 +191,8 @@ export class Game_Party {
 
         if (this._activeSlots[slot1]) this._activeSlots[slot1].slotIndex = slot1;
         if (this._activeSlots[slot2]) this._activeSlots[slot2].slotIndex = slot2;
+
+        Services.events.emit('party:updated');
     }
 
     /**
@@ -220,8 +227,11 @@ export class Game_Party {
         const before = this._summoner.mp;
         this._summoner.mp = Math.max(0, this._summoner.mp - amount);
         if (before !== this._summoner.mp) {
-            window.Game?.Windows?.HUD?.refresh();
-            window.Game?.Windows?.Party?.refresh();
+            Services.events.emit('party:mp_change', {
+                unit: this._summoner,
+                current: this._summoner.mp,
+                max: this._summoner.mmp
+            });
         }
     }
 }

@@ -120,6 +120,6 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
     - Expand `Game_Interpreter` to support conditional logic (`IF/ELSE`, `CHECK_VAR`) (Done).
     - Implement `Game_Variables` and `Game_Switches` (Done).
 
-### Phase 4: Polish (Next Priority)
-1.  Reactive UI components.
-2.  Audio system integration.
+### Phase 4: Polish (In Progress)
+1.  Reactive UI components (Done: `Window_HUD` and `Window_Party` refactored to use EventBus).
+2.  Audio system integration (Done: `AudioManager` implemented and registered).

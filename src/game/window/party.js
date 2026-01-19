@@ -3,6 +3,7 @@ import { renderCreaturePanel } from './common.js';
 import { GridLayout } from '../layout/GridLayout.js';
 import { Component } from '../layout/Component.js';
 import { PopupManager } from '../PopupManager.js';
+import { Services } from '../ServiceLocator.js';
 
 // Custom component for a party slot
 class PartySlotComponent extends Component {
@@ -56,6 +57,62 @@ export class Window_Party extends Window_Selectable {
         this.defineLayout();
         this.items = window.$gameParty.activeSlots;
         this.addHandler('click', this.onClick.bind(this));
+        this.setupSubscriptions();
+    }
+
+    setupSubscriptions() {
+        Services.events.on('party:updated', () => {
+            this.items = window.$gameParty.activeSlots;
+            this.refresh();
+        });
+
+        Services.events.on('battler:hp_change', (payload) => {
+            this.handleHpChange(payload);
+        });
+
+        Services.events.on('battler:mp_change', (payload) => {
+            this.handleMpChange(payload);
+        });
+    }
+
+    handleHpChange({ unit, diff }) {
+        const index = this.items.indexOf(unit);
+        if (index !== -1) {
+            // Only show popups in EXPLORE mode, as Battle has its own damage display
+            if (window.Game && window.Game.ui && window.Game.ui.mode === 'EXPLORE') {
+                this.onUnitHpChange(unit, diff);
+            }
+            this.updateSlot(index);
+        }
+    }
+
+    handleMpChange({ unit }) {
+        const index = this.items.indexOf(unit);
+        if (index !== -1) {
+            this.updateSlot(index);
+        }
+    }
+
+    updateSlot(index) {
+        if (!this.layout || !this.layout.components[index]) return;
+
+        const oldComponent = this.layout.components[index];
+        const u = this.items[index];
+        const newComponent = new PartySlotComponent(u, index, (idx) => this.callHandler('click', idx));
+
+        if (u?.isSummoner) {
+            newComponent.addClass('border-indigo-400');
+        }
+
+        if (this._index === index) {
+            newComponent.setSelected(true);
+        }
+
+        const layoutOptions = this.slotLayoutPosition(index);
+        this.layout.applyStyle(newComponent.element, layoutOptions);
+
+        this.root.replaceChild(newComponent.element, oldComponent.element);
+        this.layout.components[index] = newComponent;
     }
 
     defineLayout() {
