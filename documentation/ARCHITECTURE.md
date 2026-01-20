@@ -103,7 +103,8 @@ Strictly separates the "Brain" from the "Eyes".
 *   **`BattleRenderSystem` (The Eyes):** Visualization.
     *   Listens to `BattleManager` events via `Observer`.
     *   Manages 3D sprites (`Spriteset_Battle`).
-    *   Controls the Camera (Zoom, Pan).
+    *   Controls the Camera (Zoom, Pan, and Intro Sequence).
+        *   *Intro Sequence:* Handles the cinematic entry (Black screen -> Fade In -> Camera Pan/Zoom) orchestrated by `BattleManager`.
     *   Plays Effekseer particles.
 
 ---
@@ -144,6 +145,8 @@ The game is data-driven, using a Registry pattern for logic execution and a Data
 *   **Registries (`src/game/registries/`):** Handle logic execution for data-driven behaviors.
     *   **`TraitRegistry`:** Calculates final parameter values (`getParamValue`) by aggregating traits (Passives, Equipment) found on a battler. It handles event triggers like `onTurnStart`.
     *   **`EffectRegistry`:** Handles the application of action effects (`apply`), executing logic for damage, healing, state addition, etc.
+*   **State Managers:**
+    *   **`Game_Variables` & `Game_Switches`:** Persist simple state (integers, booleans) for quest tracking and narrative logic.
 
 ---
 

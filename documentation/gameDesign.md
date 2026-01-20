@@ -21,6 +21,7 @@ The PC acts as the anchor for the party.
         *   **Change Formation:** Move units between Active/Reserve.
         *   **Flee:** Attempt to escape (costs MP/Gold).
     *   **Targeting:** The Summoner is untargetable unless all creatures are downed or in reserve.
+    > **Implementation Deviation:** Currently, the Summoner is inserted into the standard turn queue (often acting first due to high speed or specific sorting logic). The "End of Round" mechanic is not yet implemented.
 
 ### 1.2. Battlers (Creatures & Enemies)
 Units that fight in battle. They act autonomously based on user commands or AI.
@@ -38,7 +39,7 @@ Units that fight in battle. They act autonomously based on user commands or AI.
     *   **Offense:** 1.25x damage for each matching element instance.
     *   **Defense:** 1.25x damage taken for Weakness, 0.75x for Resistance.
 
-> **Implementation Gap:** Current codebase uses standard RPG stats (`agi`, `luk`) and lacks `mpd`/`mxa`/`mxp`. `Game_BattlerBase` needs refactoring to support these design-specific parameters.
+> **Implementation Gap:** Current codebase uses standard RPG stats (`agi`, `luk`) and lacks `mpd`/`mxa`/`mxp` in both `Game_BattlerBase` logic and `creatures.js` data definitions.
 
 ---
 
@@ -82,7 +83,7 @@ The primary means of interaction in battle.
     *   **`ele` (Element):** Elemental alignment of the attack.
     *   **`cnd` (Condition):** Prerequisite (e.g., "HP < 50%", "Front Row").
 
-> **Implementation Gap:** Current `BattleManager` sorts by Unit Speed (`agi`). It needs to be refactored to sort by the selected Action's `asp` (with unit speed as a tiebreaker or secondary modifier).
+> **Implementation Gap:** Current `BattleManager` sorts by Unit Speed (`agi`/`speed`) at the start of the round. It needs to be refactored to sort by the selected Action's `asp` (with unit speed as a tiebreaker or secondary modifier). Currently, the `speed` property in `skills.js` is defined but not utilized for turn order.
 
 ### 3.2. Trait Objects
 Entities that carry Traits.

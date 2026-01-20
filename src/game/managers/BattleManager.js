@@ -64,6 +64,12 @@ export const BattleManager = {
 
     /**
      * Internal method to start encounter with pre-generated enemies.
+     * Orchestrates the transition sequence:
+     * 1. Capture screen & Start "Blur -> Black" transition.
+     * 2. Switch game mode to 'BATTLE' (pauses ExploreSystem).
+     * 3. Switch Scene (Hidden).
+     * 4. Setup Battle 3D Scene & Intro Camera.
+     * 5. Start "Black -> Cut In" reveal & play Intro Animation.
      * @param {Array<Game_Enemy>} enemies
      */
     async _startEncounterWithEnemies(enemies) {
@@ -159,6 +165,8 @@ export const BattleManager = {
     /**
      * Proceeds to the next round of combat.
      * Re-calculates turn order and checks win/loss conditions.
+     * Note: Currently sorts units by their `speed` (agi-based) property.
+     * Future refactor should sort by the `speed` of the selected Action (Action Speed System).
      */
     nextRound() {
         this.roundCount++;
