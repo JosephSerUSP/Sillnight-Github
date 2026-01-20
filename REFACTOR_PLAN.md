@@ -121,5 +121,9 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
     - Implement `Game_Variables` and `Game_Switches` (Done).
 
 ### Phase 4: Polish (Next Priority)
-1.  Reactive UI components.
+1.  Reactive UI components (Partially Implemented).
+    *   `EventEmitterMixin` created.
+    *   `Game_BattlerBase`, `Game_Party`, `Game_Map` are now event emitters.
+    *   `HPGauge`, `MPGauge`, `FloorDisplay`, `GoldDisplay` are reactive components.
+    *   `Window_HUD` and `Window_Party` updated to use these components.
 2.  Audio system integration.

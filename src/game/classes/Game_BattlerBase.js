@@ -1,11 +1,13 @@
 import { Services } from '../ServiceLocator.js';
+import { EventEmitterMixin } from '../mixins/EventEmitterMixin.js';
 
 /**
  * The foundational class for any entity that participates in battle.
  * Manages basic parameters (HP, MP, TP), states, and buffs.
  */
-export class Game_BattlerBase {
+export class Game_BattlerBase extends EventEmitterMixin(Object) {
     constructor() {
+        super();
         /** @type {number} Current HP. */
         this._hp = 0;
         /** @type {number} Current MP. */
@@ -35,9 +37,12 @@ export class Game_BattlerBase {
         const diff = value - this._hp;
         this._hp = value;
         this.refresh();
-        if (diff !== 0 && window.Game && window.Game.ui && window.Game.ui.mode === 'EXPLORE') {
-            if (window.Game.Windows && window.Game.Windows.Party) {
-                window.Game.Windows.Party.onUnitHpChange(this, diff);
+        if (diff !== 0) {
+            this.emit('change:hp', this._hp);
+            if (window.Game && window.Game.ui && window.Game.ui.mode === 'EXPLORE') {
+                if (window.Game.Windows && window.Game.Windows.Party) {
+                    window.Game.Windows.Party.onUnitHpChange(this, diff);
+                }
             }
         }
     }
@@ -48,8 +53,12 @@ export class Game_BattlerBase {
     get mp() { return this._mp; }
     /** @param {number} value - New MP value. Triggers refresh. */
     set mp(value) {
+        const diff = value - this._mp;
         this._mp = value;
         this.refresh();
+        if (diff !== 0) {
+            this.emit('change:mp', this._mp);
+        }
     }
 
     /**
@@ -58,8 +67,12 @@ export class Game_BattlerBase {
     get tp() { return this._tp; }
     /** @param {number} value - New TP value. Triggers refresh. */
     set tp(value) {
+        const diff = value - this._tp;
         this._tp = value;
         this.refresh();
+        if (diff !== 0) {
+            this.emit('change:tp', this._tp);
+        }
     }
 
     /**

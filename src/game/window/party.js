@@ -1,47 +1,7 @@
 import { Window_Selectable } from '../windows.js';
-import { renderCreaturePanel } from './common.js';
 import { GridLayout } from '../layout/GridLayout.js';
-import { Component } from '../layout/Component.js';
 import { PopupManager } from '../PopupManager.js';
-
-// Custom component for a party slot
-class PartySlotComponent extends Component {
-    constructor(unit, index, onClick) {
-        // Base styling for slot
-        super('div', 'party-slot relative flex flex-col p-1 cursor-pointer hover:bg-white/10');
-        this.unit = unit;
-        this.index = index;
-
-        if (unit?.isSummoner) {
-            this.addClass('summoner-slot');
-        }
-
-        // Render content
-        if (unit) {
-            this.setHtml(renderCreaturePanel(unit));
-        } else {
-            this.setHtml('<span class="m-auto text-gray-800 text-xs">EMPTY</span>');
-        }
-
-        // Click handling
-        if (onClick) {
-            this.on('click', () => onClick(index));
-        }
-    }
-
-    setSelected(selected) {
-        if (selected) {
-            this.addClass('selected');
-            // Assuming 'selected' class does the styling, otherwise:
-            this.addClass('border-yellow-500');
-            this.addClass('border');
-        } else {
-            this.removeClass('selected');
-            this.removeClass('border-yellow-500');
-            this.removeClass('border');
-        }
-    }
-}
+import { PartySlotComponent } from '../layout/PartySlotComponent.js';
 
 /**
  * Window showing the active party in the main UI.

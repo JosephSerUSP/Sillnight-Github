@@ -4,12 +4,14 @@ import * as Systems from '../systems.js';
 import { BSPGenerator } from '../generators/BSPGenerator.js';
 import { StaticGenerator } from '../generators/StaticGenerator.js';
 import { Maps } from '../../assets/data/maps.js';
+import { EventEmitterMixin } from '../mixins/EventEmitterMixin.js';
 
 /**
  * Manages the map state, including grid data, player position, and visited tiles.
  */
-export class Game_Map {
+export class Game_Map extends EventEmitterMixin(Object) {
     constructor() {
+        super();
         /** @type {number} */
         this._mapId = 0;
         /** @type {number} */
@@ -41,7 +43,11 @@ export class Game_Map {
     /** @returns {number} The current floor. */
     get floor() { return this._floor; }
     /** @param {number} v - The new floor number. */
-    set floor(v) { this._floor = v; }
+    set floor(v) {
+        if (this._floor === v) return;
+        this._floor = v;
+        this.emit('change:floor', v);
+    }
     /** @returns {Array<Game_Event>} List of all active events. */
     get events() { return Array.from(this._events.values()); }
     /** @returns {Object} Visual configuration. */

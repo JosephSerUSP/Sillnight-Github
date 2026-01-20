@@ -1,12 +1,14 @@
 import { Game_Actor } from './Game_Actor.js';
 import { Game_Summoner } from './Game_Summoner.js';
 import { Config } from '../Config.js';
+import { EventEmitterMixin } from '../mixins/EventEmitterMixin.js';
 
 /**
  * Manages the player's party, inventory, and gold.
  */
-export class Game_Party {
+export class Game_Party extends EventEmitterMixin(Object) {
     constructor() {
+        super();
         /** @type {number} Current gold amount. */
         this._gold = 0;
         /** @type {number} Steps taken (unused). */
@@ -65,7 +67,9 @@ export class Game_Party {
      * @param {number} amount - Amount to add.
      */
     gainGold(amount) {
+        if (amount === 0) return;
         this._gold += amount;
+        this.emit('change:gold', this._gold);
     }
 
     /**
@@ -115,7 +119,9 @@ export class Game_Party {
      * @param {number} amount - Amount to remove.
      */
     loseGold(amount) {
+        if (amount === 0) return;
         this._gold = Math.max(0, this._gold - amount);
+        this.emit('change:gold', this._gold);
     }
 
     /**
