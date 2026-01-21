@@ -99,12 +99,11 @@ Strictly separates the "Brain" from the "Eyes".
     *   Calculates turn order (`queue`).
     *   Executes actions (`Game_Action`).
     *   Determines results (Hit/Miss/Crit).
-    *   *Note:* Currently operates in a **Hybrid** state, orchestrating `BattleRenderSystem` (e.g. `playAnim`) and waiting for completion callbacks. Visual feedback is a mix of `EventBus` events (logs) and direct UI window calls (Victory, LevelUp).
+    *   *Note:* Currently operates in a **Hybrid** state. It emits events via `EventBus` for UI updates, but also directly orchestrates `BattleRenderSystem` (e.g. `playAnim`) via callbacks to synchronize visual timing with logic execution.
 *   **`BattleRenderSystem` (The Eyes):** Visualization.
-    *   Listens to `BattleManager` events via `Observer`.
-    *   Manages 3D sprites (`Spriteset_Battle`).
-    *   Controls the Camera (Zoom, Pan).
-    *   Plays Effekseer particles.
+    *   Listens to `BattleManager` events via `Observer` for damage numbers and log messages.
+    *   Manages 3D sprites (`Spriteset_Battle`) and the Camera (Zoom, Pan).
+    *   Plays Effekseer particles upon request.
 
 ---
 
@@ -115,13 +114,17 @@ How a skill is executed.
 
 1.  **Initiation:** `BattleManager.processNextTurn()` selects a unit and an action (e.g., "Fireball").
 2.  **Instantiation:** A `Game_Action` is created with the subject and the skill data.
-3.  **Targeting:** `Game_Action` determines valid targets (e.g., "All Enemies").
-4.  **Application:** `action.apply(target)` is called for each target.
-    *   **Formula Eval:** `Game_Action.evalDamageFormula()` parses the math (e.g., `a.mat * 4 - b.mdf * 2`).
-    *   **Element Mod:** Checks `target.elements` vs `action.element` for multipliers.
-    *   **Variance/Crit:** Applies RNG.
-5.  **Event Emission:** The result is passed to `EffectRegistry` via `BattleManager` callbacks. Events are fired:
-    *   `battle:action_used` (Starts animation)
+3.  **Targeting:** `BattleManager` determines valid targets (e.g., "All Enemies").
+4.  **Event Emission (Pre):** `BattleManager` emits `battle:action_used` to start the animation sequence.
+5.  **Application:** `action.apply(target)` is called for each target (often inside a visual callback).
+    *   **Evasion Check:** Evasion is calculated; if evaded, `battle:action_missed` is fired.
+    *   **Formula Eval:** `Game_Action.evalDamageFormula()` parses the math.
+        *   Calculates Base Damage.
+        *   Applies Stat Multipliers.
+        *   Applies Element Boost/Resist.
+        *   Applies Critical Hit.
+        *   Applies Guarding.
+6.  **Event Emission (Post):** The result is passed to `EffectRegistry`.
     *   `battle:damage_dealt` (Shows number, reduces HP)
     *   `battle:state_added` (Shows icon)
 
@@ -149,11 +152,9 @@ The game is data-driven, using a Registry pattern for logic execution and a Data
 
 ## 5. Future Direction (Refactor Goals)
 
-The codebase is currently in a transitional state (Phase 1 of Refactor). The ultimate goals are:
-
-WHEN IMPLEMENTING THE REFACTOR, UPDATE THE DOCUMENT ACCORDINGLY.
+The codebase is currently in a transitional state (Phase 4 of Refactor).
 
 1.  **Full Decoupling:** Complete the migration of *all* UI logic to the `EventBus`. Currently, some legacy calls (like `window.Game.Windows.BattleLog`) still exist within Logic classes.
 2.  **Logic Separation:** Fully detach `BattleManager` from `BattleRenderSystem` methods (like `playAnim`). The Manager should emit an event (e.g., `battle:perform_action`) and wait for a `battle:animation_complete` event, rather than passing callbacks.
-3.  **Registry Expansion:** Move from raw object lookups (`Data.skills['fire']`) to a robust `SkillRegistry` that handles data loading and inheritance (e.g., "Fire II" inherits "Fire I").
+3.  **Registry Expansion:** Move from raw object lookups (`Data.skills['fire']`) to a robust `SkillRegistry` that handles data loading and inheritance. (Status: **Largely Complete**).
 4.  **Reactive UI:** Implement a lightweight binding system so Windows update automatically when data changes, removing manual `refresh()` calls.

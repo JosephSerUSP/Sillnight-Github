@@ -38,7 +38,9 @@ Units that fight in battle. They act autonomously based on user commands or AI.
     *   **Offense:** 1.25x damage for each matching element instance.
     *   **Defense:** 1.25x damage taken for Weakness, 0.75x for Resistance.
 
-> **Implementation Gap:** Current codebase uses standard RPG stats (`agi`, `luk`) and lacks `mpd`/`mxa`/`mxp`. `Game_BattlerBase` needs refactoring to support these design-specific parameters.
+> **Implementation Status:**
+> *   **Implemented:** `mhp`, `mmp`, `atk`, `def`, `mat`, `mdf`, `agi`, `luk`.
+> *   **Missing:** `mpd`, `mxa`, `mxp`. The current codebase (`Game_BattlerBase`) uses standard RPG parameters.
 
 ---
 
@@ -53,6 +55,8 @@ Direct changes applied by Actions.
 *   **`elementAdd`:** Adds an element to alignment.
 *   **`elementChange`:** Replaces all elements.
 *   **Standard RPG Effects:** Damage HP, Heal HP, Add State, Remove State.
+
+> **Implementation Status:** `EffectRegistry` currently handles `hp_damage`, `hp_heal`, `revive`, `add_status`, and `increase_max_hp`. Learning and Element manipulation effects are not yet implemented.
 
 ### 2.2. Traits
 Static modifiers found on Equipment, Passives, and States.
@@ -82,7 +86,7 @@ The primary means of interaction in battle.
     *   **`ele` (Element):** Elemental alignment of the attack.
     *   **`cnd` (Condition):** Prerequisite (e.g., "HP < 50%", "Front Row").
 
-> **Implementation Gap:** Current `BattleManager` sorts by Unit Speed (`agi`). It needs to be refactored to sort by the selected Action's `asp` (with unit speed as a tiebreaker or secondary modifier).
+> **Implementation Status:** `BattleManager` currently sorts turns by unit Speed (`agi`). The `asp` property is not yet utilized for turn sorting.
 
 ### 3.2. Trait Objects
 Entities that carry Traits.
