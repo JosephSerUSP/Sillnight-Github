@@ -55,6 +55,14 @@ export class LayoutManager {
      * Clears all components from the layout.
      */
     clear() {
+        // Destroy all managed components to clean up listeners
+        this.components.forEach(comp => {
+            if (typeof comp.destroy === 'function') {
+                comp.destroy();
+            }
+        });
+
+        // Clear DOM
         this.container.innerHTML = '';
         this.components = [];
     }

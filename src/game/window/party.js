@@ -1,8 +1,8 @@
 import { Window_Selectable } from '../windows.js';
-import { renderCreaturePanel } from './common.js';
 import { GridLayout } from '../layout/GridLayout.js';
 import { Component } from '../layout/Component.js';
 import { PopupManager } from '../PopupManager.js';
+import { CreaturePanelComponent } from '../layout/CreaturePanelComponent.js';
 
 // Custom component for a party slot
 class PartySlotComponent extends Component {
@@ -11,6 +11,7 @@ class PartySlotComponent extends Component {
         super('div', 'party-slot relative flex flex-col p-1 cursor-pointer hover:bg-white/10');
         this.unit = unit;
         this.index = index;
+        this.panel = null;
 
         if (unit?.isSummoner) {
             this.addClass('summoner-slot');
@@ -18,7 +19,8 @@ class PartySlotComponent extends Component {
 
         // Render content
         if (unit) {
-            this.setHtml(renderCreaturePanel(unit));
+            this.panel = new CreaturePanelComponent(unit);
+            this.element.appendChild(this.panel.element);
         } else {
             this.setHtml('<span class="m-auto text-gray-800 text-xs">EMPTY</span>');
         }
@@ -27,6 +29,13 @@ class PartySlotComponent extends Component {
         if (onClick) {
             this.on('click', () => onClick(index));
         }
+    }
+
+    destroy() {
+        if (this.panel) {
+            this.panel.destroy();
+        }
+        super.destroy();
     }
 
     setSelected(selected) {
@@ -56,6 +65,23 @@ export class Window_Party extends Window_Selectable {
         this.defineLayout();
         this.items = window.$gameParty.activeSlots;
         this.addHandler('click', this.onClick.bind(this));
+
+        // Listen for HP changes to show popups
+        // Note: The reactive component handles the gauge update.
+        // This is just for the floating number effect.
+        if (window.Game && window.Game.Services && window.Game.Services.events) {
+            // We need to store this listener to cleanup if Window_Party is destroyed (which is rare as it is persistent)
+            // But Window_Party inherits Window_Selectable -> Window_Base.
+            // Window_Base doesn't have destroy() logic connected to EventBus, nor does it have subscriptions array.
+            // Ideally we should refactor Window_Base too, but for now we'll leave it or just bind it.
+            // However, onUnitHpChange is called by Game_BattlerBase currently.
+            // If we want to fully decouple, we should listen here.
+            // But Game_BattlerBase still calls it.
+
+            // To be safe and follow the plan "Remove the explicit onUnitHpChange method usage... if it's no longer needed".
+            // The plan said "I should keep that for the popup for now".
+            // So I won't add a duplicate listener here.
+        }
     }
 
     defineLayout() {
@@ -186,6 +212,9 @@ export class Window_Party extends Window_Selectable {
         if (index === -1) return;
 
         // Find the DOM element
+        // layout.components matches the order items were added.
+        // Window_Party.refresh iterates 0 to maxItems.
+        // So index should match.
         const component = this.layout.components[index];
         if (!component || !component.element) return;
 
@@ -195,10 +224,6 @@ export class Window_Party extends Window_Selectable {
         const centerY = rect.top + rect.height / 2;
 
         // Spawn physics popup
-        // Note: diff needs to be the text value.
-        // The manager handles colors based on value if no color provided.
-        // Or we can pass color.
-
         let displayVal = diff;
         if (diff > 0) displayVal = `+${diff}`;
 
