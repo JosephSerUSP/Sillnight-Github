@@ -22,6 +22,8 @@ The PC acts as the anchor for the party.
         *   **Flee:** Attempt to escape (costs MP/Gold).
     *   **Targeting:** The Summoner is untargetable unless all creatures are downed or in reserve.
 
+> **Implementation Gap:** Currently, the Summoner acts within the standard turn queue (sorted by Agility/Speed). The "End of Round" phase is not yet implemented.
+
 ### 1.2. Battlers (Creatures & Enemies)
 Units that fight in battle. They act autonomously based on user commands or AI.
 

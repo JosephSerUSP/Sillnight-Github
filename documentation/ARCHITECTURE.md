@@ -40,6 +40,7 @@ graph TD
         Game[Game (Global Hub)]
         Bus[EventBus (Observer)]
         Service[ServiceLocator]
+        TM[TransitionManager]
     end
 
     subgraph "Logic Layer (Model)"
@@ -99,12 +100,27 @@ Strictly separates the "Brain" from the "Eyes".
     *   Calculates turn order (`queue`).
     *   Executes actions (`Game_Action`).
     *   Determines results (Hit/Miss/Crit).
-    *   *Note:* Currently operates in a **Hybrid** state, orchestrating `BattleRenderSystem` (e.g. `playAnim`) and waiting for completion callbacks. Visual feedback is a mix of `EventBus` events (logs) and direct UI window calls (Victory, LevelUp).
+    *   *Note:* Currently operates in a **Hybrid** state. While it uses `EventBus` for major events, it still orchestrates `BattleRenderSystem` animations via callbacks (e.g., `Systems.Battle3D.playAnim`).
+    *   **Encounter Flow:** `_startEncounterWithEnemies` follows a strict sequence:
+        1.  **Transition Out:** `TransitionManager` captures screen and blurs/fades to black.
+        2.  **Scene Switch:** Logic switches to `Scene_Battle` (UI mode changes).
+        3.  **3D Setup:** Camera focuses on intro, scene is rendered behind the black screen.
+        4.  **Transition In:** `TransitionManager` reveals the scene (Cut-In effect) while Camera plays the Intro motion.
 *   **`BattleRenderSystem` (The Eyes):** Visualization.
     *   Listens to `BattleManager` events via `Observer`.
     *   Manages 3D sprites (`Spriteset_Battle`).
     *   Controls the Camera (Zoom, Pan).
     *   Plays Effekseer particles.
+
+### 3.4. Transition System (`TransitionManager`)
+Handles scene transitions using a dedicated WebGL layer.
+
+*   **Overlay:** A standalone `<canvas>` element (z-index 9) sits between the game world (z-index 0) and the UI (z-index 10).
+*   **Post-Processing:** Uses custom shaders to perform complex transitions that standard CSS cannot achieve.
+    *   **Battle Start:** Captures the last frame of the dungeon and applies a "Spiral Blur" distortion while fading to black.
+    *   **Battle Intro:** A horizontal "Cut In" reveal.
+    *   **Map Transfer:** A diagonal swipe effect.
+*   **Coordination:** Transitions are async operations (`await startBattleTransition()`) allowing the Game Loop to pause or switch scenes while the screen is obscured.
 
 ---
 
@@ -128,8 +144,9 @@ How a skill is executed.
 ### 4.2. Entity Class Hierarchy
 The game entities follow a prototype chain but rely heavily on "Traits" for stats.
 
-*   **`Game_BattlerBase`:** Handles HP, MP, and the `traits` array.
+*   **`Game_BattlerBase`:** Handles HP, MP, TP, and the core 8 parameters (0-7).
     *   *Traits:* Instead of hardcoding `hit_rate = 95%`, we delegate to `TraitRegistry` which iterates traits: `registry.getParamValue(this, id)`. This allows equipment, passives, and buffs to all modify stats uniformly.
+    *   *Note:* Derived stats like Hit Rate (`hit`), Evasion (`eva`), and Critical (`cri`) are NOT core parameters but are calculated via `traitsSum` in subclasses.
 *   **`Game_Battler`:** Adds `actions`, `speed`, and turn lifecycle (`onTurnStart`).
 *   **`Game_Actor`:** Adds `level`, `exp`, `equipment`.
 *   **`Game_Enemy`:** Adds `dropItems`, `ai_pattern`.
