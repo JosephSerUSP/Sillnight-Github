@@ -25,6 +25,15 @@ export class Game_Actor extends Game_Battler {
         /** @type {number} Extra MaxHP bonus from consumption */
         this._maxHpBonus = 0;
 
+        /** @type {Array<string>} List of learned skill IDs. */
+        this._learnedSkills = [];
+        /** @type {Array<string>} List of learned passive IDs. */
+        this._learnedPassives = [];
+        /** @type {Array<string>} List of added elemental affinities. */
+        this._addedElements = [];
+        /** @type {Array<string>|null} Override for elemental affinities (e.g. transformation). */
+        this._elementOverride = null;
+
         this.setup(speciesId, level);
     }
 
@@ -67,6 +76,62 @@ export class Game_Actor extends Game_Battler {
     }
 
     /**
+     * Learns a new skill.
+     * @param {string} skillId - The skill ID.
+     */
+    learnSkill(skillId) {
+        if (!this._learnedSkills.includes(skillId)) {
+            this._learnedSkills.push(skillId);
+        }
+    }
+
+    /**
+     * Forgets a skill.
+     * @param {string} skillId - The skill ID.
+     */
+    forgetSkill(skillId) {
+        this._learnedSkills = this._learnedSkills.filter(id => id !== skillId);
+    }
+
+    /**
+     * Learns a new passive.
+     * @param {string} passiveId - The passive ID.
+     */
+    learnPassive(passiveId) {
+        if (!this._learnedPassives.includes(passiveId)) {
+            this._learnedPassives.push(passiveId);
+            this.refresh();
+        }
+    }
+
+    /**
+     * Forgets a passive.
+     * @param {string} passiveId - The passive ID.
+     */
+    forgetPassive(passiveId) {
+        this._learnedPassives = this._learnedPassives.filter(id => id !== passiveId);
+        this.refresh();
+    }
+
+    /**
+     * Adds an elemental affinity.
+     * @param {string} element - The element code.
+     */
+    addElement(element) {
+        if (!this._addedElements.includes(element)) {
+            this._addedElements.push(element);
+        }
+    }
+
+    /**
+     * Sets the elemental override.
+     * @param {Array<string>|null} elements - The new elements or null to reset.
+     */
+    setElements(elements) {
+        this._elementOverride = elements;
+    }
+
+    /**
      * returns the objects that provide traits.
      * @returns {Array<Object>}
      */
@@ -84,7 +149,12 @@ export class Game_Actor extends Game_Battler {
                 });
             }
         }
-        // 3. Equipment
+        // 3. Learned Passives
+        this._learnedPassives.forEach(pId => {
+            const passive = Services.get('PassiveRegistry').get(pId);
+            if (passive) objects.push(passive);
+        });
+        // 4. Equipment
         if (this._equipmentId) {
             const equip = Services.get('EquipmentRegistry').get(this._equipmentId);
             if (equip) objects.push(equip);
@@ -216,7 +286,12 @@ export class Game_Actor extends Game_Battler {
     /** @returns {Array} The list of actions available to the creature. */
     get acts() {
         const def = Services.get('CreatureRegistry').get(this._speciesId);
-        return def ? def.acts : [];
+        const innate = def ? (def.acts || []) : [];
+        // Append learned skills as a new group
+        if (this._learnedSkills.length > 0) {
+            return [...innate, [...this._learnedSkills]];
+        }
+        return innate;
     }
     /** @returns {string} The temperament of the creature. */
     get temperament() {
@@ -225,11 +300,16 @@ export class Game_Actor extends Game_Battler {
     }
     /** @returns {Array} The elemental affinities of the creature. */
     get elements() {
-        // Start with innate elements
+        // 1. Check for element overrides from traits (highest priority usually)
+        const traitElements = this.elementTraits;
+        if (traitElements && traitElements.length > 0) return traitElements;
+
+        // 2. Check for manual override (e.g. from elementChange effect)
+        if (this._elementOverride) return this._elementOverride;
+
+        // 3. Innate + Added
         const def = Services.get('CreatureRegistry').get(this._speciesId);
         const innate = def ? (def.elements || []) : [];
-        // Check for element overrides from traits
-        const traitElements = this.elementTraits; // Assumes getter exists in parent or mixin
-        return traitElements && traitElements.length > 0 ? traitElements : innate;
+        return [...innate, ...this._addedElements];
     }
 }

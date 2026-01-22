@@ -1,3 +1,5 @@
+import { Services } from '../ServiceLocator.js';
+
 /**
  * Manages global game switches.
  * Switches are persistent booleans used for event logic (e.g., Boss Defeated).
@@ -29,7 +31,8 @@ export class Game_Switches {
      * @param {boolean} value - The new value.
      */
     setValue(id, value) {
-        this._data[id] = !!value;
-        // TODO: Emit change event for reactive UI
+        const newValue = !!value;
+        this._data[id] = newValue;
+        Services.events.emit('switch:change', { id, value: newValue });
     }
 }

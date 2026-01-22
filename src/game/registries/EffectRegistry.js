@@ -129,6 +129,46 @@ export class EffectRegistry extends Registry {
         this.registerHandler('miss', (effect, source, target, value) => {
             Services.events.emit('battle:action_missed', { target });
         });
+
+        // Learn Action
+        this.registerHandler('learnAction', (effect, source, target, value) => {
+            if (typeof target.learnSkill === 'function') {
+                target.learnSkill(effect.skillId);
+                Services.events.emit('battle:log', `> ${target.name} learned ${effect.skillId}!`);
+            }
+        });
+
+        // Learn Passive
+        this.registerHandler('learnPassive', (effect, source, target, value) => {
+            if (typeof target.learnPassive === 'function') {
+                target.learnPassive(effect.passiveId);
+                Services.events.emit('battle:log', `> ${target.name} learned passive ${effect.passiveId}!`);
+            }
+        });
+
+        // Element Add
+        this.registerHandler('elementAdd', (effect, source, target, value) => {
+            if (typeof target.addElement === 'function') {
+                target.addElement(effect.element);
+                Services.events.emit('battle:log', `> ${target.name} gained affinity to ${effect.element}!`);
+            }
+        });
+
+        // Element Change
+        this.registerHandler('elementChange', (effect, source, target, value) => {
+            if (typeof target.setElements === 'function') {
+                target.setElements([effect.element]);
+                Services.events.emit('battle:log', `> ${target.name}'s element changed to ${effect.element}!`);
+            }
+        });
+
+        // Remove State
+        this.registerHandler('remove_state', (effect, source, target, value) => {
+            if (typeof target.removeState === 'function') {
+                target.removeState(effect.status);
+                Services.events.emit('battle:state_removed', { target, state: effect.status });
+            }
+        });
     }
 
     _checkReviveOnKo(target) {

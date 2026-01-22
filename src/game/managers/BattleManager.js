@@ -236,7 +236,7 @@ export const BattleManager = {
             const isAlly = this.allies.some(a => a.uid === unit.uid);
             const enemies = isAlly ? this.enemies : this.allies;
             const friends = isAlly ? this.allies : this.enemies;
-            const possibleActs = [...unit.acts[0], ...(unit.acts[1] || [])];
+            const possibleActs = (unit.acts || []).flat();
             let chosen = null;
             if (unit.temperament === 'kind') {
                 const hurt = friends.filter(f => f.hp < f.mhp).sort((a, b) => a.hp - b.hp)[0];

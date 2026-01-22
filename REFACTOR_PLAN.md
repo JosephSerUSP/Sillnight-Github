@@ -120,6 +120,9 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
     - Expand `Game_Interpreter` to support conditional logic (`IF/ELSE`, `CHECK_VAR`) (Done).
     - Implement `Game_Variables` and `Game_Switches` (Done).
 
-### Phase 4: Polish (Next Priority)
-1.  Reactive UI components.
+### Phase 4: Polish (In Progress)
+1.  **Reactive UI components:** Backend complete (Events emitted). Frontend pending.
+    -   `Game_Variables` and `Game_Switches` now emit change events via `Services.events`.
+    -   `EffectRegistry` implemented dynamic effect handlers (`learnAction`, `learnPassive`, `elementAdd`, `elementChange`, `remove_state`).
+    -   `Game_Actor` updated to support dynamic skills, passives, and elemental affinities.
 2.  Audio system integration.
