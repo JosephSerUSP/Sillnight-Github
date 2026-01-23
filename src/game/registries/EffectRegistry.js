@@ -94,6 +94,11 @@ export class EffectRegistry extends Registry {
                 Services.events.emit('battle:log', `> ${target.name} was revived with ${revivedHp} HP.`);
                 const ts = Systems.Battle3D.sprites[target.uid];
                 if (ts) ts.visible = true;
+            } else {
+                 // Heal if target is alive
+                 const healAmount = value;
+                 target.hp = Math.min(target.mhp, target.hp + healAmount);
+                 Services.events.emit('battle:heal_dealt', { source, target, value: healAmount });
             }
         });
 

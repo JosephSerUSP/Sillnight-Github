@@ -243,7 +243,14 @@ export const BattleManager = {
                 if (hurt && hurt.hp < hurt.mhp * 0.6) {
                     for (const a of possibleActs) {
                         const skill = Services.get('SkillRegistry').get(a) || Services.get('SkillRegistry').get(a.toLowerCase());
-                        if (skill && skill.category === 'heal') { chosen = a; break; }
+                        if (skill && skill.category === 'heal') {
+                            // Don't pick revival skills if the target is alive
+                            const isRevive = skill.effects && skill.effects.some(e => e.type === 'revive');
+                            if (isRevive && hurt.hp > 0) continue;
+
+                            chosen = a;
+                            break;
+                        }
                     }
                 }
             }
@@ -291,42 +298,39 @@ export const BattleManager = {
                 window.$gameParty?.onAllyAction(unit);
             }
 
-            // Check if action is revival and validate targets
-            let isRevive = actionData.effects && actionData.effects.some(e => e.type === 'revive');
-            if (isRevive) {
-                 const deadFriends = friends.filter(u => u.hp <= 0);
-                 if (deadFriends.length === 0) {
-                     // No valid target for revival, fallback to attack
-                     actionData = skillRegistry.get('attack');
-                     action.setObject(actionData);
-                     isRevive = false;
-                 }
-            }
-
             let targets = [];
             let validEnemies = enemies.filter(u => u.hp > 0);
             const validFriends = friends.filter(u => u.hp > 0);
 
+            // Special handling for revival targeting
+            // If the action is a revival skill, we prefer dead targets.
+            // But if there are no dead targets, we let it proceed to normal targeting (which might pick a live one).
+            const isRevive = actionData.effects && actionData.effects.some(e => e.type === 'revive');
             if (isRevive) {
                  const deadFriends = friends.filter(u => u.hp <= 0);
                  if (deadFriends.length > 0) {
                      targets = [deadFriends[0]];
                  }
-            } else if (actionData.target === 'self') targets = [unit];
-            else if (actionData.target === 'ally-single') targets = [validFriends.sort((a, b) => a.hp - b.hp)[0]];
-            else if (actionData.target === 'enemy-all') targets = validEnemies;
-            else if (actionData.target === 'enemy-row') {
-                const frontRow = validEnemies.filter(e => e.slotIndex < 3);
-                const backRow = validEnemies.filter(e => e.slotIndex >= 3);
-                targets = frontRow.length > 0 ? frontRow : backRow;
-            } else {
-                if (!isAlly && actionData.target !== 'enemy-all' && actionData.target !== 'enemy-row') {
-                    const nonSummonerEnemies = validEnemies.filter(e => !e.isSummoner);
-                    if (nonSummonerEnemies.length > 0) {
-                        validEnemies = nonSummonerEnemies;
+                 // If no dead friends, fall through to standard targeting (likely ally-single)
+            }
+
+            if (targets.length === 0) {
+                if (actionData.target === 'self') targets = [unit];
+                else if (actionData.target === 'ally-single') targets = [validFriends.sort((a, b) => a.hp - b.hp)[0]];
+                else if (actionData.target === 'enemy-all') targets = validEnemies;
+                else if (actionData.target === 'enemy-row') {
+                    const frontRow = validEnemies.filter(e => e.slotIndex < 3);
+                    const backRow = validEnemies.filter(e => e.slotIndex >= 3);
+                    targets = frontRow.length > 0 ? frontRow : backRow;
+                } else {
+                    if (!isAlly && actionData.target !== 'enemy-all' && actionData.target !== 'enemy-row') {
+                        const nonSummonerEnemies = validEnemies.filter(e => !e.isSummoner);
+                        if (nonSummonerEnemies.length > 0) {
+                            validEnemies = nonSummonerEnemies;
+                        }
                     }
+                    targets = [validEnemies[Math.floor(Math.random() * validEnemies.length)]];
                 }
-                targets = [validEnemies[Math.floor(Math.random() * validEnemies.length)]];
             }
             if (targets.length === 0 || !targets[0]) {
                 this.processNextTurn();
