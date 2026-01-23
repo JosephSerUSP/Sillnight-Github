@@ -152,6 +152,12 @@ export class EffekseerSystem {
      */
     exists(handle) {
         if (!this.context || handle === null) return false;
+
+        // Unwrap EffekseerHandle object if present
+        if (typeof handle === 'object' && handle.native !== undefined) {
+            handle = handle.native;
+        }
+
         if (typeof this.context.exists !== 'function') return false;
         return this.context.exists(handle);
     }
