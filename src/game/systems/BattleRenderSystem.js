@@ -298,8 +298,35 @@ export class BattleRenderSystem {
      */
     dimGround(dim) {
         if (this.groundMesh) {
+            this.groundMesh.visible = true;
+            this.groundMesh.material.opacity = 1.0;
             this.groundMesh.material.color.setHex(dim ? 0x555555 : 0xffffff);
         }
+    }
+
+    /**
+     * Fades the ground mesh to invisible.
+     * @param {number} duration - The duration of the fade.
+     */
+    hideGround(duration = 500) {
+        if (!this.groundMesh) return Promise.resolve();
+        return new Promise(resolve => {
+            let startTime = null;
+            const startOpacity = this.groundMesh.material.opacity;
+            const animateHide = (timestamp) => {
+                if (!startTime) startTime = timestamp;
+                const elapsed = timestamp - startTime;
+                const p = Math.min(1, elapsed / duration);
+                this.groundMesh.material.opacity = startOpacity * (1 - p);
+                if (p < 1) {
+                    requestAnimationFrame(animateHide);
+                } else {
+                    this.groundMesh.visible = false;
+                    resolve();
+                }
+            };
+            requestAnimationFrame(animateHide);
+        });
     }
 
     /**
@@ -673,8 +700,34 @@ export class BattleRenderSystem {
                         return Systems.Effekseer.play(step.effect, pos);
                     });
                 }
-                const hold = step.hold ?? 300;
-                return Promise.all(plays).then(() => wait(hold));
+
+                return Promise.all(plays).then((handles) => {
+                    const waitForAnim = step.wait !== false;
+                    const hold = step.hold ?? 0;
+
+                    if (waitForAnim) {
+                         return new Promise(resolve => {
+                             let startTime = Date.now();
+                             const check = () => {
+                                 const anyPlaying = handles.some(h => Systems.Effekseer.exists(h));
+                                 const elapsed = Date.now() - startTime;
+
+                                 if (anyPlaying) {
+                                     requestAnimationFrame(check);
+                                 } else {
+                                     if (hold > 0 && elapsed < hold) {
+                                         setTimeout(resolve, hold - elapsed);
+                                     } else {
+                                         resolve();
+                                     }
+                                 }
+                             };
+                             check();
+                         });
+                    } else {
+                        return wait(hold || 300);
+                    }
+                });
             },
             apply: (step) => {
                 context.onApply?.();
@@ -701,6 +754,9 @@ export class BattleRenderSystem {
             dim_ground: (step) => {
                 this.dimGround(true);
                 return wait(step.duration || 0);
+            },
+            hide_ground: (step) => {
+                return this.hideGround(step.duration);
             },
             reset_ground: (step) => {
                 this.dimGround(false);

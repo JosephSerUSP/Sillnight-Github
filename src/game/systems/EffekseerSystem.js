@@ -146,6 +146,17 @@ export class EffekseerSystem {
     }
 
     /**
+     * Checks if an effect handle is currently playing.
+     * @param {number} handle - The effect handle.
+     * @returns {boolean} True if playing.
+     */
+    exists(handle) {
+        if (!this.context || handle === null) return false;
+        if (typeof this.context.exists !== 'function') return false;
+        return this.context.exists(handle);
+    }
+
+    /**
      * Updates the Effekseer context for the current frame.
      * @param {THREE.Camera} camera - The Three.js camera.
      */

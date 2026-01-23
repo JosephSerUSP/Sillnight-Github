@@ -99,7 +99,7 @@ export const Data = {
             { type: 'apply' }
         ],
         ultima: [
-            { type: 'dim_ground', duration: 0 },
+            { type: 'hide_ground', duration: 500 },
             { type: 'jump', height: 0.6, duration: 450 },
             { type: 'focus', target: 'enemy', duration: 450 },
             { type: 'effect', effect: 'Ultima', bind: 'center', anchor: 0.0, hold: 800 },
