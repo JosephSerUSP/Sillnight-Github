@@ -15,5 +15,6 @@ export const Config = {
     Rewards: {
         baseGoldPerEnemy: 20,
         baseXpPerEnemy: 5
-    }
+    },
+    TestBuild: true
 };

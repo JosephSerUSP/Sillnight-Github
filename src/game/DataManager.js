@@ -29,49 +29,29 @@ export class DataManager {
     }
 
     /**
-     * Populates the player's party with initial creatures based on game data.
-     * Selects a random set of unique creatures from the 'initial' party data pool.
-     * If specific creatures are not defined, it falls back to selecting random species.
+     * Populates the player's party with initial creatures.
+     * Selects 3 random unique creatures from the registry.
      * @static
      */
     static populateInitialParty() {
-        const setup = Data.party.initial;
-        const { creatures, count } = setup;
+        const count = 3;
+        const creatureRegistry = Services.get('CreatureRegistry');
+        const allCreatureIds = creatureRegistry.getAll()
+            .map(c => c.id)
+            .filter(id => id !== 'summoner' && !id.startsWith('base_'));
 
-        // Use logic from objects.js to select creatures
-         if (!creatures || creatures.length === 0) {
-            const creatureRegistry = Services.get('CreatureRegistry');
-            const allCreatureIds = creatureRegistry.getAll().map(c => c.id).filter(id => id !== 'summoner' && !id.startsWith('base_'));
+        if (allCreatureIds.length === 0) {
+            console.warn("No valid creatures found for initial party.");
+            return;
+        }
 
-            if (allCreatureIds.length > 0) {
-                const randomSpeciesId = allCreatureIds[Math.floor(Math.random() * allCreatureIds.length)];
-                const randomLevel = 1 + Math.floor(Math.random() * 3);
-                window.$gameParty.addActor(randomSpeciesId, randomLevel);
-            }
-        } else {
-            const shuffledCreatures = [...creatures].sort(() => 0.5 - Math.random());
-            const selectedCreatures = [];
-            const selectedSpecies = new Set();
+        // Shuffle IDs
+        const shuffled = [...allCreatureIds].sort(() => 0.5 - Math.random());
+        const selectedIds = shuffled.slice(0, count);
 
-            for (const creature of shuffledCreatures) {
-                if (!selectedSpecies.has(creature.species)) {
-                    selectedCreatures.push(creature);
-                    selectedSpecies.add(creature.species);
-                    if (selectedCreatures.length >= count) break;
-                }
-            }
-
-            if (selectedCreatures.length < count) {
-                const remainingNeeded = count - selectedCreatures.length;
-                for(let i=0; i < remainingNeeded; i++) {
-                    selectedCreatures.push(shuffledCreatures[i % shuffledCreatures.length]);
-                }
-            }
-
-            for (const creature of selectedCreatures.slice(0, count)) {
-                const level = creature.minLevel + Math.floor(Math.random() * (creature.maxLevel - creature.minLevel + 1));
-                window.$gameParty.addActor(creature.species, level);
-            }
+        for (const id of selectedIds) {
+            const level = 1 + Math.floor(Math.random() * 3); // Random level 1-3
+            window.$gameParty.addActor(id, level);
         }
     }
 
