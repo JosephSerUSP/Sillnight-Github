@@ -65,37 +65,39 @@ export const Data = {
         attack: [
             { type: 'jump', height: 0.8, duration: 500 },
             { type: 'approach', distance: 1.2, duration: 250 },
-            { type: 'effect', effect: 'PhysicalHit', bind: 'target', anchor: 0.5, hold: 350 },
+            { type: 'effect', effect: 'PhysicalHit', bind: 'target', anchor: 0.5 },
             { type: 'apply' },
             { type: 'retreat', duration: 250 }
         ],
         attackRow: [
             { type: 'jump', height: 0.6, duration: 400 },
             { type: 'approach', distance: 1.0, duration: 220 },
-            { type: 'effect', effect: 'PhysicalHit', bind: 'target', anchor: 0.5, hold: 320 },
+            { type: 'effect', effect: 'PhysicalHit', bind: 'target', anchor: 0.5 },
             { type: 'apply' },
             { type: 'retreat', duration: 220 }
         ],
         slash: [
             { type: 'jump', height: 0.7, duration: 400 },
             { type: 'approach', distance: 1.0, duration: 220 },
-            { type: 'effect', effect: 'SlashCurved', bind: 'target', anchor: 0.5, hold: 320 },
+            { type: 'effect', effect: 'SlashCurved', bind: 'target', anchor: 0.5 },
             { type: 'apply' },
             { type: 'retreat', duration: 220 }
         ],
         fire: [
             { type: 'wait', duration: 220 },
-            { type: 'effect', effect: 'FirePillar', bind: 'target', anchor: 0.0, hold: 520 },
+            { type: 'effect', effect: 'FirePillar', bind: 'target', anchor: 0.0 },
             { type: 'apply' }
         ],
         flare: [
+            { type: 'hide_ground', duration: 500 },
             { type: 'wait', duration: 300 },
-            { type: 'effect', effect: 'Flare', bind: 'center', anchor: 0.0, hold: 650 },
-            { type: 'apply' }
+            { type: 'effect', effect: 'Flare', bind: 'center', anchor: 0.0 },
+            { type: 'apply' },
+            { type: 'reset_visuals', duration: 300 }
         ],
         raise: [
             { type: 'wait', duration: 200 },
-            { type: 'effect', effect: 'Raise', bind: 'target', anchor: 0.0, hold: 550 },
+            { type: 'effect', effect: 'Raise', bind: 'target', anchor: 0.0 },
             { type: 'apply' }
         ],
         ultima: [
@@ -108,27 +110,27 @@ export const Data = {
         ],
         moonBeam: [
             { type: 'wait', duration: 250 },
-            { type: 'effect', effect: 'MoonBeam', bind: 'target', anchor: 0.0, hold: 500 },
+            { type: 'effect', effect: 'MoonBeam', bind: 'target', anchor: 0.0 },
             { type: 'apply' }
         ],
         waterBlessing: [
             { type: 'wait', duration: 220 },
-            { type: 'effect', effect: 'WaterBlessing', bind: 'target', anchor: 0.0, hold: 480 },
+            { type: 'effect', effect: 'WaterBlessing', bind: 'target', anchor: 0.0 },
             { type: 'apply' }
         ],
         acidRain: [
             { type: 'wait', duration: 250 },
-            { type: 'effect', effect: 'AcidRain', bind: 'center', anchor: 0.0, hold: 550 },
+            { type: 'effect', effect: 'AcidRain', bind: 'center', anchor: 0.0 },
             { type: 'apply' }
         ],
         empower: [
             { type: 'wait', duration: 200 },
-            { type: 'effect', effect: 'EmpowerPillar', bind: 'target', anchor: 0.0, hold: 450 },
+            { type: 'effect', effect: 'EmpowerPillar', bind: 'target', anchor: 0.0 },
             { type: 'apply' }
         ],
         guard: [
             { type: 'wait', duration: 200 },
-            { type: 'effect', effect: 'Guard', bind: 'self', anchor: 0.5, hold: 400 },
+            { type: 'effect', effect: 'Guard', bind: 'self', anchor: 0.5 },
             { type: 'apply' }
         ],
         flash: [
@@ -139,22 +141,22 @@ export const Data = {
             { type: 'wait', duration: 400 }
         ],
         cure: [
-            { type: 'effect', effect: 'Cure', bind: 'target', anchor: 0.5, hold: 500 },
+            { type: 'effect', effect: 'Cure', bind: 'target', anchor: 0.5 },
             { type: 'apply' }
         ],
         serveDrink: [
             { type: 'wait', duration: 200 },
-            { type: 'effect', effect: 'Cure', bind: 'target', anchor: 0.5, hold: 450 },
+            { type: 'effect', effect: 'Cure', bind: 'target', anchor: 0.5 },
             { type: 'apply' }
         ],
         latexPrayer: [
             { type: 'wait', duration: 250 },
-            { type: 'effect', effect: 'Cure', bind: 'target', anchor: 0.5, hold: 520 },
+            { type: 'effect', effect: 'Cure', bind: 'target', anchor: 0.5 },
             { type: 'apply' }
         ],
         triage: [
             { type: 'wait', duration: 200 },
-            { type: 'effect', effect: 'Cure', bind: 'target', anchor: 0.5, hold: 420 },
+            { type: 'effect', effect: 'Cure', bind: 'target', anchor: 0.5 },
             { type: 'apply' }
         ],
         feast: [
@@ -163,90 +165,90 @@ export const Data = {
         ],
         thunder: [
             { type: 'wait', duration: 250 },
-            { type: 'effect', effect: 'Thunder', bind: 'target', anchor: 0.0, hold: 520 },
+            { type: 'effect', effect: 'Thunder', bind: 'target', anchor: 0.0 },
             { type: 'apply' }
         ],
         divineBolt: [
             { type: 'wait', duration: 250 },
-            { type: 'effect', effect: 'Thunder', bind: 'target', anchor: 0.0, hold: 520 },
+            { type: 'effect', effect: 'Thunder', bind: 'target', anchor: 0.0 },
             { type: 'apply' }
         ],
         tornado: [
             { type: 'wait', duration: 220 },
-            { type: 'effect', effect: 'Tornado', bind: 'center', anchor: 0.0, hold: 600 },
+            { type: 'effect', effect: 'Tornado', bind: 'center', anchor: 0.0 },
             { type: 'apply' }
         ],
         gravityWell: [
             { type: 'wait', duration: 250 },
-            { type: 'effect', effect: 'Tornado', bind: 'center', anchor: 0.0, hold: 580 },
+            { type: 'effect', effect: 'Tornado', bind: 'center', anchor: 0.0 },
             { type: 'apply' }
         ],
         hellfire: [
             { type: 'wait', duration: 280 },
-            { type: 'effect', effect: 'Apocalypse', bind: 'center', anchor: 0.0, hold: 640 },
+            { type: 'effect', effect: 'Apocalypse', bind: 'center', anchor: 0.0 },
             { type: 'apply' }
         ],
         apocalypse: [
             { type: 'dim_ground', duration: 0 },
             { type: 'jump', height: 0.5, duration: 400 },
             { type: 'focus', target: 'enemy', duration: 400 },
-            { type: 'effect', effect: 'Apocalypse', bind: 'center', anchor: 0.0, hold: 650 },
+            { type: 'effect', effect: 'Apocalypse', bind: 'center', anchor: 0.0 },
             { type: 'apply' },
             { type: 'reset_visuals', duration: 250 }
         ],
         curse: [
             { type: 'wait', duration: 220 },
-            { type: 'effect', effect: 'Curse', bind: 'target', anchor: 0.5, hold: 520 },
+            { type: 'effect', effect: 'Curse', bind: 'target', anchor: 0.5 },
             { type: 'apply' }
         ],
         sleepMist: [
             { type: 'wait', duration: 220 },
-            { type: 'effect', effect: 'Curse', bind: 'center', anchor: 0.5, hold: 520 },
+            { type: 'effect', effect: 'Curse', bind: 'center', anchor: 0.5 },
             { type: 'apply' }
         ],
         anvil: [
             { type: 'approach', distance: 1.0, duration: 250 },
-            { type: 'effect', effect: 'Impact', bind: 'target', anchor: 0.0, hold: 520 },
+            { type: 'effect', effect: 'Impact', bind: 'target', anchor: 0.0 },
             { type: 'apply' },
             { type: 'retreat', duration: 250 }
         ],
         silverTray: [
             { type: 'approach', distance: 1.0, duration: 250 },
-            { type: 'effect', effect: 'Impact', bind: 'target', anchor: 0.0, hold: 420 },
+            { type: 'effect', effect: 'Impact', bind: 'target', anchor: 0.0 },
             { type: 'apply' },
             { type: 'retreat', duration: 250 }
         ],
         ray: [
             { type: 'wait', duration: 180 },
-            { type: 'effect', effect: 'EnergyArrow', bind: 'target', anchor: 0.5, hold: 300 },
+            { type: 'effect', effect: 'EnergyArrow', bind: 'target', anchor: 0.5 },
             { type: 'apply' }
         ],
         cosmicRay: [
             { type: 'wait', duration: 200 },
-            { type: 'effect', effect: 'CosmicRay', bind: 'target', anchor: 0.0, hold: 450 },
+            { type: 'effect', effect: 'CosmicRay', bind: 'target', anchor: 0.0 },
             { type: 'apply' }
         ],
         shadowSpike: [
             { type: 'jump', height: 0.9, duration: 420 },
-            { type: 'effect', effect: 'Impact', bind: 'target', anchor: 0.0, hold: 420 },
+            { type: 'effect', effect: 'Impact', bind: 'target', anchor: 0.0 },
             { type: 'apply' },
             { type: 'retreat', duration: 240 }
         ],
         injection: [
             { type: 'jump', height: 0.6, duration: 420 },
-            { type: 'effect', effect: 'Inject', bind: 'target', anchor: 0.5, hold: 400 },
+            { type: 'effect', effect: 'Inject', bind: 'target', anchor: 0.5 },
             { type: 'apply' },
             { type: 'retreat', duration: 240 }
         ],
         windBlades: [
             { type: 'jump', height: 0.7, duration: 380 },
-            { type: 'effect', effect: 'SlashCurved', bind: 'target', anchor: 0.5, hold: 360 },
+            { type: 'effect', effect: 'SlashCurved', bind: 'target', anchor: 0.5 },
             { type: 'apply' },
             { type: 'retreat', duration: 220 }
         ],
         maskTear: [
             { type: 'jump', height: 0.7, duration: 420 },
-            { type: 'effect', effect: 'Impact', bind: 'target', anchor: 0.5, hold: 380 },
+            { type: 'effect', effect: 'Impact', bind: 'target', anchor: 0.5 },
             { type: 'apply' },
             { type: 'retreat', duration: 240 }
         ],
@@ -254,7 +256,7 @@ export const Data = {
             { type: 'dim_ground', duration: 0 },
             { type: 'jump', height: 0.5, duration: 400 },
             { type: 'focus', target: 'enemy', duration: 400 },
-            { type: 'effect', effect: 'IceWind', bind: 'center', anchor: 0.0, hold: 520 },
+            { type: 'effect', effect: 'IceWind', bind: 'center', anchor: 0.0 },
             { type: 'apply' },
             { type: 'reset_visuals', duration: 250 }
         ]
