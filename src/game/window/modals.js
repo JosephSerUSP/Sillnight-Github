@@ -698,7 +698,7 @@ export class Window_PartyMenu extends Window_Selectable {
         this.createLayout();
     }
 
-    maxCols() { return 7; }
+    maxCols() { return 6; }
 
     createLayout() {
         this.root.innerHTML = '';
@@ -724,7 +724,7 @@ export class Window_PartyMenu extends Window_Selectable {
         layout.add(this.gridContainer, { grow: 1 });
 
         this.grid = new GridLayout(this.gridContainer.element, {
-            columns: 'repeat(3, 1fr) 0.8fr repeat(3, 1fr)',
+            columns: 'repeat(6, 1fr)',
             rows: 'repeat(5, minmax(0, 1fr))',
             gap: 4
         });
@@ -759,8 +759,6 @@ export class Window_PartyMenu extends Window_Selectable {
         this.grid.clear();
 
         const activeSlots = window.$gameParty.activeSlots;
-        const summonerIndex = window.$gameParty.summonerSlotIndex();
-        const summoner = activeSlots[summonerIndex];
 
         const activeSet = new Set(activeSlots.filter(Boolean).map(u => u.uid));
         const reserveUnits = window.$gameParty.roster.filter(u => !activeSet.has(u.uid));
@@ -768,7 +766,7 @@ export class Window_PartyMenu extends Window_Selectable {
 
         this._items = [];
         for (let row = 1; row <= 5; row++) {
-            for (let col = 1; col <= 7; col++) {
+            for (let col = 1; col <= 6; col++) {
                 let item = { row, col, type: 'empty' };
 
                 if (col <= 3 && row <= 2) {
@@ -776,13 +774,7 @@ export class Window_PartyMenu extends Window_Selectable {
                     item.type = 'active';
                     item.index = slotIdx;
                     item.unit = activeSlots[slotIdx];
-                }
-                else if (col === 4 && row <= 2) {
-                    item.type = 'summoner';
-                    item.unit = summoner;
-                    item.isMain = (row === 1);
-                }
-                else {
+                } else {
                     item.type = 'reserve';
                     item.unit = reserveUnitIndex < reserveUnits.length ? reserveUnits[reserveUnitIndex++] : null;
                     item.isReserved = true;
@@ -806,23 +798,13 @@ export class Window_PartyMenu extends Window_Selectable {
         const item = this._items[index];
         if (!item) return;
 
-        if (item.type === 'summoner' && !item.isMain) {
-            return;
-        }
-
         const div = document.createElement('div');
         let baseClasses = 'party-menu-slot relative flex flex-col p-1';
-        if (item.type !== 'reserve' && item.type !== 'summoner') baseClasses += ' bg-gray-800/50';
-        if (item.type === 'summoner') baseClasses += ' summoner-slot';
+        if (item.type === 'active') baseClasses += ' bg-gray-800/50';
 
         div.className = baseClasses;
 
         let isSelected = (this._index === index);
-        if (item.type === 'summoner' && item.isMain) {
-             const nextRowIdx = index + 7;
-             if (this._index === nextRowIdx) isSelected = true;
-        }
-
         if (isSelected) div.classList.add('selected', 'border', 'border-yellow-400');
         if (this._pendingSwapIndex === index) div.classList.add('border-green-500', 'border-2');
 
@@ -830,14 +812,9 @@ export class Window_PartyMenu extends Window_Selectable {
              div.innerHTML = renderCreaturePanel(item.unit);
         } else {
              div.innerHTML = '<span class="m-auto text-gray-600 text-[10px]">EMPTY</span>';
-             if (item.type === 'reserve' && !item.unit) div.style.visibility = 'hidden';
         }
 
         const options = { col: item.col, row: item.row };
-        if (item.type === 'summoner' && item.isMain) {
-            options.row = `${item.row} / span 2`;
-        }
-
         this.grid.add(div, options);
     }
 
@@ -845,10 +822,6 @@ export class Window_PartyMenu extends Window_Selectable {
         const index = this._index;
         const item = this._items[index];
         if (!item) return;
-
-        if (item.type === 'summoner') {
-            return;
-        }
 
         if (this._pendingSwapIndex === -1) {
             this._pendingSwapIndex = index;

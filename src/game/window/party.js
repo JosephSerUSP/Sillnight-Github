@@ -12,10 +12,6 @@ class PartySlotComponent extends Component {
         this.unit = unit;
         this.index = index;
 
-        if (unit?.isSummoner) {
-            this.addClass('summoner-slot');
-        }
-
         // Render content
         if (unit) {
             this.setHtml(renderCreaturePanel(unit));
@@ -64,7 +60,7 @@ export class Window_Party extends Window_Selectable {
 
     defineLayout() {
         this.layout = new GridLayout(this.root, {
-            columns: 'repeat(3, 1fr) 0.8fr',
+            columns: 'repeat(3, 1fr)',
             rows: 'repeat(2, minmax(0, 1fr))',
             gap: '4px'
             // rows defaults to null, relying on autoRows: 'minmax(0, 1fr)' for equal height
@@ -73,6 +69,10 @@ export class Window_Party extends Window_Selectable {
         // Ensure root has standard window styles if not already set by Window_Base default
         // Window_Party usually lives in a container, but 'party-grid' is the ID.
         // It might be absolutely positioned by the main layout.
+    }
+
+    maxItems() {
+        return 6;
     }
 
     /**
@@ -123,10 +123,6 @@ export class Window_Party extends Window_Selectable {
         const u = this.items[index];
         const component = new PartySlotComponent(u, index, (idx, e) => this.callHandler('click', idx, e));
 
-        if (u?.isSummoner) {
-            component.addClass('border-indigo-400');
-        }
-
         if (this._index === index) {
             component.setSelected(true);
         }
@@ -136,11 +132,6 @@ export class Window_Party extends Window_Selectable {
     }
 
     slotLayoutPosition(index) {
-        const summonerIndex = window.$gameParty.summonerSlotIndex();
-        if (index === summonerIndex) {
-            return { col: 4, row: '1 / span 2' };
-        }
-
         const col = (index % 3) + 1;
         const row = Math.floor(index / 3) + 1;
         return { col, row };
@@ -161,16 +152,8 @@ export class Window_Party extends Window_Selectable {
 
         // Allow swapping only in formation mode
         if (window.Game.ui.formationMode) {
-            if (window.$gameParty.isSummonerSlot(index)) {
-                this.deselect();
-                return;
-            }
              const selectedIndex = this._index;
             if (selectedIndex !== -1 && selectedIndex !== index) {
-                if (window.$gameParty.isSummonerSlot(selectedIndex)) {
-                    this.deselect();
-                    return;
-                }
                 window.$gameParty.swapOrder(selectedIndex, index);
                 this.deselect();
             } else {
@@ -192,7 +175,6 @@ export class Window_Party extends Window_Selectable {
      */
     removeUnit(index) {
         if (index < 0 || index >= window.$gameParty.activeSlots.length) return;
-        if (window.$gameParty.isSummonerSlot(index)) return;
 
         const unit = window.$gameParty.activeSlots[index];
         if (unit) {
