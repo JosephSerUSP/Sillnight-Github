@@ -64,6 +64,7 @@ export class Game_Map {
      */
     generateFloor() {
         this._flags.clear();
+        this._events.clear();
         if (this._floor === 0) {
             this.generateHub();
             return;
