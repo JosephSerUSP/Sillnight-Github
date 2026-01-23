@@ -8,12 +8,12 @@ export const Party = {
         count: 3,
         inventory: {
             items: [
-                { id: 'potion_small', quantity: 3, chance: 1.0 },
-                { id: 'revive_leaf', quantity: 1, chance: 1.0 }
+                { id: 'potionSmall', quantity: 3, chance: 1.0 },
+                { id: 'reviveLeaf', quantity: 1, chance: 1.0 }
             ],
             equipment: [
-                { id: 'hp_boost1', quantity: 1, chance: 1.0 },
-                { id: 'rabbits_foot', quantity: 1, chance: 0.5 }
+                { id: 'hpBoost1', quantity: 1, chance: 1.0 },
+                { id: 'rabbitsFoot', quantity: 1, chance: 0.5 }
             ]
         }
     }
