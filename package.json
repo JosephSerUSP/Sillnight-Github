@@ -1,5 +1,12 @@
 {
-  "devDependencies": {
-    "@playwright/test": "^1.57.0"
-  }
+    "name": "rmmz-game",
+    "main": "index.html",
+    "chromium-args": "--force-color-profile=srgb",
+    "window": {
+        "title": "Project1",
+        "width": 816,
+        "height": 624,
+        "position": "center",
+        "icon": "icon/icon.png"
+    }
 }
