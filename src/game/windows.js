@@ -341,24 +341,30 @@ export class Window_Selectable extends Window_Base {
 
     handleInput(event) {
         const key = event.key;
+        let handled = false;
 
         if (key === 'ArrowDown' || key === 's') {
             this.cursorDown(true);
-            return true;
+            handled = true;
         } else if (key === 'ArrowUp' || key === 'w') {
             this.cursorUp(true);
-            return true;
+            handled = true;
         } else if (key === 'ArrowRight' || key === 'd') {
             this.cursorRight(true);
-            return true;
+            handled = true;
         } else if (key === 'ArrowLeft' || key === 'a') {
             this.cursorLeft(true);
-            return true;
+            handled = true;
         } else if (key === 'Enter' || key === ' ') {
             this.processOk();
-            return true;
+            handled = true;
         } else if (key === 'Escape') {
             this.processCancel();
+            handled = true;
+        }
+
+        if (handled) {
+            event.preventDefault();
             return true;
         }
 
