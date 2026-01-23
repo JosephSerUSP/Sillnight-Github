@@ -107,9 +107,18 @@ export const Skills = {
         parent: 'base_magical',
         name: 'Fire',
         mpCost: 5,
-        animation: 'fire',
+        script: 'fire',
         icon: 'fire',
-        effects: [{ type: 'hp_damage', formula: 'a.mat * 2 - b.mdf * 1', element: 'fire' }]
+        effects: [{ type: 'hp_damage', formula: 'a.mat * 2 - b.mdf * 1', element: 'R' }]
+    },
+    flare: {
+        id: 'flare',
+        parent: 'base_magical',
+        name: 'Flare',
+        mpCost: 12,
+        element: 'R',
+        script: 'flare',
+        effects: [{ type: 'hp_damage', formula: 'a.mat * 3.5 - b.mdf * 1', element: 'R' }]
     },
     tornado: {
         id: 'tornado',
@@ -215,6 +224,65 @@ export const Skills = {
         element: 'R',
         script: 'hellfire',
         effects: [{ type: 'hp_damage', formula: '5 + 2.0 * a.level' }]
+    },
+    ultima: {
+        id: 'ultima',
+        parent: 'base_magical',
+        name: 'Ultima',
+        target: 'enemy-all',
+        speed: -3,
+        mpCost: 20,
+        script: 'ultima',
+        effects: [{ type: 'hp_damage', formula: '15 + 3.0 * a.level' }]
+    },
+    moonBeam: {
+        id: 'moonBeam',
+        parent: 'base_magical',
+        name: 'Moon Beam',
+        element: 'W', // Light? or Neutral
+        script: 'moonBeam',
+        effects: [{ type: 'hp_damage', formula: '7 + 2.2 * a.level' }]
+    },
+    acidRain: {
+        id: 'acidRain',
+        parent: 'base_magical',
+        name: 'Acid Rain',
+        target: 'enemy-all',
+        element: 'B',
+        script: 'acidRain',
+        effects: [
+             { type: 'hp_damage', formula: '4 + 1.5 * a.level' },
+             { type: 'add_status', status: 'poison', chance: 0.5 }
+        ]
+    },
+
+    // --- Support Skills ---
+    raise: {
+        id: 'raise',
+        parent: 'base_heal',
+        name: 'Raise',
+        script: 'raise',
+        target: 'ally-single', // Should target dead allies ideally, need logic support
+        effects: [{ type: 'revive', formula: 'b.mhp * 0.5' }]
+    },
+    waterBlessing: {
+        id: 'waterBlessing',
+        parent: 'base_heal',
+        name: 'Water Blessing',
+        script: 'waterBlessing',
+        element: 'B',
+        effects: [
+            { type: 'hp_heal', formula: '5 + 2.0 * a.level' },
+            { type: 'add_status', status: 'regen', chance: 1.0 }
+        ]
+    },
+    empower: {
+        id: 'empower',
+        parent: 'base_heal', // Heal category for support usually
+        name: 'Empower',
+        script: 'empower',
+        category: 'effect', // Switch to effect category
+        effects: [{ type: 'add_status', status: 'attack_up', chance: 1.0 }]
     },
 
     // --- Unique Physical Skills ---
