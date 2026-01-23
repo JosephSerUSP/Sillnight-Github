@@ -3,6 +3,12 @@ import { Services } from '../ServiceLocator.js';
 /**
  * The foundational class for any entity that participates in battle.
  * Manages basic parameters (HP, MP, TP), states, and buffs.
+ *
+ * Implements core parameters 0-7:
+ * 0: mhp (Max HP), 1: mmp (Max MP), 2: atk, 3: def, 4: mat, 5: mdf, 6: agi, 7: luk.
+ *
+ * Note: Advanced parameters `mpd` (MP Drain), `mxa` (Max Actions), and `mxp` (Max Passives)
+ * are reserved for future implementation (see gameDesign.md).
  */
 export class Game_BattlerBase {
     constructor() {

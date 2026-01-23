@@ -96,11 +96,12 @@ Handles the dungeon crawling experience.
 Strictly separates the "Brain" from the "Eyes".
 
 *   **`BattleManager` (The Brain):** Logic & Orchestration.
-    *   Calculates turn order (`queue`).
+    *   Calculates turn order (`queue`). *Note: Currently sorts by Unit Speed (`agi`), unlike `gameDesign.md` which specifies Action Speed (`asp`).*
     *   Executes actions (`Game_Action`).
     *   Determines results (Hit/Miss/Crit).
     *   *Note:* Currently operates in a **Hybrid** state, orchestrating `BattleRenderSystem` (e.g. `playAnim`) and waiting for completion callbacks. Visual feedback is a mix of `EventBus` events (logs) and direct UI window calls (Victory, LevelUp).
 *   **`BattleRenderSystem` (The Eyes):** Visualization.
+    *   *Exported as `Systems.Battle3D` in the codebase.*
     *   Listens to `BattleManager` events via `Observer`.
     *   Manages 3D sprites (`Spriteset_Battle`).
     *   Controls the Camera (Zoom, Pan).
@@ -117,7 +118,9 @@ How a skill is executed.
 2.  **Instantiation:** A `Game_Action` is created with the subject and the skill data.
 3.  **Targeting:** `Game_Action` determines valid targets (e.g., "All Enemies").
 4.  **Application:** `action.apply(target)` is called for each target.
-    *   **Formula Eval:** `Game_Action.evalDamageFormula()` parses the math (e.g., `a.mat * 4 - b.mdf * 2`).
+    *   **Formula Eval:** `Game_Action.evalDamageFormula()` evaluates the base formula string.
+    *   **Power Bonus:** Adds the user's power bonus (from traits).
+    *   **Stat Multiplier:** Multiplies the result by the ratio of User Stat / Target Stat (e.g. `atk/def`).
     *   **Element Mod:** Checks `target.elements` vs `action.element` for multipliers.
     *   **Variance/Crit:** Applies RNG.
 5.  **Event Emission:** The result is passed to `EffectRegistry` via `BattleManager` callbacks. Events are fired:
@@ -129,6 +132,7 @@ How a skill is executed.
 The game entities follow a prototype chain but rely heavily on "Traits" for stats.
 
 *   **`Game_BattlerBase`:** Handles HP, MP, and the `traits` array.
+    *   *Parameters:* Handles core parameters 0-7 (`mhp`...`luk`). *Note: Advanced parameters `mpd` (MP Drain), `mxa` (Max Actions), and `mxp` (Max Passives) from `gameDesign.md` are not yet implemented in Base.*
     *   *Traits:* Instead of hardcoding `hit_rate = 95%`, we delegate to `TraitRegistry` which iterates traits: `registry.getParamValue(this, id)`. This allows equipment, passives, and buffs to all modify stats uniformly.
 *   **`Game_Battler`:** Adds `actions`, `speed`, and turn lifecycle (`onTurnStart`).
 *   **`Game_Actor`:** Adds `level`, `exp`, `equipment`.

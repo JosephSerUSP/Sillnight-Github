@@ -159,6 +159,8 @@ export const BattleManager = {
     /**
      * Proceeds to the next round of combat.
      * Re-calculates turn order and checks win/loss conditions.
+     * Note: Currently sorts by Unit Speed (agi), drifting from gameDesign.md
+     * which requests Action Speed (asp) priority.
      */
     nextRound() {
         this.roundCount++;
@@ -214,6 +216,7 @@ export const BattleManager = {
     /**
      * Processes the next turn in the queue.
      * Executes AI actions or waits for animations.
+     * Note: Contains deprecated fallback logic for case-insensitive action IDs.
      */
     processNextTurn() {
             // Replaces: window.Game.Windows.Party.refresh();
