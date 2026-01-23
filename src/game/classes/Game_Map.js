@@ -4,6 +4,7 @@ import * as Systems from '../systems.js';
 import { BSPGenerator } from '../generators/BSPGenerator.js';
 import { StaticGenerator } from '../generators/StaticGenerator.js';
 import { Maps } from '../../assets/data/maps.js';
+import { Config } from '../Config.js';
 
 /**
  * Manages the map state, including grid data, player position, and visited tiles.
@@ -190,6 +191,7 @@ export class Game_Map {
         // Add static events from map data
         if (Maps.hub.events) {
             Maps.hub.events.forEach(evt => {
+                if (evt.testOnly && !Config.TestBuild) return;
                 const gameEvent = new Game_Event(evt.x, evt.y, {
                     type: evt.type,
                     trigger: evt.trigger || 'TOUCH',

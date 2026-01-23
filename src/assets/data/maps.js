@@ -138,6 +138,18 @@ export const Maps = {
                 type: 'NPC',
                 visual: { type: 'NPC' },
                 commands: [{ code: 'LOG', text: "Priest: May the Light guide you." }]
+            },
+            {
+                id: "npc_test_giver",
+                x: 11, y: 17,
+                type: 'NPC',
+                visual: { type: 'NPC' },
+                testOnly: true,
+                commands: [
+                    { code: 'LOG', text: "Debug: Adding all creatures..." },
+                    { code: 'EVAL', script: "const r=Game.Services.get('CreatureRegistry');r.getAll().forEach(c=>{if(c.id!=='summoner'&&!c.id.startsWith('base_'))window.$gameParty.addActor(c.id,1)})" },
+                    { code: 'LOG', text: "All creatures added to roster." }
+                ]
             }
         ],
         startX: 13,

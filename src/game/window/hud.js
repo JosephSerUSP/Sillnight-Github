@@ -1,6 +1,7 @@
 import { Window_Base } from '../windows.js';
 import { FlexLayout } from '../layout/FlexLayout.js';
 import { TextComponent } from '../layout/components.js';
+import { Config } from '../Config.js';
 
 /**
  * Heads-Up Display window.
@@ -46,6 +47,12 @@ export class Window_HUD extends Window_Base {
         this.layout.add(this._floorText);
         this.layout.add(this._mpText);
         this.layout.add(this._goldText);
+
+        if (Config.TestBuild) {
+            this._testText = new TextComponent('TEST BUILD');
+            this._testText.setHtml('<span class="text-red-500 font-bold">TEST BUILD</span>');
+            this.layout.add(this._testText);
+        }
     }
 
     /**
