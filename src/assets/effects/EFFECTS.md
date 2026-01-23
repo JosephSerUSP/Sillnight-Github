@@ -26,6 +26,7 @@ MoonDaze: Indirect.
 Physical: Basic attack animations.
 Rain: AoE rain
 Raise: Single feather lands on the floor, revives target.
+Seal: Rings circle around the target, sealing their abilities.
 Tap: Cute stars - a slap-like attack.
 TESTGREEN: A green square. For test.
 Thunder: Quick jolt.
