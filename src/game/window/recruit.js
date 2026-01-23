@@ -73,6 +73,23 @@ export class Window_Recruit extends Window_Selectable {
         this.actor = null;
     }
 
+    handleInput(event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            if (!this.offer) return true;
+            let canAfford = true;
+            if (this.offer.cost.type === 'GOLD' && window.$gameParty.gold < this.offer.cost.value) canAfford = false;
+            if (this.offer.cost.type === 'ITEM' && window.$gameParty.countItem(this.offer.cost.id) < this.offer.cost.value) canAfford = false;
+
+            if (canAfford) {
+                this.onRecruit();
+            } else {
+                // Optional: play error sound
+            }
+            return true;
+        }
+        return super.handleInput(event);
+    }
+
     refresh() {
         this.defineLayout(); // Rebuild layout
 
@@ -229,9 +246,9 @@ export class Window_Recruit extends Window_Selectable {
         const btnGroup = document.createElement('div');
         btnGroup.className = 'flex gap-4';
 
-        const cancelBtn = new ButtonComponent('LEAVE', () => this.hide(false), 'px-6 py-2 border border-gray-600 hover:bg-gray-800 text-gray-300');
+        const cancelBtn = new ButtonComponent('LEAVE (ESC)', () => this.hide(false), 'px-6 py-2 border border-gray-600 hover:bg-gray-800 text-gray-300');
 
-        const recruitBtn = new ButtonComponent('RECRUIT', () => this.onRecruit(), `px-6 py-2 border ${canAfford ? 'border-green-600 bg-green-900/20 hover:bg-green-800 hover:text-white text-green-400' : 'border-gray-800 text-gray-600 cursor-not-allowed'}`);
+        const recruitBtn = new ButtonComponent('RECRUIT (ENTER)', () => this.onRecruit(), `px-6 py-2 border ${canAfford ? 'border-green-600 bg-green-900/20 hover:bg-green-800 hover:text-white text-green-400' : 'border-gray-800 text-gray-600 cursor-not-allowed'}`);
         if (!canAfford) recruitBtn.element.disabled = true;
 
         btnGroup.appendChild(cancelBtn.element);

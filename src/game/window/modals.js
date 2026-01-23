@@ -36,22 +36,15 @@ export class Window_CreatureModal extends Window_Selectable {
         this._ui = {};
         this._unit = null;
         this.createLayout();
-
-        // Event Delegation for Equip Slot (if still needed, though I'll attach handler directly)
     }
 
     createLayout() {
-        // Clear root
         this.root.innerHTML = '';
-
-        // Main Window Frame: Compact width/height for a denser look
         const winComponent = new Component('div', 'rpg-window w-2/3 h-3/4 bg-[#111] relative overflow-hidden flex flex-col');
         this.root.appendChild(winComponent.element);
 
-        // Header
-        this.createHeader(winComponent); // Header is now part of the frame layout
+        this.createHeader(winComponent);
 
-        // Main Content Container (Row)
         const contentContainer = new Component('div', 'flex-grow flex flex-row gap-4 p-4 overflow-hidden');
         winComponent.element.appendChild(contentContainer.element);
 
@@ -81,7 +74,6 @@ export class Window_CreatureModal extends Window_Selectable {
         const leftCol = new Component('div', 'flex flex-col gap-2 w-1/3 shrink-0 border-r border-gray-800 pr-4');
         parentComponent.element.appendChild(leftCol.element);
 
-        // Sprite Box
         const spriteBox = new Component('div', 'w-full aspect-square border-2 border-dashed border-gray-700 flex items-center justify-center bg-black/60 shadow-inner status-sprite-frame relative');
         leftCol.element.appendChild(spriteBox.element);
 
@@ -89,7 +81,6 @@ export class Window_CreatureModal extends Window_Selectable {
         this._ui.sprite.className = 'status-sprite';
         spriteBox.element.appendChild(this._ui.sprite);
 
-        // Name & Compact Info
         const infoBox = new Component('div', 'text-center w-full space-y-0.5');
         leftCol.element.appendChild(infoBox.element);
 
@@ -99,9 +90,8 @@ export class Window_CreatureModal extends Window_Selectable {
 
         this._ui.details = document.createElement('div');
         this._ui.details.className = 'text-[10px] text-gray-400 flex justify-center gap-2';
-        infoBox.element.appendChild(this._ui.details); // Holds Lv, Race, Temperament
+        infoBox.element.appendChild(this._ui.details);
 
-        // XP Bar (Visual)
         const xpContainer = document.createElement('div');
         xpContainer.className = 'w-full bg-gray-900 h-1.5 mt-1 border border-gray-700 relative';
         this._ui.xpBar = document.createElement('div');
@@ -113,7 +103,6 @@ export class Window_CreatureModal extends Window_Selectable {
         this._ui.xpText.className = 'text-[8px] text-gray-500';
         infoBox.element.appendChild(this._ui.xpText);
 
-        // Lore (Moved to left column to fill space)
         const loreBox = new Component('div', 'mt-2 text-[9px] text-gray-400 italic leading-tight border-t border-gray-800 pt-2');
         this._ui.desc = document.createElement('div');
         loreBox.element.appendChild(this._ui.desc);
@@ -124,11 +113,9 @@ export class Window_CreatureModal extends Window_Selectable {
         const rightCol = new Component('div', 'flex flex-col gap-3 flex-grow relative overflow-y-auto no-scrollbar');
         parentComponent.element.appendChild(rightCol.element);
 
-        // Combined Stats Row
         const statsRow = new Component('div', 'grid grid-cols-2 gap-2');
         rightCol.element.appendChild(statsRow.element);
 
-        // HP Box
         const hpBox = new Component('div', 'bg-black/40 border border-gray-700 px-2 py-1 flex justify-between items-center');
         hpBox.element.innerHTML = '<span class="text-[10px] text-gray-500">HP</span>';
         this._ui.hp = document.createElement('span');
@@ -136,7 +123,6 @@ export class Window_CreatureModal extends Window_Selectable {
         hpBox.element.appendChild(this._ui.hp);
         statsRow.element.appendChild(hpBox.element);
 
-        // Elements Box
         const elemBox = new Component('div', 'bg-black/40 border border-gray-700 px-2 py-1 flex justify-between items-center');
         elemBox.element.innerHTML = '<span class="text-[10px] text-gray-500">ELM</span>';
         this._ui.elements = document.createElement('span');
@@ -144,7 +130,6 @@ export class Window_CreatureModal extends Window_Selectable {
         elemBox.element.appendChild(this._ui.elements);
         statsRow.element.appendChild(elemBox.element);
 
-        // Equipment (Compact)
         const equipRow = new Component('div', 'bg-black/40 border border-gray-700 px-2 py-1 flex items-center gap-2 cursor-pointer hover:border-yellow-400 transition-colors');
         equipRow.element.innerHTML = '<span class="text-[10px] text-gray-500 w-10 shrink-0">EQUIP</span>';
         this._ui.equipSlot = document.createElement('div');
@@ -160,13 +145,11 @@ export class Window_CreatureModal extends Window_Selectable {
              }
         });
 
-        // Passives & Actions
         this.createCompactActions(rightCol);
         this.createEquipmentLibrary(rightCol);
     }
 
     createCompactActions(parentComponent) {
-        // Passives
         const passContainer = new Component('div', 'text-[10px]');
         passContainer.element.innerHTML = '<div class="text-gray-500 mb-0.5">PASSIVE</div>';
         this._ui.passive = document.createElement('div');
@@ -174,7 +157,6 @@ export class Window_CreatureModal extends Window_Selectable {
         passContainer.element.appendChild(this._ui.passive);
         parentComponent.element.appendChild(passContainer.element);
 
-        // Actions
         const actContainer = new Component('div', 'text-[10px]');
         actContainer.element.innerHTML = '<div class="text-gray-500 mb-0.5">ACTIONS</div>';
         this._ui.actions = document.createElement('div');
@@ -186,7 +168,7 @@ export class Window_CreatureModal extends Window_Selectable {
     createEquipmentLibrary(parentComponent) {
         const libBox = new Component('div', 'hidden flex-col gap-2 bg-black/80 border border-gray-700 p-2 absolute inset-0 z-10');
         parentComponent.element.appendChild(libBox.element);
-        this._ui.libraryBox = libBox.element; // Keep ref to toggle visibility
+        this._ui.libraryBox = libBox.element;
 
         const libHeader = document.createElement('div');
         libHeader.className = 'flex justify-between items-center border-b border-gray-600 pb-1 mb-1';
@@ -203,29 +185,20 @@ export class Window_CreatureModal extends Window_Selectable {
         this._ui.equipOptions.className = 'grid grid-cols-2 gap-2 overflow-y-auto pr-1 flex-grow';
         libBox.element.appendChild(this._ui.equipOptions);
 
-        // Preview Pane (Bottom)
         this._ui.previewPane = document.createElement('div');
         this._ui.previewPane.className = 'border-t border-gray-600 pt-2 hidden flex-col gap-1 text-[10px] text-gray-300';
         libBox.element.appendChild(this._ui.previewPane);
 
-        // No hint needed, flows are explicit
         this._ui.equipHint = document.createElement('div');
         this._ui.equipHint.style.display = 'none';
     }
 
-    /**
-     * Sets the unit to display in the modal.
-     * @param {Object} unit - The unit to display.
-     */
     setUnit(unit) {
         this._unit = unit;
-        this.endEquipFlow(); // Reset state
+        this.endEquipFlow();
         this.refresh();
     }
 
-    /**
-     * Toggles the visibility of the modal.
-     */
     toggle() {
         if (this.root.classList.contains('hidden')) {
             this.show();
@@ -238,7 +211,6 @@ export class Window_CreatureModal extends Window_Selectable {
         if (this._ui.libraryBox) {
             this._ui.libraryBox.classList.remove('hidden');
             this._ui.libraryBox.classList.add('flex');
-            // Reset preview
             if (this._ui.previewPane) {
                 this._ui.previewPane.innerHTML = '';
                 this._ui.previewPane.classList.add('hidden');
@@ -246,7 +218,6 @@ export class Window_CreatureModal extends Window_Selectable {
             }
         }
 
-        // Populate options
         const list = window.$gameParty.roster.map(u => ({ owner: u, id: u.equipmentId, source: 'unit' })).filter(x => x.id);
         const inv = Object.keys(window.$gameParty.inventory.equipment).map(key => ({ owner: null, id: key, source: 'inventory' }));
         const options = [...list, ...inv];
@@ -256,7 +227,6 @@ export class Window_CreatureModal extends Window_Selectable {
 
         this._ui.equipOptions.innerHTML = '';
 
-        // If empty
         if (options.length === 0) {
              const emptyMsg = this.createEl('div', 'col-span-2 text-gray-500 text-center py-4', this._ui.equipOptions);
              emptyMsg.innerText = 'No equipment available.';
@@ -287,12 +257,6 @@ export class Window_CreatureModal extends Window_Selectable {
         pane.classList.remove('hidden');
         pane.classList.add('flex');
 
-        // Logic to preview stats
-        // We clone the unit roughly to see diff
-        // But cloning game objects is hard.
-        // Better to just calculate expected changes or list traits.
-
-        // Show Traits
         const traits = equipmentDef.traits || [];
         const traitsHtml = traits.map(t => {
             if (t.type === 'hp_bonus_percent') return `Max HP +${Math.round(parseFloat(t.formula)*100)}%`;
@@ -312,7 +276,6 @@ export class Window_CreatureModal extends Window_Selectable {
         desc.innerText = equipmentDef.description || traitsHtml;
         pane.appendChild(desc);
 
-        // Warning if held
         if (option.source === 'unit' && option.owner) {
             const warn = document.createElement('div');
             warn.className = 'text-red-400 mb-2 border border-red-900 bg-red-900/20 p-1';
@@ -321,7 +284,6 @@ export class Window_CreatureModal extends Window_Selectable {
             pane.appendChild(warn);
         }
 
-        // Buttons
         const btnRow = document.createElement('div');
         btnRow.className = 'flex gap-2 justify-end mt-1';
         pane.appendChild(btnRow);
@@ -348,16 +310,10 @@ export class Window_CreatureModal extends Window_Selectable {
         }
     }
 
-    // Legacy support if anything calls closeCenterModal
-    closeCenterModal() {
-        this.endEquipFlow();
-    }
-
     equipFromInventory(target, equipmentId) {
         if (!window.$gameParty.hasEquipment(equipmentId)) return;
         const previous = target.equipmentId;
 
-        // Remove item from inventory
         window.$gameParty.loseEquipment(equipmentId, 1);
 
         if (previous) {
@@ -417,13 +373,9 @@ export class Window_CreatureModal extends Window_Selectable {
         }
     }
 
-    /**
-     * Updates the modal content with the current unit's details.
-     */
     refresh() {
         if (!this._unit) return;
         const unit = this._unit;
-        // Use Registry
         const def = Services.get('CreatureRegistry').get(unit.speciesId);
 
         let maxhp = 0;
@@ -433,26 +385,19 @@ export class Window_CreatureModal extends Window_Selectable {
 
         const name = typeof unit.name === 'function' ? unit.name() : unit.name;
 
-        // Sprite
         this._ui.sprite.innerHTML = spriteMarkup(unit, 'h-28 w-28 object-contain', 'status-sprite');
-
-        // Info
         this._ui.name.innerText = name;
         this._ui.details.innerText = `Lv.${unit.level || 1} | ${def.race} | ${def.temperament}`;
 
-        // XP Bar
-        // Simple visual mock for now, assuming next level needs 100 * level
         const xpNeeded = (unit.level || 1) * 100;
         const xpCurrent = unit.exp || 0;
         const xpPct = Math.min(100, Math.max(0, (xpCurrent / xpNeeded) * 100));
         this._ui.xpBar.style.width = `${xpPct}%`;
         this._ui.xpText.innerText = `${xpCurrent} / ${xpNeeded} XP`;
 
-        // Stats
         this._ui.hp.innerText = `${unit.hp}/${maxhp}`;
         this._ui.elements.innerText = (unit.elements || []).join(', ');
 
-        // Passive
         if (this._ui.passive) {
             this._ui.passive.innerHTML = '';
             if (def.passives && def.passives.length > 0) {
@@ -470,11 +415,8 @@ export class Window_CreatureModal extends Window_Selectable {
 
         this._ui.desc.innerText = def.description;
 
-        // Actions
         if (this._ui.actions) {
             this._ui.actions.innerHTML = '';
-            // acts is [[skillId, ...], [skillId, ...]] for Game_Actor/creatures
-            // Flatten unique skills for display
             const uniqueSkills = new Set();
             (def.acts || []).flat().forEach(id => {
                 if (id !== 'wait' && id !== 'guard') uniqueSkills.add(id);
@@ -489,7 +431,6 @@ export class Window_CreatureModal extends Window_Selectable {
             });
         }
 
-        // Equipment Button
         if (this._ui.equipSlot) {
             if (unit.equipmentId) {
                 const eq = Services.get('EquipmentRegistry').get(unit.equipmentId);
@@ -522,14 +463,11 @@ export class Window_Inventory extends Window_Selectable {
     createLayout() {
         this.root.innerHTML = '';
 
-        // Window Frame
         this.frame = new WindowFrameComponent('w-1/2 h-2/3 flex flex-col bg-[#0a0a0a]');
         this.root.appendChild(this.frame.element);
 
-        // Layout
         this.layout = new FlexLayout(this.frame.element, { direction: 'column' });
 
-        // Header
         const header = new Component('div', 'rpg-header flex justify-between');
         const title = new TextComponent('INVENTORY');
         const closeBtn = new ButtonComponent('X', () => this.hide(), 'text-red-500 px-2 hover:bg-red-900 border-none');
@@ -538,75 +476,90 @@ export class Window_Inventory extends Window_Selectable {
         header.element.appendChild(closeBtn.element);
         this.layout.add(header);
 
-        // Content
         this.listContainer = new Component('div', 'flex-grow p-4 overflow-y-auto no-scrollbar');
         this.layout.add(this.listContainer, { grow: 1 });
 
-        // Target Picker (Hidden by default)
         this.targetPicker = new Component('div', 'hidden absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-20');
         this.frame.element.appendChild(this.targetPicker.element);
     }
 
     toggle() {
         if (this.root.classList.contains('hidden')) {
-            this.refresh();
             this.show();
+            this.select(0);
         } else {
             this.hide();
         }
     }
 
     refresh() {
+        this._items = [];
+        const equipment = window.$gameParty.inventory.equipment;
+        const items = window.$gameParty.inventory.items;
+
+        Object.keys(equipment).forEach(id => {
+            this._items.push({ type: 'equipment', id, count: equipment[id] });
+        });
+        Object.keys(items).forEach(id => {
+            this._items.push({ type: 'item', id, count: items[id] });
+        });
+
+        super.refresh();
+    }
+
+    clear() {
+        if (this.listContainer) {
+            this.listContainer.element.innerHTML = '';
+        }
+    }
+
+    drawItem(index) {
         if (!this.listContainer) return;
-        this.listContainer.element.innerHTML = '';
+        const item = this._items[index];
+        if (!item) return;
 
-        if (this.targetPicker) {
-            this.targetPicker.element.classList.add('hidden');
-            this.targetPicker.element.innerHTML = '';
+        // Render header if first of type? No, flattened list.
+        // We can just render items.
+
+        // Lookup Def
+        let def;
+        if (item.type === 'equipment') def = Services.get('EquipmentRegistry').get(item.id);
+        else def = Services.get('ItemRegistry').get(item.id);
+
+        // Inject description into item for Window_Help
+        item.description = def.description;
+        item.name = def.name; // Useful too
+
+        const row = new Component('div', 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1');
+        if (this._index === index) {
+            row.addClass('border-yellow-400');
+            row.addClass('bg-gray-800');
         }
 
-        const eqKeys = Object.keys(window.$gameParty.inventory.equipment);
+        row.element.innerHTML = `<div><span class="text-yellow-100">${def.name}</span> <span class="text-[10px] text-gray-400">x${item.count}</span><div class="text-[10px] text-gray-500">${def.description}</div></div>`;
 
-        if (eqKeys.length > 0) {
-            const eqTitle = new Component('div', 'text-yellow-400 mb-2');
-            eqTitle.element.innerText = 'Equipment';
-            this.listContainer.element.appendChild(eqTitle.element);
+        // Action Button (Visual only, Enter handles action)
+        const btnText = item.type === 'equipment' ? 'EQUIP' : 'USE';
+        const btn = new ButtonComponent(btnText, () => {
+             // Click handler
+             this.select(index);
+             this.processOk();
+        }, 'text-[10px] border border-gray-600 px-2 py-1 hover:bg-white hover:text-black');
 
-            eqKeys.forEach(id => {
-                const count = window.$gameParty.inventory.equipment[id];
-                const def = Services.get('EquipmentRegistry').get(id);
-                if (!def) return;
-                const row = new Component('div', 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1');
-                row.element.innerHTML = `<div><span class="text-yellow-100">${def.name}</span> <span class="text-[10px] text-gray-400">x${count}</span><div class="text-[10px] text-gray-500">${def.description}</div></div>`;
+        row.element.appendChild(btn.element);
+        this.listContainer.element.appendChild(row.element);
+    }
 
-                const btn = new ButtonComponent('EQUIP', () => {
-                     window.Game.Windows.CreatureModal.startEquipFlow(id);
-                }, 'text-[10px] border border-gray-600 px-2 py-1 hover:bg-white hover:text-black');
+    processOk() {
+        const index = this._index;
+        const item = this._items[index];
+        if (!item) return;
 
-                row.element.appendChild(btn.element);
-                this.listContainer.element.appendChild(row.element);
-            });
-        }
-
-        const itemKeys = Object.keys(window.$gameParty.inventory.items);
-        if (itemKeys.length > 0) {
-            const itmTitle = new Component('div', 'text-yellow-400 mt-4 mb-2');
-            itmTitle.element.innerText = 'Items';
-            this.listContainer.element.appendChild(itmTitle.element);
-
-            itemKeys.forEach(id => {
-                const count = window.$gameParty.inventory.items[id];
-                const def = Services.get('ItemRegistry').get(id);
-                if (!def) return;
-                const row = new Component('div', 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1');
-                row.element.innerHTML = `<div><span class="text-yellow-100">${def.name}</span> <span class="text-[10px] text-gray-400">x${count}</span><div class="text-[10px] text-gray-500">${def.description}</div></div>`;
-
-                const btn = new ButtonComponent('USE', () => {
-                     this.showTargetPicker(id, def);
-                }, 'text-[10px] border border-gray-600 px-2 py-1 hover:bg-white hover:text-black');
-                row.element.appendChild(btn.element);
-                this.listContainer.element.appendChild(row.element);
-            });
+        if (item.type === 'equipment') {
+            window.Game.Windows.CreatureModal.startEquipFlow(item.id);
+        } else {
+            const def = Services.get('ItemRegistry').get(item.id);
+            this.showTargetPicker(item.id, def);
         }
     }
 
@@ -656,12 +609,10 @@ export class Window_Inventory extends Window_Selectable {
         if (!window.$gameParty.hasItem(itemId)) return;
         const itemDef = Services.get('ItemRegistry').get(itemId);
 
-        // Execute Action
         const action = new Game_Action(target);
         action._subject = target;
         action.setItem(itemDef);
 
-        // Check conditions
         const effects = itemDef.effects || [];
         const isRevive = effects.some(e => e.type === 'revive');
         const isHeal = effects.some(e => e.type.includes('heal'));
@@ -681,7 +632,6 @@ export class Window_Inventory extends Window_Selectable {
 
         const results = action.apply(target);
 
-        // Apply results
         let used = false;
         results.forEach(res => {
             if (res.effect.type.includes('heal') || res.effect.type === 'revive' || res.effect.type === 'increase_max_hp' || res.effect.type === 'increase_level') {
@@ -739,19 +689,20 @@ export class Window_PartyMenu extends Window_Selectable {
 
     initialize() {
         super.initialize();
+        this._pendingSwapIndex = -1;
         this.createLayout();
     }
+
+    maxCols() { return 7; }
 
     createLayout() {
         this.root.innerHTML = '';
 
-        // Frame
         this.frame = new WindowFrameComponent('w-2/3 h-3/4 flex flex-col bg-[#0a0a0a]');
         this.root.appendChild(this.frame.element);
 
         const layout = new FlexLayout(this.frame.element, { direction: 'column' });
 
-        // Header
         const header = new Component('div', 'rpg-header flex justify-between');
         const title = new TextComponent('PARTY / RESERVE');
         const closeBtn = new ButtonComponent('X', () => this.hide(), 'text-red-500 px-2 hover:bg-red-900 border-none');
@@ -760,28 +711,17 @@ export class Window_PartyMenu extends Window_Selectable {
         header.element.appendChild(closeBtn.element);
         layout.add(header);
 
-        // Hint
         const hint = new Component('div', 'p-2 text-[10px] text-gray-400 border-b border-gray-700');
-        hint.element.innerText = 'Click a unit to select it, then click another unit or an empty slot to swap them.';
+        hint.element.innerText = 'Arrows to move, Space/Enter to select/swap, Esc to close.';
         layout.add(hint);
 
-        // Grid Container
         this.gridContainer = new Component('div', 'p-2 overflow-y-auto no-scrollbar flex-grow');
         layout.add(this.gridContainer, { grow: 1 });
 
-        // Using GridLayout for the content
         this.grid = new GridLayout(this.gridContainer.element, {
             columns: 'repeat(3, 1fr) 0.8fr repeat(3, 1fr)',
             rows: 'repeat(5, minmax(0, 1fr))',
             gap: 4
-        });
-
-        // Event delegation on container
-        this.gridContainer.element.addEventListener('click', (e) => {
-            const target = e.target.closest('.party-menu-slot');
-            if (target) {
-                this.onPartySlotClick(target);
-            }
         });
     }
 
@@ -789,165 +729,182 @@ export class Window_PartyMenu extends Window_Selectable {
         if (this.root.classList.contains('hidden')) {
             this.refresh();
             this.show();
+            this.select(0);
         } else {
             this.hide();
         }
     }
 
-    onPartySlotClick(element) {
-        if (element.dataset.locked === 'true') {
-            const selected = this.root.querySelector('.party-menu-slot.selected');
-            if (selected) selected.classList.remove('selected');
-            return;
-        }
-        const selected = this.root.querySelector('.party-menu-slot.selected');
-
-        if (selected) {
-            const fromUid = selected.dataset.uid;
-            const fromIndex = parseInt(selected.dataset.index);
-            const fromIsReserved = selected.dataset.isReserved === 'true';
-
-            const toUid = element.dataset.uid;
-            const toIndex = parseInt(element.dataset.index);
-            const toIsReserved = element.dataset.isReserved === 'true';
-
-            selected.classList.remove('selected');
-
-            if (fromUid === toUid) return;
-
-            const fromUnit = fromIsReserved ? window.$gameParty.roster.find(u => u.uid === fromUid) : window.$gameParty.activeSlots[fromIndex];
-            const toUnit = toIsReserved ? window.$gameParty.roster.find(u => u.uid === toUid) : window.$gameParty.activeSlots[toIndex];
-
-            // Enforce party limit
-            const activePartySize = window.$gameParty.activeCreatureCount();
-            if (fromIsReserved && !toIsReserved && !toUnit && activePartySize >= window.$gameParty.maxCreatureSlots()) {
-                alert("Your active party is full. Swap a member out before adding a new one.");
-                return;
-            }
-
-            // Swap logic
-            if (fromIsReserved && !toIsReserved) { // Reserve -> Active
-                window.$gameParty.activeSlots[toIndex] = fromUnit;
-                if(toUnit) toUnit.slotIndex = -1;
-                fromUnit.slotIndex = toIndex;
-
-            } else if (!fromIsReserved && toIsReserved) { // Active -> Reserve
-                window.$gameParty.activeSlots[fromIndex] = toUnit;
-                if (toUnit) {
-                    toUnit.slotIndex = fromIndex;
-                }
-                fromUnit.slotIndex = -1;
-
-            } else if (!fromIsReserved && !toIsReserved) { // Active <-> Active
-                [window.$gameParty.activeSlots[fromIndex], window.$gameParty.activeSlots[toIndex]] = [toUnit, fromUnit];
-                if (fromUnit) fromUnit.slotIndex = toIndex;
-                if (toUnit) toUnit.slotIndex = fromIndex;
-            }
-
-            this.refresh();
-            if (window.Game.Windows.Party) window.Game.Windows.Party.refresh();
-        } else {
-            element.classList.add('selected');
-        }
+    clear() {
+        if (this.grid) this.grid.clear();
     }
 
     refresh() {
         if (!this.grid) return;
         this.grid.clear();
 
-        const columns = 7;
-        const rows = 5;
         const activeSlots = window.$gameParty.activeSlots;
+        const summonerIndex = window.$gameParty.summonerSlotIndex();
+        const summoner = activeSlots[summonerIndex];
+
         const activeSet = new Set(activeSlots.filter(Boolean).map(u => u.uid));
         const reserveUnits = window.$gameParty.roster.filter(u => !activeSet.has(u.uid));
         let reserveUnitIndex = 0;
 
-        const formationPositions = [];
-        for (let i = 0; i < 6; i++) {
-            formationPositions.push({
-                index: i,
-                col: (i % 3) + 1,
-                row: Math.floor(i / 3) + 1
-            });
+        this._items = [];
+        for (let row = 1; row <= 5; row++) {
+            for (let col = 1; col <= 7; col++) {
+                let item = { row, col, type: 'empty' };
+
+                if (col <= 3 && row <= 2) {
+                    const slotIdx = (row - 1) * 3 + (col - 1);
+                    item.type = 'active';
+                    item.index = slotIdx;
+                    item.unit = activeSlots[slotIdx];
+                }
+                else if (col === 4 && row <= 2) {
+                    item.type = 'summoner';
+                    item.unit = summoner;
+                    item.isMain = (row === 1);
+                }
+                else {
+                    item.type = 'reserve';
+                    item.unit = reserveUnitIndex < reserveUnits.length ? reserveUnits[reserveUnitIndex++] : null;
+                    item.isReserved = true;
+                }
+
+                // Add description for Help Window
+                if (item.unit) {
+                    const def = Services.get('CreatureRegistry').get(item.unit.speciesId);
+                    item.description = def ? def.description : '';
+                    item.name = typeof item.unit.name === 'function' ? item.unit.name() : item.unit.name;
+                }
+
+                this._items.push(item);
+            }
         }
 
-        const summonerIndex = window.$gameParty.summonerSlotIndex();
-        formationPositions.push({
-            index: summonerIndex,
-            col: 4,
-            row: 1,
-            rowSpan: 2,
-            className: 'summoner-slot'
-        });
+        super.refresh();
+    }
 
-        const usedCells = new Set();
-        formationPositions.forEach(pos => {
-            const rowsCovered = pos.rowSpan ? pos.rowSpan : 1;
-            for (let r = 0; r < rowsCovered; r++) {
-                usedCells.add(`${pos.col}-${pos.row + r}`);
-            }
-        });
+    drawItem(index) {
+        const item = this._items[index];
+        if (!item) return;
 
-        const reservePositions = [];
-        for (let row = 1; row <= rows; row++) {
-            for (let col = 1; col <= columns; col++) {
-                if (usedCells.has(`${col}-${row}`)) continue;
-                reservePositions.push({ col, row });
-            }
+        if (item.type === 'summoner' && !item.isMain) {
+            return;
         }
 
-        const addSlot = ({ unit, index, isReserved, position, isEmptyActiveSlot, extraClass }) => {
-            const div = document.createElement('div');
-            let baseClasses = 'party-menu-slot relative flex flex-col p-1';
-            if (!isReserved) {
-                baseClasses += ' bg-gray-800/50';
-            }
-            if (extraClass) {
-                baseClasses += ` ${extraClass}`;
-            }
-            div.className = baseClasses;
+        const div = document.createElement('div');
+        let baseClasses = 'party-menu-slot relative flex flex-col p-1';
+        if (item.type !== 'reserve' && item.type !== 'summoner') baseClasses += ' bg-gray-800/50';
+        if (item.type === 'summoner') baseClasses += ' summoner-slot';
 
-            const emptyId = `empty_${index}_${position.col}_${position.row}`;
-            div.dataset.uid = unit ? unit.uid : emptyId;
-            div.dataset.index = index;
-            div.dataset.isReserved = isReserved;
-            div.dataset.locked = unit?.isSummoner ? 'true' : 'false';
+        div.className = baseClasses;
 
-            if (unit) {
-                div.innerHTML = renderCreaturePanel(unit);
-            } else if (isEmptyActiveSlot) {
-                div.innerHTML = '<span class="m-auto text-gray-600 text-[10px]">EMPTY</span>';
-            } else {
-                div.style.visibility = 'hidden';
-            }
+        let isSelected = (this._index === index);
+        if (item.type === 'summoner' && item.isMain) {
+             const nextRowIdx = index + 7;
+             if (this._index === nextRowIdx) isSelected = true;
+        }
 
-            const rowValue = position.rowSpan ? `${position.row} / span ${position.rowSpan}` : position.row;
-            this.grid.add(div, { col: position.col, row: rowValue });
-        };
+        if (isSelected) div.classList.add('selected', 'border', 'border-yellow-400');
+        if (this._pendingSwapIndex === index) div.classList.add('border-green-500', 'border-2');
 
-        formationPositions.forEach(pos => {
-            const unit = activeSlots[pos.index];
-            const isEmptyActiveSlot = !unit;
-            addSlot({
-                unit,
-                index: pos.index,
-                isReserved: false,
-                position: pos,
-                isEmptyActiveSlot,
-                extraClass: pos.className
-            });
-        });
+        if (item.unit) {
+             div.innerHTML = renderCreaturePanel(item.unit);
+        } else {
+             div.innerHTML = '<span class="m-auto text-gray-600 text-[10px]">EMPTY</span>';
+             if (item.type === 'reserve' && !item.unit) div.style.visibility = 'hidden';
+        }
 
-        reservePositions.forEach(pos => {
-            const unit = reserveUnitIndex < reserveUnits.length ? reserveUnits[reserveUnitIndex++] : null;
-            addSlot({
-                unit,
-                index: -1,
-                isReserved: true,
-                position: pos,
-                isEmptyActiveSlot: !unit,
-                extraClass: null
-            });
-        });
+        const options = { col: item.col, row: item.row };
+        if (item.type === 'summoner' && item.isMain) {
+            options.row = `${item.row} / span 2`;
+        }
+
+        this.grid.add(div, options);
+    }
+
+    processOk() {
+        const index = this._index;
+        const item = this._items[index];
+        if (!item) return;
+
+        if (item.type === 'summoner') {
+            return;
+        }
+
+        // Map current selection to a UID/Slot to handle swap logic
+        // But logic relies on UID or Slot Index.
+        // item has .index (for active) or we can use item.unit.uid
+
+        if (this._pendingSwapIndex === -1) {
+            this._pendingSwapIndex = index;
+            this.refresh();
+        } else {
+            const fromItem = this._items[this._pendingSwapIndex];
+            const toItem = item;
+
+            this.executeSwap(fromItem, toItem);
+            this._pendingSwapIndex = -1;
+            this.refresh();
+            if (window.Game.Windows.Party) window.Game.Windows.Party.refresh();
+        }
+    }
+
+    processCancel() {
+        if (this._pendingSwapIndex !== -1) {
+            this._pendingSwapIndex = -1;
+            this.refresh();
+        } else {
+            super.processCancel();
+        }
+    }
+
+    executeSwap(fromItem, toItem) {
+        // We need to determine "From" and "To" in terms of Game_Party API
+        // activeSlots index OR reserve UID.
+
+        // Helper to get unit or identifying info
+        // fromItem: { type: 'active', index: 0, unit: ... } or { type: 'reserve', unit: ... }
+
+        // Logic copied/adapted from onPartySlotClick
+
+        const fromIsReserved = (fromItem.type === 'reserve');
+        const toIsReserved = (toItem.type === 'reserve');
+
+        const fromUnit = fromItem.unit;
+        const toUnit = toItem.unit; // Might be null (Empty slot)
+
+        // Active Party Limit Check
+        const activePartySize = window.$gameParty.activeCreatureCount();
+        if (fromIsReserved && !toIsReserved && !toUnit && activePartySize >= window.$gameParty.maxCreatureSlots()) {
+             alert("Active party is full.");
+             return;
+        }
+
+        // We need 'slotIndex' for active units.
+        const fromIndex = fromItem.type === 'active' ? fromItem.index : -1;
+        const toIndex = toItem.type === 'active' ? toItem.index : -1;
+
+        if (fromIsReserved && !toIsReserved) { // Reserve -> Active
+             window.$gameParty.activeSlots[toIndex] = fromUnit;
+             if(toUnit) toUnit.slotIndex = -1;
+             fromUnit.slotIndex = toIndex;
+        } else if (!fromIsReserved && toIsReserved) { // Active -> Reserve
+             window.$gameParty.activeSlots[fromIndex] = toUnit;
+             if (toUnit) toUnit.slotIndex = fromIndex;
+             fromUnit.slotIndex = -1;
+        } else if (!fromIsReserved && !toIsReserved) { // Active <-> Active
+             // Swap active slots
+             window.$gameParty.swapOrder(fromIndex, toIndex);
+        } else if (fromIsReserved && toIsReserved) {
+             // Reserve <-> Reserve
+             // No order in reserves really, but we could swap them in roster array if we want persistence.
+             // Current game logic doesn't strictly order reserves in a fixed way other than "not active".
+             // So visually swapping them does nothing unless we change roster order.
+             // We can ignore or implement roster swap.
+        }
     }
 }

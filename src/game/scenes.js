@@ -113,6 +113,11 @@ export class Scene_Battle extends Scene_Base {
         if (!window.Game || !window.Game.ui) return false;
         if (window.Game.ui.mode !== 'BATTLE' && window.Game.ui.mode !== 'BATTLE_WIN') return false;
 
+        // Block input if a modal window is open
+        if (window.Game.SceneManager && window.Game.SceneManager.windowStack.length > 0) {
+            return false;
+        }
+
         const Input = window.Game.Input;
         if (!Input) return false;
 
