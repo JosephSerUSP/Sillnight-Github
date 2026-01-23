@@ -722,7 +722,7 @@ export class BattleRenderSystem {
                                      }
                                  }
                              };
-                             check();
+                             requestAnimationFrame(check);
                          });
                     } else {
                         return wait(hold || 300);
