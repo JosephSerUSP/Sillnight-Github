@@ -65,7 +65,7 @@ export function renderCreaturePanel(unit) {
 
     return `
         <div class="flex justify-between text-gray-300">
-            <span>${name}</span> <span class="text-[10px]">Lv${level}</span>
+            <span class="truncate min-w-0">${name}</span> <span class="text-[10px] ml-1 whitespace-nowrap">Lv${level}</span>
         </div>
         <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">${spriteMarkup(unit, 'h-16 w-16 object-contain', '', 'text-2xl')}</div>
         <div class="mt-auto w-full space-y-0.5">

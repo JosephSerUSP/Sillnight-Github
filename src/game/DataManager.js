@@ -57,28 +57,26 @@ export class DataManager {
 
     /**
      * Populates the player's inventory with a random selection of starting items and equipment.
-     * The selection is based on the configuration in `Data.party.initial.inventory`.
      * @static
      */
     static populateInitialInventory() {
-        const setup = Data.party.initial.inventory;
-        if (!setup) return;
-
-        const { items, equipment } = setup;
-
-        if (items) {
-            for (const item of items) {
-                if (Math.random() < item.chance) {
-                    window.$gameParty.gainItem(item.id, item.quantity);
-                }
+        // Random assortment of 3 consumables
+        const allItems = Object.keys(Data.items).filter(id => !id.startsWith('base_'));
+        if (allItems.length > 0) {
+            const shuffledItems = [...allItems].sort(() => 0.5 - Math.random());
+            const selectedItems = shuffledItems.slice(0, 3);
+            for (const id of selectedItems) {
+                window.$gameParty.gainItem(id, 1);
             }
         }
 
-        if (equipment) {
-            for (const equip of equipment) {
-                if (Math.random() < equip.chance) {
-                    window.$gameParty.gainEquipment(equip.id, equip.quantity);
-                }
+        // Random assortment of 5 equipment
+        const allEquip = Object.keys(Data.equipment).filter(id => !id.startsWith('base_'));
+        if (allEquip.length > 0) {
+            const shuffledEquip = [...allEquip].sort(() => 0.5 - Math.random());
+            const selectedEquip = shuffledEquip.slice(0, 5);
+            for (const id of selectedEquip) {
+                window.$gameParty.gainEquipment(id, 1);
             }
         }
     }
