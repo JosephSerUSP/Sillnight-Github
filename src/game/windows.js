@@ -158,7 +158,6 @@ export class Window_Selectable extends Window_Base {
         this._index = -1;
         this._items = [];
         this._handlers = {};
-        this._helpWindow = null;
     }
 
     set items(list) {
@@ -182,23 +181,34 @@ export class Window_Selectable extends Window_Base {
         return this._items[this._index];
     }
 
-    setHelpWindow(helpWindow) {
-        this._helpWindow = helpWindow;
-        this.callUpdateHelp();
-    }
-
-    updateHelp() {
-        if (this._helpWindow) {
-            this._helpWindow.setItem(this.item());
-        }
-    }
-
-    callUpdateHelp() {
+    /**
+     * Updates the help text for the currently selected item.
+     * Subclasses should implement setHelpText to display the text.
+     */
+    refreshHelp() {
+        this.setHelpText('');
         if (this._index >= 0) {
-            this.updateHelp();
-        } else if (this._helpWindow) {
-            this._helpWindow.clear();
+            const item = this.item();
+            if (item) {
+                // Determine description
+                let text = item.description || '';
+                // Handle complex objects if needed, but usually description is prepared
+                this.setHelpText(text);
+            }
         }
+    }
+
+    // Alias for compatibility if needed, but prefer refreshHelp
+    updateHelp() {
+        this.refreshHelp();
+    }
+
+    /**
+     * Displays help text in the window's dedicated help area.
+     * @param {string} text
+     */
+    setHelpText(text) {
+        // Abstract
     }
 
     /**
@@ -208,7 +218,7 @@ export class Window_Selectable extends Window_Base {
     select(index) {
         this._index = index;
         this.refresh(); // Or just update classes to be more efficient
-        this.callUpdateHelp();
+        this.refreshHelp();
     }
 
     /**
@@ -217,7 +227,7 @@ export class Window_Selectable extends Window_Base {
     deselect() {
         this._index = -1;
         this.refresh();
-        this.callUpdateHelp();
+        this.refreshHelp();
     }
 
     /**
@@ -326,9 +336,7 @@ export class Window_Selectable extends Window_Base {
 
     hide() {
         super.hide();
-        if (this._helpWindow) {
-            this._helpWindow.clear();
-        }
+        // No need to clear global help anymore
     }
 
     handleInput(event) {

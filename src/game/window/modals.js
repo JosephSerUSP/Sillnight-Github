@@ -479,8 +479,18 @@ export class Window_Inventory extends Window_Selectable {
         this.listContainer = new Component('div', 'flex-grow p-4 overflow-y-auto no-scrollbar');
         this.layout.add(this.listContainer, { grow: 1 });
 
+        // Help Text Footer
+        this._helpTextComponent = new Component('div', 'bg-[#1a1a1a] border-t border-gray-700 p-2 text-xs text-gray-300 italic min-h-[3rem]');
+        this.layout.add(this._helpTextComponent);
+
         this.targetPicker = new Component('div', 'hidden absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-20');
         this.frame.element.appendChild(this.targetPicker.element);
+    }
+
+    setHelpText(text) {
+        if (this._helpTextComponent) {
+            this._helpTextComponent.element.innerText = text || '';
+        }
     }
 
     toggle() {
@@ -518,17 +528,13 @@ export class Window_Inventory extends Window_Selectable {
         const item = this._items[index];
         if (!item) return;
 
-        // Render header if first of type? No, flattened list.
-        // We can just render items.
-
         // Lookup Def
         let def;
         if (item.type === 'equipment') def = Services.get('EquipmentRegistry').get(item.id);
         else def = Services.get('ItemRegistry').get(item.id);
 
-        // Inject description into item for Window_Help
         item.description = def.description;
-        item.name = def.name; // Useful too
+        item.name = def.name;
 
         const row = new Component('div', 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700 mb-1');
         if (this._index === index) {
@@ -536,12 +542,11 @@ export class Window_Inventory extends Window_Selectable {
             row.addClass('bg-gray-800');
         }
 
-        row.element.innerHTML = `<div><span class="text-yellow-100">${def.name}</span> <span class="text-[10px] text-gray-400">x${item.count}</span><div class="text-[10px] text-gray-500">${def.description}</div></div>`;
+        // Removed inline description to de-clutter, as per new help strategy
+        row.element.innerHTML = `<div><span class="text-yellow-100">${def.name}</span> <span class="text-[10px] text-gray-400">x${item.count}</span></div>`;
 
-        // Action Button (Visual only, Enter handles action)
         const btnText = item.type === 'equipment' ? 'EQUIP' : 'USE';
         const btn = new ButtonComponent(btnText, () => {
-             // Click handler
              this.select(index);
              this.processOk();
         }, 'text-[10px] border border-gray-600 px-2 py-1 hover:bg-white hover:text-black');
@@ -723,6 +728,16 @@ export class Window_PartyMenu extends Window_Selectable {
             rows: 'repeat(5, minmax(0, 1fr))',
             gap: 4
         });
+
+        // Help Text Footer
+        this._helpTextComponent = new Component('div', 'bg-[#1a1a1a] border-t border-gray-700 p-2 text-xs text-gray-300 italic min-h-[3rem]');
+        layout.add(this._helpTextComponent);
+    }
+
+    setHelpText(text) {
+        if (this._helpTextComponent) {
+            this._helpTextComponent.element.innerText = text || '';
+        }
     }
 
     toggle() {
@@ -835,10 +850,6 @@ export class Window_PartyMenu extends Window_Selectable {
             return;
         }
 
-        // Map current selection to a UID/Slot to handle swap logic
-        // But logic relies on UID or Slot Index.
-        // item has .index (for active) or we can use item.unit.uid
-
         if (this._pendingSwapIndex === -1) {
             this._pendingSwapIndex = index;
             this.refresh();
@@ -863,12 +874,6 @@ export class Window_PartyMenu extends Window_Selectable {
     }
 
     executeSwap(fromItem, toItem) {
-        // We need to determine "From" and "To" in terms of Game_Party API
-        // activeSlots index OR reserve UID.
-
-        // Helper to get unit or identifying info
-        // fromItem: { type: 'active', index: 0, unit: ... } or { type: 'reserve', unit: ... }
-
         // Logic copied/adapted from onPartySlotClick
 
         const fromIsReserved = (fromItem.type === 'reserve');
@@ -877,14 +882,12 @@ export class Window_PartyMenu extends Window_Selectable {
         const fromUnit = fromItem.unit;
         const toUnit = toItem.unit; // Might be null (Empty slot)
 
-        // Active Party Limit Check
         const activePartySize = window.$gameParty.activeCreatureCount();
         if (fromIsReserved && !toIsReserved && !toUnit && activePartySize >= window.$gameParty.maxCreatureSlots()) {
              alert("Active party is full.");
              return;
         }
 
-        // We need 'slotIndex' for active units.
         const fromIndex = fromItem.type === 'active' ? fromItem.index : -1;
         const toIndex = toItem.type === 'active' ? toItem.index : -1;
 
@@ -897,14 +900,9 @@ export class Window_PartyMenu extends Window_Selectable {
              if (toUnit) toUnit.slotIndex = fromIndex;
              fromUnit.slotIndex = -1;
         } else if (!fromIsReserved && !toIsReserved) { // Active <-> Active
-             // Swap active slots
              window.$gameParty.swapOrder(fromIndex, toIndex);
         } else if (fromIsReserved && toIsReserved) {
-             // Reserve <-> Reserve
-             // No order in reserves really, but we could swap them in roster array if we want persistence.
-             // Current game logic doesn't strictly order reserves in a fixed way other than "not active".
-             // So visually swapping them does nothing unless we change roster order.
-             // We can ignore or implement roster swap.
+             // Reserve <-> Reserve (No-op visually unless roster reordered)
         }
     }
 }

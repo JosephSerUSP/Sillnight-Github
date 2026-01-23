@@ -64,6 +64,10 @@ export class Window_Shop extends Window_Selectable {
         this.listContainer.className = 'flex-1 overflow-y-auto space-y-2';
         this.layout.addRaw(this.listContainer);
 
+        // Help Text Footer
+        this._helpTextComponent = new TextComponent('', 'bg-[#1a1a1a] border-t border-gray-700 p-2 text-xs text-gray-300 italic min-h-[3rem]');
+        this.layout.add(this._helpTextComponent);
+
         this.items.forEach((item, index) => {
             if (item) {
                 this.drawItem(index);
@@ -72,6 +76,12 @@ export class Window_Shop extends Window_Selectable {
 
         const leaveBtn = new ButtonComponent('LEAVE (ESC)', () => this.hide(), 'mt-4 w-full py-2 bg-gray-800 hover:bg-gray-700 border border-gray-600');
         this.layout.add(leaveBtn);
+    }
+
+    setHelpText(text) {
+        if (this._helpTextComponent) {
+            this._helpTextComponent.element.innerText = text || '';
+        }
     }
 
     drawItem(index) {
@@ -93,25 +103,21 @@ export class Window_Shop extends Window_Selectable {
         let baseClasses = 'flex justify-between items-center bg-gray-900 p-2 border border-gray-700';
         if (this._index === index) {
             baseClasses = 'flex justify-between items-center bg-gray-800 p-2 border border-yellow-400';
-            // Ensure visible (simple scrollIntoView)
-            // But we can't call it here easily as element not attached yet?
-            // Actually we append it below.
-            // Defer scroll? Window_Selectable select() doesn't scroll automatically.
         }
         row.className = baseClasses;
 
         const info = document.createElement('div');
         info.className = 'flex flex-col';
+        // Removed inline description
         info.innerHTML = `
             <span class="text-yellow-100">${data.name}</span>
-            <span class="text-xs text-gray-500">${data.cost} G</span>
+            <span class="text-xs text-gray-400">${data.cost} G</span>
         `;
         row.appendChild(info);
 
         const btn = document.createElement('button');
         btn.className = 'text-xs border border-gray-600 px-2 py-1 hover:bg-white hover:text-black transition-colors';
         btn.innerText = 'BUY';
-        // Make button non-clickable via mouse if we want pure keyboard, but hybrid is fine.
         btn.onclick = (e) => {
             e.stopPropagation();
             this.select(index);
@@ -151,10 +157,6 @@ export class Window_Shop extends Window_Selectable {
             Log.loot(`Bought ${data.name}.`);
 
             if (window.Game.Windows.HUD) window.Game.Windows.HUD.refresh();
-
-            // Visual feedback?
-            // We just refresh to update gold? Or just Log.
-            // Maybe play sound.
         } else {
             alert('Not enough gold!');
         }

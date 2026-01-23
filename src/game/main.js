@@ -11,7 +11,6 @@ import { Window_BattleLog } from './window/battle_log.js';
 import { Window_Victory, Window_LevelUp } from './window/victory.js';
 import { Window_Shop } from './window/shop.js';
 import { Window_Recruit } from './window/recruit.js';
-import { Window_Help } from './window/help.js';
 import { Config } from './Config.js';
 import { Services } from './ServiceLocator.js';
 import { TraitRegistry } from './registries/TraitRegistry.js';
@@ -117,7 +116,6 @@ export const Game = {
         this.TransitionManager.init();
 
         // Create windows
-        this.Windows.Help = new Window_Help();
         this.Windows.HUD = new Window_HUD();
         this.Windows.Party = new Window_Party();
         this.Windows.CreatureModal = new Window_CreatureModal();
@@ -128,13 +126,6 @@ export const Game = {
         this.Windows.LevelUp = new Window_LevelUp();
         this.Windows.Shop = new Window_Shop();
         this.Windows.Recruit = new Window_Recruit();
-
-        // Wire Help Window
-        this.Windows.Inventory.setHelpWindow(this.Windows.Help);
-        this.Windows.PartyMenu.setHelpWindow(this.Windows.Help);
-        this.Windows.Shop.setHelpWindow(this.Windows.Help);
-        this.Windows.Recruit.setHelpWindow(this.Windows.Help);
-
         console.log("Game.init: Windows created.");
 
         this.RenderManager.init();
