@@ -113,6 +113,7 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
 1.  Implement **Registry** data loaders (Done: `CreatureRegistry`, `SkillRegistry`, `ItemRegistry` implemented and verified).
 2.  Migrate `creatures.js` and `skills.js` to a schema that supports inheritance (Done).
 3.  Refactor `Game_Battler` to load stats via Registry lookups (Done: `Game_Actor`, `Game_Enemy` use Registries).
+4.  Maintenance: Addressed Game Design gaps (Summoner turn order, missing params `mpd`/`mxa`/`mxp`) (Done).
 
 ### Phase 3: The World (Done)
 1.  Refactor `Game_Map` to use `MapGenerator` strategies (Done: `BSPGenerator` linked).

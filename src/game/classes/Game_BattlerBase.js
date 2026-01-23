@@ -103,6 +103,21 @@ export class Game_BattlerBase {
     get luk() { return this.param(7); }
 
     /**
+     * @returns {number} MP Drain (Summoner MP cost per turn).
+     */
+    get mpd() { return 0; }
+
+    /**
+     * @returns {number} Max Actions (Learning limit).
+     */
+    get mxa() { return 4; }
+
+    /**
+     * @returns {number} Max Passives (Learning limit).
+     */
+    get mxp() { return 2; }
+
+    /**
      * Checks if the battler is alive.
      * @returns {boolean} True if HP > 0.
      */

@@ -115,6 +115,25 @@ export class Game_Enemy extends Game_Battler {
     // Compatibility
     /** @returns {number} The nominal level. */
     get level() { return this._level; }
+
+    /** @returns {number} MP Drain. */
+    get mpd() {
+        const def = Services.get('CreatureRegistry').get(this._speciesId);
+        return def ? (def.mpd || 0) : 0;
+    }
+
+    /** @returns {number} Max Actions. */
+    get mxa() {
+        const def = Services.get('CreatureRegistry').get(this._speciesId);
+        return def ? (def.mxa || 4) : 4;
+    }
+
+    /** @returns {number} Max Passives. */
+    get mxp() {
+        const def = Services.get('CreatureRegistry').get(this._speciesId);
+        return def ? (def.mxp || 2) : 2;
+    }
+
     /** @returns {Array} List of action patterns. */
     get acts() {
         const def = Services.get('CreatureRegistry').get(this._speciesId);

@@ -32,6 +32,25 @@ export class Game_Actor extends Game_Battler {
     get uid() { return this._uid; }
     /** @returns {number} The current level. */
     get level() { return this._level; }
+
+    /** @returns {number} MP Drain. */
+    get mpd() {
+        const def = Services.get('CreatureRegistry').get(this._speciesId);
+        return def ? (def.mpd || 0) : 0;
+    }
+
+    /** @returns {number} Max Actions. */
+    get mxa() {
+        const def = Services.get('CreatureRegistry').get(this._speciesId);
+        return def ? (def.mxa || 4) : 4;
+    }
+
+    /** @returns {number} Max Passives. */
+    get mxp() {
+        const def = Services.get('CreatureRegistry').get(this._speciesId);
+        return def ? (def.mxp || 2) : 2;
+    }
+
     /** @returns {number} The current experience points. */
     get exp() { return this._exp; }
     /** @returns {string} The species ID. */

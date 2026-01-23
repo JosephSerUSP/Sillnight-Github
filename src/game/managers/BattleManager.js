@@ -202,9 +202,9 @@ export const BattleManager = {
             ? allUnits.filter(u => u.uid !== summoner.uid)
             : allUnits;
 
-        nonSummonerUnits.sort((a, b) => b.speed - a.speed || Math.random() - 0.5);
+        nonSummonerUnits.sort((a, b) => b.agi - a.agi || Math.random() - 0.5);
         this.queue = (summoner && summoner.hp > 0)
-            ? [summoner, ...nonSummonerUnits]
+            ? [...nonSummonerUnits, summoner]
             : nonSummonerUnits;
         this.turnIndex = 0;
 
