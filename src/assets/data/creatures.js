@@ -142,7 +142,7 @@ export const Creatures = {
         elements: [], // Override base undead dark affinity
         atk: 110, def: 90, mat: 80, mdf: 80,
         acts: [
-            ['attack'],
+            ['slash', 'attack'],
             ['guard', 'attack']
         ]
     },
@@ -163,7 +163,7 @@ export const Creatures = {
         race: 'Celestial',
         atk: 100, def: 100, mat: 115, mdf: 120,
         acts: [
-            ['cure'],
+            ['cure', 'raise'],
             ['ray', 'attack']
         ]
     },
@@ -183,7 +183,7 @@ export const Creatures = {
         elements: ['G'],
         atk: 90, def: 100, mat: 130, mdf: 130,
         acts: [
-            ['tornado', 'cure'],
+            ['tornado', 'moonBeam'],
             ['thunder']
         ]
     },
@@ -243,7 +243,7 @@ export const Creatures = {
         elements: ['B'],
         atk: 100, def: 100, mat: 120, mdf: 120,
         acts: [
-            ['cosmicRay', 'ray'],
+            ['cosmicRay', 'ultima'],
             ['gravityWell', 'wait']
         ]
     },
@@ -286,7 +286,7 @@ export const Creatures = {
         passives: ['highVitality'],
         atk: 90, def: 110, mat: 120, mdf: 120,
         acts: [
-            ['latexPrayer', 'cure'],
+            ['latexPrayer', 'waterBlessing'],
             ['divineBolt', 'thunder']
         ]
     },
@@ -306,7 +306,7 @@ export const Creatures = {
         elements: ['G'],
         atk: 80, def: 90, mat: 135, mdf: 120,
         acts: [
-            ['sleepMist', 'wait'],
+            ['sleepMist', 'acidRain'],
             ['tornado', 'cure']
         ]
     },
@@ -367,7 +367,7 @@ export const Creatures = {
         passives: ['exploder'],
         atk: 130, def: 110, mat: 120, mdf: 90,
         acts: [
-            ['attackRow', 'hellfire'],
+            ['flare', 'attackRow'],
             ['hellfire', 'thunder']
         ]
     },
