@@ -25,7 +25,11 @@ class PartySlotComponent extends Component {
 
         // Click handling
         if (onClick) {
-            this.on('click', () => onClick(index));
+            this.on('click', (e) => onClick(index, e));
+            this.on('contextmenu', (e) => {
+                e.preventDefault();
+                onClick(index, e);
+            });
         }
     }
 
@@ -117,7 +121,7 @@ export class Window_Party extends Window_Selectable {
      */
     drawItem(index) {
         const u = this.items[index];
-        const component = new PartySlotComponent(u, index, (idx) => this.callHandler('click', idx));
+        const component = new PartySlotComponent(u, index, (idx, e) => this.callHandler('click', idx, e));
 
         if (u?.isSummoner) {
             component.addClass('border-indigo-400');
@@ -146,8 +150,15 @@ export class Window_Party extends Window_Selectable {
      * Handles clicks on party slots.
      * Swaps units if in formation mode, or opens details otherwise.
      * @param {number} index - The clicked slot index.
+     * @param {Event} [event] - The event object.
      */
-    onClick(index) {
+    onClick(index, event) {
+        // Handle right-click removal
+        if (event && (event.type === 'contextmenu' || event.button === 2)) {
+            this.removeUnit(index);
+            return;
+        }
+
         // Allow swapping only in formation mode
         if (window.Game.ui.formationMode) {
             if (window.$gameParty.isSummonerSlot(index)) {
@@ -173,6 +184,38 @@ export class Window_Party extends Window_Selectable {
                 window.Game.Windows.CreatureModal.show();
             }
         }
+    }
+
+    /**
+     * Removes the unit at the specified index from the active party.
+     * @param {number} index
+     */
+    removeUnit(index) {
+        if (index < 0 || index >= window.$gameParty.activeSlots.length) return;
+        if (window.$gameParty.isSummonerSlot(index)) return;
+
+        const unit = window.$gameParty.activeSlots[index];
+        if (unit) {
+            window.$gameParty.activeSlots[index] = null;
+            this.refresh();
+            // Also deselect if we just removed the selected unit
+            if (this._index === index) {
+                this.deselect();
+            }
+        }
+    }
+
+    handleInput(event) {
+        if (super.handleInput(event)) return true;
+
+        const key = event.key;
+        if (key === 'Delete' || key === 'Backspace') {
+            if (this._index >= 0) {
+                this.removeUnit(this._index);
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
