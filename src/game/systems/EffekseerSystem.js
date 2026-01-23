@@ -153,13 +153,21 @@ export class EffekseerSystem {
     exists(handle) {
         if (!this.context || handle === null) return false;
 
-        // Unwrap EffekseerHandle object if present
-        if (typeof handle === 'object' && handle.native !== undefined) {
-            handle = handle.native;
+        // Modern Effekseer handles have an exists() method
+        if (typeof handle === 'object' && typeof handle.exists === 'function') {
+            return handle.exists();
         }
 
-        if (typeof this.context.exists !== 'function') return false;
-        return this.context.exists(handle);
+        // Fallback for legacy integer handles (if any)
+        if (typeof this.context.exists === 'function') {
+            // Unwrap if it's a wrapper object without its own exists method
+            if (typeof handle === 'object' && handle.native !== undefined) {
+                return this.context.exists(handle.native);
+            }
+            return this.context.exists(handle);
+        }
+
+        return false;
     }
 
     /**

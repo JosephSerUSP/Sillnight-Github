@@ -21,13 +21,13 @@ Two distinct issues were identified contributing to the premature completion:
 
 2.  **Handle Type Mismatch (Critical):**
     - `EffekseerSystem.play()` returns a JavaScript wrapper object (`EffekseerHandle`) containing the native WASM handle (integer) in a `.native` property.
-    - `EffekseerSystem.exists()` passed this *object* directly to the underlying `context.exists()` function.
-    - The underlying WASM binding expects a primitive integer. Receiving an object caused it to return `false` (invalid handle) immediately.
-    - **Consequence:** The system believed the animation finished immediately after it started, thus proceeding to the `apply` step instantly.
+    - The legacy code attempted to pass this *object* directly to `context.exists()` (if it existed), or failed to check the handle correctly.
+    - **Discovery:** In the current Effekseer WASM version used, the `EffekseerHandle` object itself has an `exists()` method on its prototype. The global `context` object *does not* expose an `exists` method.
+    - **Fix:** Updated `EffekseerSystem.exists()` to prioritize calling `handle.exists()` if available. A fallback was added to call `context.exists(handle.native)` (unwrapping the integer) only if the context supports it, ensuring robustness for potential version differences.
 
 ## Alternative Approaches
 
-While the fix involves correctly unwrapping the handle, other approaches for animation pacing were considered:
+While the fix involves correctly checking the handle status, other approaches for animation pacing were considered:
 
 1.  **Explicit Duration (`wait` step):**
     - **Logic:** Manually define `duration: 3000` in the `effect` step in `data.js`.
@@ -42,10 +42,7 @@ While the fix involves correctly unwrapping the handle, other approaches for ani
 3.  **Hybrid Approach (Current Best Practice):**
     - Rely on `exists()` for the total duration (ensuring the sequence doesn't end prematurely).
     - Use `wait` steps *before* the `apply` step if the `apply` needs to happen mid-animation, or rely on the natural end of the animation if the effect is short.
-    - **Correction:** The current `Flare` script puts `apply` *after* the effect. Since `Flare` is a long animation, we rely on `exists()` returning true for the duration. Once `exists()` works correctly, `apply` will happen at the *end* of the animation.
-
-    *Note: If the desired behavior is for damage to happen at the climax (middle), the script structure in `data.js` would need to change (e.g., spawn effect non-blocking -> wait duration -> apply -> wait remaining), but fixing `exists` is the prerequisite for any reliable pacing.*
 
 ## Conclusion
 
-The primary cause of the pacing issue is the **Handle Type Mismatch**. The `EffekseerSystem` must be updated to unwrap `EffekseerHandle` objects before querying the WASM context.
+The primary cause of the pacing issue was the system failing to correctly query the status of the `EffekseerHandle` object. The updated `EffekseerSystem` now correctly utilizes the `handle.exists()` method, ensuring animations play to completion before logic proceeds.
