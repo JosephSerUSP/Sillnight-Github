@@ -291,10 +291,28 @@ export const BattleManager = {
                 window.$gameParty?.onAllyAction(unit);
             }
 
+            // Check if action is revival and validate targets
+            let isRevive = actionData.effects && actionData.effects.some(e => e.type === 'revive');
+            if (isRevive) {
+                 const deadFriends = friends.filter(u => u.hp <= 0);
+                 if (deadFriends.length === 0) {
+                     // No valid target for revival, fallback to attack
+                     actionData = skillRegistry.get('attack');
+                     action.setObject(actionData);
+                     isRevive = false;
+                 }
+            }
+
             let targets = [];
             let validEnemies = enemies.filter(u => u.hp > 0);
             const validFriends = friends.filter(u => u.hp > 0);
-            if (actionData.target === 'self') targets = [unit];
+
+            if (isRevive) {
+                 const deadFriends = friends.filter(u => u.hp <= 0);
+                 if (deadFriends.length > 0) {
+                     targets = [deadFriends[0]];
+                 }
+            } else if (actionData.target === 'self') targets = [unit];
             else if (actionData.target === 'ally-single') targets = [validFriends.sort((a, b) => a.hp - b.hp)[0]];
             else if (actionData.target === 'enemy-all') targets = validEnemies;
             else if (actionData.target === 'enemy-row') {
