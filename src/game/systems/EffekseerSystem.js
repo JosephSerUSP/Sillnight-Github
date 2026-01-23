@@ -56,7 +56,7 @@ export class EffekseerSystem {
                     resolve(null);
                     return;
                 }
-                this.context.init(gl, { instanceMaxCount: 256, squareMaxCount: 2048 });
+                this.context.init(gl, { instanceMaxCount: 8000, squareMaxCount: 32000 });
                 this.context.setRestorationOfStatesFlag(true);
                 resolve(this.context);
             };
