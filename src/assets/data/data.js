@@ -102,7 +102,7 @@ export const Data = {
             { type: 'hide_ground', duration: 500 },
             { type: 'jump', height: 0.6, duration: 450 },
             { type: 'focus', target: 'enemy', duration: 450 },
-            { type: 'effect', effect: 'Ultima', bind: 'center', anchor: 0.0, hold: 800 },
+            { type: 'effect', effect: 'Ultima', bind: 'center', anchor: 0.0 },
             { type: 'apply' },
             { type: 'reset_visuals', duration: 300 }
         ],
