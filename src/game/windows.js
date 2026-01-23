@@ -173,6 +173,44 @@ export class Window_Selectable extends Window_Base {
         return this._items ? this._items.length : 0;
     }
 
+    maxCols() {
+        return 1;
+    }
+
+    item() {
+        return this._items[this._index];
+    }
+
+    /**
+     * Updates the help text for the currently selected item.
+     * Subclasses should implement setHelpText to display the text.
+     */
+    refreshHelp() {
+        this.setHelpText('');
+        if (this._index >= 0) {
+            const item = this.item();
+            if (item) {
+                // Determine description
+                let text = item.description || '';
+                // Handle complex objects if needed, but usually description is prepared
+                this.setHelpText(text);
+            }
+        }
+    }
+
+    // Alias for compatibility if needed, but prefer refreshHelp
+    updateHelp() {
+        this.refreshHelp();
+    }
+
+    /**
+     * Displays help text in the window's dedicated help area.
+     * @param {string} text
+     */
+    setHelpText(text) {
+        // Abstract
+    }
+
     /**
      * Selects an item at the specified index.
      * @param {number} index - The index to select.
@@ -180,6 +218,7 @@ export class Window_Selectable extends Window_Base {
     select(index) {
         this._index = index;
         this.refresh(); // Or just update classes to be more efficient
+        this.refreshHelp();
     }
 
     /**
@@ -188,6 +227,7 @@ export class Window_Selectable extends Window_Base {
     deselect() {
         this._index = -1;
         this.refresh();
+        this.refreshHelp();
     }
 
     /**
@@ -230,11 +270,98 @@ export class Window_Selectable extends Window_Base {
         }
     }
 
-    handleInput(event) {
-        if (event.key === 'Escape') {
+    processOk() {
+        if (this._index >= 0) {
+            // Call 'ok' handler if exists, or 'click' for compatibility
+            if (this._handlers['ok']) {
+                this.callHandler('ok', this._index);
+            } else if (this._handlers['click']) {
+                this.callHandler('click', this._index);
+            }
+        }
+    }
+
+    processCancel() {
+        if (this._handlers['cancel']) {
+            this.callHandler('cancel');
+        } else {
             this.hide();
         }
-        // Always consume input when a window is active
-        return true;
+    }
+
+    cursorDown(wrap) {
+        const index = this._index;
+        const maxItems = this.maxItems();
+        const maxCols = this.maxCols();
+        if (index < maxItems - maxCols || (wrap && maxCols === 1)) {
+            this.select((index + maxCols) % maxItems);
+        } else if (index === -1) {
+            this.select(0);
+        }
+    }
+
+    cursorUp(wrap) {
+        const index = this._index;
+        const maxItems = this.maxItems();
+        const maxCols = this.maxCols();
+        if (index >= maxCols || (wrap && maxCols === 1)) {
+            this.select((index - maxCols + maxItems) % maxItems);
+        } else if (index === -1) {
+             this.select(maxItems - 1);
+        }
+    }
+
+    cursorRight(wrap) {
+        const index = this._index;
+        const maxItems = this.maxItems();
+        const maxCols = this.maxCols();
+        if (maxCols >= 2 && (index % maxCols < maxCols - 1)) {
+            if (index + 1 < maxItems) {
+                this.select(index + 1);
+            }
+        } else if (index === -1) {
+             this.select(0);
+        }
+    }
+
+    cursorLeft(wrap) {
+        const index = this._index;
+        const maxCols = this.maxCols();
+        if (maxCols >= 2 && (index % maxCols > 0)) {
+            this.select(index - 1);
+        } else if (index === -1) {
+            this.select(this.maxItems() - 1);
+        }
+    }
+
+    hide() {
+        super.hide();
+        // No need to clear global help anymore
+    }
+
+    handleInput(event) {
+        const key = event.key;
+
+        if (key === 'ArrowDown' || key === 's') {
+            this.cursorDown(true);
+            return true;
+        } else if (key === 'ArrowUp' || key === 'w') {
+            this.cursorUp(true);
+            return true;
+        } else if (key === 'ArrowRight' || key === 'd') {
+            this.cursorRight(true);
+            return true;
+        } else if (key === 'ArrowLeft' || key === 'a') {
+            this.cursorLeft(true);
+            return true;
+        } else if (key === 'Enter' || key === ' ') {
+            this.processOk();
+            return true;
+        } else if (key === 'Escape') {
+            this.processCancel();
+            return true;
+        }
+
+        return false;
     }
 }
