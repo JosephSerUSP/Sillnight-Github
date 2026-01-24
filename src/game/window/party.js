@@ -3,6 +3,7 @@ import { renderCreaturePanel } from './common.js';
 import { GridLayout } from '../layout/GridLayout.js';
 import { Component } from '../layout/Component.js';
 import { PopupManager } from '../PopupManager.js';
+import { CreaturePanelComponent } from '../layout/CreaturePanelComponent.js';
 
 // Custom component for a party slot
 class PartySlotComponent extends Component {
@@ -11,6 +12,7 @@ class PartySlotComponent extends Component {
         super('div', 'party-slot relative flex flex-col p-1 cursor-pointer hover:bg-white/10');
         this.unit = unit;
         this.index = index;
+        this.panel = null;
 
         if (unit?.isSummoner) {
             this.addClass('summoner-slot');
@@ -18,7 +20,8 @@ class PartySlotComponent extends Component {
 
         // Render content
         if (unit) {
-            this.setHtml(renderCreaturePanel(unit));
+            this.panel = new CreaturePanelComponent(unit);
+            this.element.appendChild(this.panel.element);
         } else {
             this.setHtml('<span class="m-auto text-gray-800 text-xs">EMPTY</span>');
         }
@@ -31,6 +34,13 @@ class PartySlotComponent extends Component {
                 onClick(index, e);
             });
         }
+    }
+
+    destroy() {
+        if (this.panel) {
+            this.panel.destroy();
+        }
+        super.destroy();
     }
 
     setSelected(selected) {
