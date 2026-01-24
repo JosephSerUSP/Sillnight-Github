@@ -35,6 +35,9 @@ export class Game_BattlerBase {
         const diff = value - this._hp;
         this._hp = value;
         this.refresh();
+        if (diff !== 0) {
+            Services.events.emit('battler:change', { unit: this, property: 'hp', value: this._hp, diff });
+        }
         if (diff !== 0 && window.Game && window.Game.ui && window.Game.ui.mode === 'EXPLORE') {
             if (window.Game.Windows && window.Game.Windows.Party) {
                 window.Game.Windows.Party.onUnitHpChange(this, diff);
@@ -48,8 +51,12 @@ export class Game_BattlerBase {
     get mp() { return this._mp; }
     /** @param {number} value - New MP value. Triggers refresh. */
     set mp(value) {
+        const diff = value - this._mp;
         this._mp = value;
         this.refresh();
+        if (diff !== 0) {
+            Services.events.emit('battler:change', { unit: this, property: 'mp', value: this._mp, diff });
+        }
     }
 
     /**
@@ -58,8 +65,12 @@ export class Game_BattlerBase {
     get tp() { return this._tp; }
     /** @param {number} value - New TP value. Triggers refresh. */
     set tp(value) {
+        const diff = value - this._tp;
         this._tp = value;
         this.refresh();
+        if (diff !== 0) {
+            Services.events.emit('battler:change', { unit: this, property: 'tp', value: this._tp, diff });
+        }
     }
 
     /**

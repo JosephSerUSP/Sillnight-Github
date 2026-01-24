@@ -121,5 +121,5 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
     - Implement `Game_Variables` and `Game_Switches` (Done).
 
 ### Phase 4: Polish (Next Priority)
-1.  Reactive UI components.
+1.  Reactive UI components (Partial: Party UI & Base Component Refactor Done).
 2.  Audio system integration.

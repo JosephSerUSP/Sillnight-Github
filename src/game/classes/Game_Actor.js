@@ -177,6 +177,7 @@ export class Game_Actor extends Game_Battler {
      */
     gainExp(exp) {
         this._exp += exp;
+        Services.events.emit('battler:change', { unit: this, property: 'exp', value: this._exp });
         // Level up logic
         while (this.currentExp() >= this.nextLevelExp()) {
             this.levelUp();
@@ -210,6 +211,7 @@ export class Game_Actor extends Game_Battler {
     levelUp() {
         this._level++;
         this.recoverAll();
+        Services.events.emit('battler:change', { unit: this, property: 'level', value: this._level });
     }
 
     // Compatibility with old object structure

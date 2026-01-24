@@ -1,3 +1,5 @@
+import { Services } from '../ServiceLocator.js';
+
 /**
  * Base class for UI components.
  * Components are "dumb" views managed by a Window/Controller.
@@ -7,11 +9,35 @@ export class Component {
         this.element = document.createElement(tagName);
         if (className) this.element.className = className;
         this._handlers = {};
+        this._listeners = [];
         this.initialize();
     }
 
     initialize() {
         // Override for setup
+    }
+
+    /**
+     * Subscribes to a global event via Services.events.
+     * Automatically managed by destroy().
+     * @param {string} event
+     * @param {Function} callback
+     */
+    listen(event, callback) {
+        const unsub = Services.events.on(event, callback);
+        this._listeners.push(unsub);
+    }
+
+    /**
+     * Cleans up the component.
+     * Removes element from DOM and unsubscribes from events.
+     */
+    destroy() {
+        this._listeners.forEach(unsub => unsub());
+        this._listeners = [];
+        if (this.element && this.element.parentNode) {
+            this.element.parentNode.removeChild(this.element);
+        }
     }
 
     /**
