@@ -53,16 +53,15 @@ graph TD
         UI[DOM Window System]
         Render[RenderManager (Three.js)]
         ExploreSys[ExploreSystem (3D)]
-        BattleSys[BattleRenderSystem (3D)]
+        BattleSys[Battle3D (3D System)]
     end
 
     ActiveScene -->|Updates| BM
     ActiveScene -->|Updates| ExploreSys
 
     BM -->|Emits Events| Bus
-    BM -->|Orchestrates| BattleSys
+    BM -->|Direct Calls| BattleSys
     Bus -->|Notifies| UI
-    Bus -->|Notifies| BattleSys
 ```
 
 ### Key Components
@@ -92,19 +91,19 @@ Handles the dungeon crawling experience.
 *   **Fog of War:** Implemented via a custom `ShaderMaterial`. A `DataTexture` tracks visibility states (Hidden, Visited, Visible), which is fed into the vertex shader to vertically displace (hide) or reveal geometry.
 *   **Interaction:** Uses raycasting or grid-based collision to trigger `Game_Event` objects (Shops, Enemies, Chests).
 
-### 3.3. Battle System (`BattleManager` vs `BattleRenderSystem`)
+### 3.3. Battle System (`BattleManager` vs `Battle3D`)
 Strictly separates the "Brain" from the "Eyes".
 
 *   **`BattleManager` (The Brain):** Logic & Orchestration.
     *   Calculates turn order (`queue`).
     *   Executes actions (`Game_Action`).
     *   Determines results (Hit/Miss/Crit).
-    *   *Note:* Currently operates in a **Hybrid** state, orchestrating `BattleRenderSystem` (e.g. `playAnim`) and waiting for completion callbacks. Visual feedback is a mix of `EventBus` events (logs) and direct UI window calls (Victory, LevelUp).
-*   **`BattleRenderSystem` (The Eyes):** Visualization.
-    *   Listens to `BattleManager` events via `Observer`.
+    *   *Note:* Currently operates in a **Hybrid** state. It directly invokes `Battle3D` methods (e.g., `playAnim`, `setFocus`) for animations, creating tight coupling. However, it uses `EventBus` events for UI updates (e.g., `battle:turn_start` logs) and window management.
+*   **`BattleRenderSystem` (exported as `Battle3D`):** Visualization.
+    *   **Architecture:** Exported as `Battle3D` in `src/game/systems.js`.
+    *   **Coupling:** Primarily driven by direct method calls from `BattleManager`.
     *   Manages 3D sprites (`Spriteset_Battle`).
-    *   Controls the Camera (Zoom, Pan).
-    *   Plays Effekseer particles.
+    *   Controls the Camera (Zoom, Pan) and Effekseer particles.
 
 ---
 
@@ -120,10 +119,10 @@ How a skill is executed.
     *   **Formula Eval:** `Game_Action.evalDamageFormula()` parses the math (e.g., `a.mat * 4 - b.mdf * 2`).
     *   **Element Mod:** Checks `target.elements` vs `action.element` for multipliers.
     *   **Variance/Crit:** Applies RNG.
-5.  **Event Emission:** The result is passed to `EffectRegistry` via `BattleManager` callbacks. Events are fired:
-    *   `battle:action_used` (Starts animation)
-    *   `battle:damage_dealt` (Shows number, reduces HP)
-    *   `battle:state_added` (Shows icon)
+5.  **Event Emission:**
+    *   `battle:action_used` is emitted before animation starts.
+    *   Results are passed to `EffectRegistry` via the `onApply` callback in `Battle3D.playAnim`.
+    *   `EffectRegistry` applies changes and emits granular events like `battle:damage_dealt` (which triggers floating text and HP bar updates) or `battle:state_added`.
 
 ### 4.2. Entity Class Hierarchy
 The game entities follow a prototype chain but rely heavily on "Traits" for stats.
@@ -154,6 +153,6 @@ The codebase is currently in a transitional state (Phase 1 of Refactor). The ult
 WHEN IMPLEMENTING THE REFACTOR, UPDATE THE DOCUMENT ACCORDINGLY.
 
 1.  **Full Decoupling:** Complete the migration of *all* UI logic to the `EventBus`. Currently, some legacy calls (like `window.Game.Windows.BattleLog`) still exist within Logic classes.
-2.  **Logic Separation:** Fully detach `BattleManager` from `BattleRenderSystem` methods (like `playAnim`). The Manager should emit an event (e.g., `battle:perform_action`) and wait for a `battle:animation_complete` event, rather than passing callbacks.
+2.  **Logic Separation:** Fully detach `BattleManager` from `Battle3D` methods (like `playAnim`). The Manager should emit an event (e.g., `battle:perform_action`) and wait for a `battle:animation_complete` event, rather than making direct method calls and passing callbacks.
 3.  **Registry Expansion:** Move from raw object lookups (`Data.skills['fire']`) to a robust `SkillRegistry` that handles data loading and inheritance (e.g., "Fire II" inherits "Fire I").
 4.  **Reactive UI:** Implement a lightweight binding system so Windows update automatically when data changes, removing manual `refresh()` calls.

@@ -158,7 +158,8 @@ export const BattleManager = {
 
     /**
      * Proceeds to the next round of combat.
-     * Re-calculates turn order and checks win/loss conditions.
+     * Re-calculates turn order based on Unit Speed (AGI).
+     * Note: Currently places Summoner at the start of the queue if alive, deviating from the 'End of Round' design.
      */
     nextRound() {
         this.roundCount++;
@@ -214,6 +215,7 @@ export const BattleManager = {
     /**
      * Processes the next turn in the queue.
      * Executes AI actions or waits for animations.
+     * Includes legacy fallback for case-insensitive ID lookups.
      */
     processNextTurn() {
             // Replaces: window.Game.Windows.Party.refresh();

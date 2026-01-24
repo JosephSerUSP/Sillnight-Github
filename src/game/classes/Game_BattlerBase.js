@@ -3,6 +3,19 @@ import { Services } from '../ServiceLocator.js';
 /**
  * The foundational class for any entity that participates in battle.
  * Manages basic parameters (HP, MP, TP), states, and buffs.
+ *
+ * Implemented Parameters (0-7):
+ * - 0: mhp (Max HP)
+ * - 1: mmp (Max MP)
+ * - 2: atk (Attack)
+ * - 3: def (Defense)
+ * - 4: mat (Magic Attack)
+ * - 5: mdf (Magic Defense)
+ * - 6: agi (Agility/Speed)
+ * - 7: luk (Luck)
+ *
+ * Note: Advanced parameters `mpd` (MP Drain), `mxa` (Max Actions), and `mxp` (Max Passives)
+ * defined in `gameDesign.md` are reserved but not currently implemented.
  */
 export class Game_BattlerBase {
     constructor() {
