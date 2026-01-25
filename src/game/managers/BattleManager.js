@@ -399,10 +399,6 @@ export const BattleManager = {
          document.getElementById('battle-ui-overlay').innerHTML = '';
             if (win) {
                 // Replaces: window.Game.Windows.BattleLog.showBanner('VICTORY');
-                Services.events.emit('battle:victory', { xp: 0, gold: 0, party: [] }); // Dummy event for now
-
-                // Legacy/Hybrid: Direct UI call. Should eventually subscribe to 'battle:victory'.
-                window.Game.Windows.BattleLog.showBanner('VICTORY');
                 window.Game.ui.mode = 'BATTLE_WIN';
                 Systems.sceneHooks?.onBattleEnd?.();
                 if (Systems.Observer) Systems.Observer.fire('onBattleEnd', [...this.allies, ...this.enemies].filter(u => u && u.hp > 0));
@@ -430,7 +426,7 @@ export const BattleManager = {
                 totalXp = Math.floor(totalXp * floorMultiplier);
 
                 window.$gameParty.gainGold(totalGold);
-                window.Game.Windows.HUD.refresh();
+                Services.events.emit('battle:victory', { xp: totalXp, gold: totalGold, party: this.allies });
 
                 // 1. Capture snapshots and Apply XP
                 const levelUps = [];

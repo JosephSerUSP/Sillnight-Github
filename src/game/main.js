@@ -86,6 +86,7 @@ export const Game = {
         Services.register('EventDataRegistry', new EventDataRegistry());
         Services.register('GameVariables', new Game_Variables());
         Services.register('GameSwitches', new Game_Switches());
+        Services.register('AudioService', Systems.Audio);
         console.log("Game.init: Services registered.");
 
         // Load Data into Registries

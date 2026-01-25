@@ -6,6 +6,7 @@ import { BattleRenderSystem } from './systems/BattleRenderSystem.js';
 import { EventSystem } from './systems/EventSystem.js';
 import { BattleObserver } from './systems/BattleObserver.js';
 import { EffekseerSystem } from './systems/EffekseerSystem.js';
+import { AudioSystem } from './systems/AudioSystem.js';
 
 // ------------------- SYSTEMS DEFINITIONS -------------------
 
@@ -38,6 +39,12 @@ export const Observer = new BattleObserver();
  * @type {EffekseerSystem}
  */
 export const Effekseer = new EffekseerSystem();
+
+/**
+ * System for audio playback.
+ * @type {AudioSystem}
+ */
+export const Audio = new AudioSystem();
 
 /**
  * Hooks for triggering scene transitions.

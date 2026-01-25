@@ -107,7 +107,7 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
 ### Phase 1: Core Foundation (Done)
 1.  Implement **EventBus** (Done: `BattleObserver`).
 2.  Implement **Registry** logic handlers (Done: `TraitRegistry`, `EffectRegistry`).
-3.  Refactor `BattleManager` to use EventBus (Partial).
+3.  Refactor `BattleManager` to use EventBus (Partial - Victory UI decoupled).
 
 ### Phase 2: The Data Engine (Done)
 1.  Implement **Registry** data loaders (Done: `CreatureRegistry`, `SkillRegistry`, `ItemRegistry` implemented and verified).
@@ -122,4 +122,4 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
 
 ### Phase 4: Polish (Next Priority)
 1.  Reactive UI components (Partial: Party UI & Base Component Refactor Done).
-2.  Audio system integration.
+2.  Audio system integration (Partial: Service & System scaffolding implemented).

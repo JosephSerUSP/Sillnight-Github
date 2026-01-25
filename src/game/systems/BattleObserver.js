@@ -37,6 +37,7 @@ export class BattleObserver {
         if (window.Game.Windows.BattleLog) {
             window.Game.Windows.BattleLog.showBanner('ENCOUNTER');
         }
+        Services.get('AudioService')?.playBgm('battle-theme');
     }
 
     onRoundStart({ round }) {
@@ -69,6 +70,7 @@ export class BattleObserver {
         Log.battle(`> ${source.name} hits ${target.name} for ${value}.`);
         Systems.Battle3D.showDamageNumber(target.uid, -value, isCrit);
         Systems.Battle3D.playAnim(target.uid, [{type: 'feedback', bind: 'self', shake: 0.8, opacity: 0.7, color: 0xffffff}]);
+        Services.get('AudioService')?.playSe('hit');
         window.Game.Windows.Party.refresh();
     }
 
@@ -90,12 +92,13 @@ export class BattleObserver {
     }
 
     onVictory({ xp, gold, party }) {
-        // Handled by Victory Window in BattleManager logic currently,
-        // but can be moved here eventually.
-        // For now, BattleManager calls Window_Victory directly because of the async await flow.
-        // We will keep the complex Victory/End sequence in Manager for Phase 1,
-        // or we need to make the Observer async-aware which is tricky for events.
-        // This handler is just for side effects.
+        if (window.Game.Windows.BattleLog) {
+            window.Game.Windows.BattleLog.showBanner('VICTORY');
+        }
+        if (window.Game.Windows.HUD) {
+            window.Game.Windows.HUD.refresh();
+        }
+        Services.get('AudioService')?.playBgm('victory-theme');
     }
 
     onDefeat() {
