@@ -22,6 +22,8 @@ The PC acts as the anchor for the party.
         *   **Flee:** Attempt to escape (costs MP/Gold).
     *   **Targeting:** The Summoner is untargetable unless all creatures are downed or in reserve.
 
+> **Implementation Gap:** Currently, the Summoner acts at the **Start of the Round** (index 0 in the queue) rather than the end. This is a temporary legacy behavior that should be refactored to match the "End of Round" design.
+
 ### 1.2. Battlers (Creatures & Enemies)
 Units that fight in battle. They act autonomously based on user commands or AI.
 
@@ -38,7 +40,7 @@ Units that fight in battle. They act autonomously based on user commands or AI.
     *   **Offense:** 1.25x damage for each matching element instance.
     *   **Defense:** 1.25x damage taken for Weakness, 0.75x for Resistance.
 
-> **Implementation Gap:** Current codebase uses standard RPG stats (`agi`, `luk`) and lacks `mpd`/`mxa`/`mxp`. `Game_BattlerBase` needs refactoring to support these design-specific parameters.
+> **Implementation Gap:** Current codebase uses standard RPG stats (`agi`, `luk`). Parameters `mpd`, `mxa`, and `mxp` are **Planned Features** and not yet implemented in `Game_BattlerBase`.
 
 ---
 

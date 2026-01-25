@@ -158,7 +158,7 @@ export const BattleManager = {
 
     /**
      * Proceeds to the next round of combat.
-     * Re-calculates turn order and checks win/loss conditions.
+     * Re-calculates turn order (Summoner first, then descending Speed + Random tiebreaker) and checks win/loss conditions.
      */
     nextRound() {
         this.roundCount++;
@@ -214,6 +214,7 @@ export const BattleManager = {
     /**
      * Processes the next turn in the queue.
      * Executes AI actions or waits for animations.
+     * Includes legacy fallback logic for case-insensitive action lookups if exact ID match fails.
      */
     processNextTurn() {
             // Replaces: window.Game.Windows.Party.refresh();

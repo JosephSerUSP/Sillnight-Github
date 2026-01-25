@@ -540,6 +540,16 @@ export class BattleRenderSystem {
 
     /**
      * Plays a sequence of animations for a unit.
+     * Supported step types:
+     * - `jump`, `approach`, `retreat`: Movement animations.
+     * - `effect`: Plays an Effekseer particle effect.
+     * - `feedback`: Flicker/Shake feedback.
+     * - `focus`, `reset_focus`: Camera control.
+     * - `dim`, `undim`, `dim_ground`, `hide_ground`, `reset_ground`: Lighting/Visibility control.
+     * - `wait`: Pauses execution.
+     * - `apply`: Triggers the `onApply` callback (damage/healing).
+     * - `reset_visuals`: Resets all visual overrides.
+     *
      * @param {string} uid - The unit ID.
      * @param {Array<Object>} steps - The animation steps.
      * @param {Object} [context={}] - Context containing targets and callbacks.

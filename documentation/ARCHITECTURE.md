@@ -120,10 +120,10 @@ How a skill is executed.
     *   **Formula Eval:** `Game_Action.evalDamageFormula()` parses the math (e.g., `a.mat * 4 - b.mdf * 2`).
     *   **Element Mod:** Checks `target.elements` vs `action.element` for multipliers.
     *   **Variance/Crit:** Applies RNG.
-5.  **Event Emission:** The result is passed to `EffectRegistry` via `BattleManager` callbacks. Events are fired:
-    *   `battle:action_used` (Starts animation)
-    *   `battle:damage_dealt` (Shows number, reduces HP)
-    *   `battle:state_added` (Shows icon)
+5.  **Event Emission:** The result is processed via `BattleManager` callbacks.
+    *   `BattleManager` emits `battle:action_used` (Starts animation).
+    *   Animation callbacks trigger `EffectRegistry`.
+    *   `EffectRegistry` applies logic and emits specific events like `battle:damage_dealt` (Shows number, reduces HP) or `battle:state_added`.
 
 ### 4.2. Entity Class Hierarchy
 The game entities follow a prototype chain but rely heavily on "Traits" for stats.
