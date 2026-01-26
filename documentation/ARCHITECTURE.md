@@ -10,6 +10,7 @@ The architecture of **Stillnight** is built on a "Hybrid" foundation, designed t
     *   **Game Logic** (Damage calculation, turn order, inventory) is deterministic and runs independently of the display.
     *   **View Layer** (Three.js rendering, DOM UI, audio) simply *observes* the logic and renders the state.
     *   *Goal:* We should be able to run a full battle simulation in a headless node environment without loading a single texture.
+    *   *Current State:* The system is currently "Hybrid". While the goal is total separation, the `BattleManager` still drives `BattleRenderSystem` animations directly in some cases.
 
 2.  **Data-Driven Design:**
     *   Behavior is defined in data files (`src/assets/data/`), not hardcoded in classes.
@@ -68,7 +69,7 @@ graph TD
 ### Key Components
 
 *   **`Game` (Bootstrapper):** The entry point (`src/game/main.js`). It initializes the `DataManager`, `ServiceLocator`, and core `Systems` before handing control to the `SceneManager`.
-*   **`ServiceLocator`:** A registry for global services (like `Input`, `Audio`, `Persistence`), allowing modules to access dependencies without tight coupling.
+*   **`ServiceLocator`:** A registry for global services (like `Input`, `Persistence`), allowing modules to access dependencies without tight coupling.
 *   **`SceneManager`:** Manages the high-level state of the application (`Scene_Explore`, `Scene_Battle`). It handles the main loop and transitions.
 *   **`EventBus` (`Observer`):** The critical bridge between Logic and View. Logic emits events (`battle:damage_dealt`), and Views listen to them to update the UI or play animations.
 
@@ -100,7 +101,7 @@ Strictly separates the "Brain" from the "Eyes".
     *   Executes actions (`Game_Action`).
     *   Determines results (Hit/Miss/Crit).
     *   *Note:* Currently operates in a **Hybrid** state, orchestrating `BattleRenderSystem` (e.g. `playAnim`) and waiting for completion callbacks. Visual feedback is a mix of `EventBus` events (logs) and direct UI window calls (Victory, LevelUp).
-*   **`BattleRenderSystem` (The Eyes):** Visualization.
+*   **`BattleRenderSystem` (Exported as `Battle3D`):** Visualization.
     *   Listens to `BattleManager` events via `Observer`.
     *   Manages 3D sprites (`Spriteset_Battle`).
     *   Controls the Camera (Zoom, Pan).

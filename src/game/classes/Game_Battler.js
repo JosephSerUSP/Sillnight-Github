@@ -35,6 +35,7 @@ export class Game_Battler extends Game_BattlerBase {
     /**
      * @returns {number} Current speed (for turn order).
      * Calculates base speed bonus from traits plus the transient speed value.
+     * Note: This represents Unit Speed (agi-based), not Action Speed (asp).
      */
     get speed() {
         return this._speed + this.traitsSum('speed_bonus');

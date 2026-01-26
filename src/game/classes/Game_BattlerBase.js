@@ -84,6 +84,12 @@ export class Game_BattlerBase {
     get mmp() { return this.param(1); }
 
     /**
+     * @returns {number} MP Drain (Summoner MP cost per action).
+     * @reserved Not yet implemented. Future feature.
+     */
+    get mpd() { return 0; }
+
+    /**
      * @returns {number} Attack Power.
      */
     get atk() { return this.param(2); }
@@ -112,6 +118,18 @@ export class Game_BattlerBase {
      * @returns {number} Luck.
      */
     get luk() { return this.param(7); }
+
+    /**
+     * @returns {number} Max Actions (Number of learnable actions).
+     * @reserved Not yet implemented. Future feature.
+     */
+    get mxa() { return 0; }
+
+    /**
+     * @returns {number} Max Passives (Number of learnable passives).
+     * @reserved Not yet implemented. Future feature.
+     */
+    get mxp() { return 0; }
 
     /**
      * Checks if the battler is alive.

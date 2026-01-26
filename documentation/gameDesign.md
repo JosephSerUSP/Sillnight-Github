@@ -15,11 +15,12 @@ The PC acts as the anchor for the party.
     *   **Penalty:** When MP hits 0, creatures gain penalties (damage reduction, failure rates) and eventually lose HP per step.
 *   **Battle Role:**
     *   The Summoner does not act in the standard turn order.
-    *   **End of Round Action:** After all units have acted, the Summoner can:
+        *   **End of Round Action:** (Design Goal) After all units have acted, the Summoner can:
         *   **Use Item:** Consumable from inventory.
         *   **Cast Spell:** Specialized PC-only magic (costs MP).
         *   **Change Formation:** Move units between Active/Reserve.
         *   **Flee:** Attempt to escape (costs MP/Gold).
+        *   **Current Implementation:** The Summoner currently acts at the **Start of the Round** in the turn queue.
     *   **Targeting:** The Summoner is untargetable unless all creatures are downed or in reserve.
 
 ### 1.2. Battlers (Creatures & Enemies)
@@ -27,13 +28,13 @@ Units that fight in battle. They act autonomously based on user commands or AI.
 
 #### Core Parameters
 *   **`mhp` (Max HP):** Maximum health.
-*   **`mpd` (MP Drain):** (Creatures only) Amount of Summoner MP consumed per action/step.
+    *   **`mpd` (MP Drain):** (Creatures only) Amount of Summoner MP consumed per action/step. *(Not Implemented)*
 *   **`atk` (Attack):** Multiplier for physical output (Base 10 = 100%).
 *   **`mat` (Magic):** Multiplier for magical output.
 *   **`def` (Defense):** Multiplier for incoming physical damage.
 *   **`mdf` (Resist):** Multiplier for incoming magical damage.
-*   **`mxa` (Max Actions):** Maximum number of learnable Actions (default 4).
-*   **`mxp` (Max Passives):** Maximum number of learnable Passives (default 2).
+    *   **`mxa` (Max Actions):** Maximum number of learnable Actions (default 4). *(Not Implemented)*
+    *   **`mxp` (Max Passives):** Maximum number of learnable Passives (default 2). *(Not Implemented)*
 *   **`ele` (Elements):** Array of aligned elements (e.g., `['Fire', 'Fire']` = Double Fire).
     *   **Offense:** 1.25x damage for each matching element instance.
     *   **Defense:** 1.25x damage taken for Weakness, 0.75x for Resistance.
@@ -77,8 +78,9 @@ The primary means of interaction in battle.
     *   **Spells:** Used by Summoner (Cost MP).
     *   **Items:** Consumable (Consumed on use).
 *   **Properties:**
-    *   **`asp` (Action Speed):** The **primary determinant** of turn order.
+    *   **`asp` (Action Speed):** The **primary determinant** of turn order. *(Not Implemented)*
         *   *Design Note:* Fast attacks (Dagger Slash) should act before slow attacks (Hammer Smash), regardless of who is using them.
+        *   *Current Implementation:* Turn order is determined by Unit Speed (`agi`).
     *   **`ele` (Element):** Elemental alignment of the attack.
     *   **`cnd` (Condition):** Prerequisite (e.g., "HP < 50%", "Front Row").
 

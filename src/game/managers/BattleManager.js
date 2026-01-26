@@ -159,6 +159,8 @@ export const BattleManager = {
     /**
      * Proceeds to the next round of combat.
      * Re-calculates turn order and checks win/loss conditions.
+     * Note: Currently places the Summoner at the START of the turn queue,
+     * deviating from the design doc which specifies "End of Round".
      */
     nextRound() {
         this.roundCount++;
@@ -214,6 +216,7 @@ export const BattleManager = {
     /**
      * Processes the next turn in the queue.
      * Executes AI actions or waits for animations.
+     * Tightly coupled with Battle3D for animations (Hybrid approach).
      */
     processNextTurn() {
             // Replaces: window.Game.Windows.Party.refresh();
