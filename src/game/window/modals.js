@@ -731,6 +731,7 @@ export class Window_PartyMenu extends Window_Selectable {
 
         // Help Text Footer
         this._helpTextComponent = new Component('div', 'bg-[#1a1a1a] border-t border-gray-700 p-2 text-xs text-gray-300 italic min-h-[3rem]');
+        this._helpTextComponent.element.id = 'party-help-text';
         layout.add(this._helpTextComponent);
     }
 

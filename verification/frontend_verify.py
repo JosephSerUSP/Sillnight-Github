@@ -21,7 +21,7 @@ def run(page):
     expect(party_modal).to_be_visible()
 
     # Check if Help Window is visible
-    help_window = page.locator("#help-window")
+    help_window = page.locator("#party-help-text")
     expect(help_window).to_be_visible()
 
     # Check text in help window

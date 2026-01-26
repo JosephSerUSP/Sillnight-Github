@@ -1,6 +1,7 @@
 import { Data } from '../assets/data/data.js';
 import { DataManager } from './DataManager.js';
 import { Log } from './log.js';
+import { AudioSystem } from './systems/AudioSystem.js';
 import * as Systems from './systems.js';
 import { SceneManager, InputManager, BattleManager, RenderManager, TransitionManager } from './managers.js';
 import { Scene_Explore, Scene_Battle } from './scenes.js';
@@ -75,6 +76,7 @@ export const Game = {
         console.log("Game.init: Starting initialization...");
 
         // Register Core Services
+        Services.register('AudioService', new AudioSystem());
         Services.register('TraitRegistry', new TraitRegistry());
         Services.register('EffectRegistry', new EffectRegistry());
         Services.register('CreatureRegistry', new CreatureRegistry());

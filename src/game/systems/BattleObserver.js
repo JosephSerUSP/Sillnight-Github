@@ -37,6 +37,8 @@ export class BattleObserver {
         if (window.Game.Windows.BattleLog) {
             window.Game.Windows.BattleLog.showBanner('ENCOUNTER');
         }
+        const audio = Services.get('AudioService');
+        if (audio) audio.playBgm('battle-theme');
     }
 
     onRoundStart({ round }) {
@@ -63,6 +65,8 @@ export class BattleObserver {
 
     onActionMissed({ target }) {
         Log.battle(`> Missed ${target.name}!`);
+        const audio = Services.get('AudioService');
+        if (audio) audio.playSe('miss');
     }
 
     onDamageDealt({ source, target, value, isCrit }) {
@@ -70,6 +74,8 @@ export class BattleObserver {
         Systems.Battle3D.showDamageNumber(target.uid, -value, isCrit);
         Systems.Battle3D.playAnim(target.uid, [{type: 'feedback', bind: 'self', shake: 0.8, opacity: 0.7, color: 0xffffff}]);
         window.Game.Windows.Party.refresh();
+        const audio = Services.get('AudioService');
+        if (audio) audio.playSe('hit');
     }
 
     onHealDealt({ source, target, value }) {
@@ -86,6 +92,8 @@ export class BattleObserver {
     onUnitDeath({ unit }) {
         Log.battle(`> ${unit.name} was defeated!`);
         Systems.Battle3D.playDeathFade(unit.uid);
+        const audio = Services.get('AudioService');
+        if (audio) audio.playSe('collapse');
         if (Systems.Observer) Systems.Observer.fire('onUnitDeath', unit);
     }
 
@@ -96,6 +104,8 @@ export class BattleObserver {
         // We will keep the complex Victory/End sequence in Manager for Phase 1,
         // or we need to make the Observer async-aware which is tricky for events.
         // This handler is just for side effects.
+        const audio = Services.get('AudioService');
+        if (audio) audio.playBgm('victory-theme');
     }
 
     onDefeat() {
