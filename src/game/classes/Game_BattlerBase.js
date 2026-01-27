@@ -113,6 +113,10 @@ export class Game_BattlerBase {
      */
     get luk() { return this.param(7); }
 
+    // --- Missing / Planned Parameters (from GameDesign.md) ---
+    // mpd (MP Drain), mxa (Max Actions), mxp (Max Passives)
+    // These are currently not implemented in the base class.
+
     /**
      * Checks if the battler is alive.
      * @returns {boolean} True if HP > 0.

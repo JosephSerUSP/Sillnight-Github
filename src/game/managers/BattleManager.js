@@ -202,7 +202,14 @@ export const BattleManager = {
             ? allUnits.filter(u => u.uid !== summoner.uid)
             : allUnits;
 
+        // Sort by Unit Speed (agi)
+        // DEVIATION: Design Spec calls for Action Speed (asp) to determine order.
+        // Current implementation uses Unit Speed as a temporary measure.
         nonSummonerUnits.sort((a, b) => b.speed - a.speed || Math.random() - 0.5);
+
+        // Place Summoner at the start of the queue
+        // DEVIATION: Design Spec calls for Summoner to act at the END of the round.
+        // Current implementation places them first for strategic setup.
         this.queue = (summoner && summoner.hp > 0)
             ? [summoner, ...nonSummonerUnits]
             : nonSummonerUnits;
@@ -271,7 +278,8 @@ export const BattleManager = {
             } else if (itemRegistry.get(chosen)) {
                 actionData = itemRegistry.get(chosen);
             } else {
-                // @deprecated: Fallback for Legacy case-insensitive search
+                // @deprecated: Fallback for Legacy case-insensitive search.
+                // This system is slated for removal. All IDs should be strict camelCase.
                 // TODO: Remove this once all data files are normalized to exact case IDs.
                 const chosenLower = chosen.toLowerCase();
                 const allSkillIds = skillRegistry.getAll().map(s => s.id);

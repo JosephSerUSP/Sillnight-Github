@@ -67,7 +67,7 @@ graph TD
 
 ### Key Components
 
-*   **`Game` (Bootstrapper):** The entry point (`src/game/main.js`). It initializes the `DataManager`, `ServiceLocator`, and core `Systems` before handing control to the `SceneManager`.
+*   **`Game` (Bootstrapper):** The entry point (`src/game/main.js`). It initializes the `DataManager`, `ServiceLocator`, core `Systems`, and global `Windows` before handing control to the `SceneManager`.
 *   **`ServiceLocator`:** A registry for global services (like `Input`, `Audio`, `Persistence`), allowing modules to access dependencies without tight coupling.
 *   **`SceneManager`:** Manages the high-level state of the application (`Scene_Explore`, `Scene_Battle`). It handles the main loop and transitions.
 *   **`EventBus` (`Observer`):** The critical bridge between Logic and View. Logic emits events (`battle:damage_dealt`), and Views listen to them to update the UI or play animations.
@@ -99,9 +99,9 @@ Strictly separates the "Brain" from the "Eyes".
     *   Calculates turn order (`queue`).
     *   Executes actions (`Game_Action`).
     *   Determines results (Hit/Miss/Crit).
-    *   *Note:* Currently operates in a **Hybrid** state, orchestrating `BattleRenderSystem` (e.g. `playAnim`) and waiting for completion callbacks. Visual feedback is a mix of `EventBus` events (logs) and direct UI window calls (Victory, LevelUp).
+    *   *Note:* Currently operates in a **Hybrid** state, orchestrating `BattleRenderSystem` (e.g. `playAnim`) and waiting for completion callbacks. Visual feedback is a mix of `EventBus` events (logs, start/end) and direct UI window calls (Victory, LevelUp).
 *   **`BattleRenderSystem` (The Eyes):** Visualization.
-    *   Listens to `BattleManager` events via `Observer`.
+    *   Listens to `BattleManager` events via `Observer` (EventBus).
     *   Manages 3D sprites (`Spriteset_Battle`).
     *   Controls the Camera (Zoom, Pan).
     *   Plays Effekseer particles.
