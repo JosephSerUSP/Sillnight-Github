@@ -12,6 +12,11 @@ export const Config = {
     Battle: {
         TurnDelay: 400
     },
+    Audio: {
+        Master: 1.0,
+        BGM: 0.5,
+        SFX: 0.5
+    },
     Rewards: {
         baseGoldPerEnemy: 20,
         baseXpPerEnemy: 5

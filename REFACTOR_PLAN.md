@@ -26,14 +26,14 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
     *   `BattleManager` emits `battle:damage_dealt` { target, amount }.
     *   `BattleLog` listens to `battle:damage_dealt` and renders text.
     *   `BattleRenderSystem` listens to `battle:damage_dealt` and spawns floating numbers.
-    *   `AudioManager` listens and plays a hit sound.
+    *   `AudioService` listens and plays a hit sound.
 
 ### 1.3. Service Locator Pattern
 **Goal:** Manage dependencies cleanly without global spaghetti.
 *   **Solution:** `Game.Services`.
     *   Registers `InputService`, `AudioService`, `PersistenceService`.
     *   Allows for easy mocking in tests.
-*   **Status:** Implemented (`src/game/ServiceLocator.js`).
+*   **Status:** Implemented (`src/game/ServiceLocator.js`). `AudioService` is now registered.
 
 ---
 
@@ -122,4 +122,4 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
 
 ### Phase 4: Polish (Next Priority)
 1.  Reactive UI components (Partial: Party UI & Base Component Refactor Done).
-2.  Audio system integration.
+2.  Audio system integration (Done: `AudioService` implemented and registered).
