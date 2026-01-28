@@ -68,7 +68,7 @@ graph TD
 ### Key Components
 
 *   **`Game` (Bootstrapper):** The entry point (`src/game/main.js`). It initializes the `DataManager`, `ServiceLocator`, and core `Systems` before handing control to the `SceneManager`.
-*   **`ServiceLocator`:** A registry for global services (like `Input`, `Audio`, `Persistence`), allowing modules to access dependencies without tight coupling.
+*   **`ServiceLocator`:** A registry for global services, allowing modules to access dependencies without tight coupling. Currently registers Registries and GameState (Variables/Switches). Input is handled via `Game.Input`; Audio and Persistence are not yet implemented as services.
 *   **`SceneManager`:** Manages the high-level state of the application (`Scene_Explore`, `Scene_Battle`). It handles the main loop and transitions.
 *   **`EventBus` (`Observer`):** The critical bridge between Logic and View. Logic emits events (`battle:damage_dealt`), and Views listen to them to update the UI or play animations.
 
@@ -83,7 +83,7 @@ Unlike traditional engines that render UI to a Canvas, Stillnight uses the DOM.
 *   **`LayoutManager`:** A composition system (`FlexLayout`, `GridLayout`) attached to windows to manage the positioning of children components.
 *   **`Window_Selectable`:** Extends `Window_Base` to handle list navigation (cursor movement, selection), essential for RPG menus.
 
-**Flow:** `Window_Party` updates via manual `refresh()` or direct hooks from Logic classes (e.g., `Game_BattlerBase` -> `window.Game.Windows.Party`).
+**Flow:** `Window_Party` updates via manual `refresh()` or legacy direct hooks from Logic classes (e.g., `Game_BattlerBase` -> `window.Game.Windows.Party`). While reactive binding is the goal, these direct calls remain in the interim.
 
 ### 3.2. Exploration System (`ExploreSystem`)
 Handles the dungeon crawling experience.
@@ -99,8 +99,9 @@ Strictly separates the "Brain" from the "Eyes".
     *   Calculates turn order (`queue`).
     *   Executes actions (`Game_Action`).
     *   Determines results (Hit/Miss/Crit).
-    *   *Note:* Currently operates in a **Hybrid** state, orchestrating `BattleRenderSystem` (e.g. `playAnim`) and waiting for completion callbacks. Visual feedback is a mix of `EventBus` events (logs) and direct UI window calls (Victory, LevelUp).
+    *   *Note:* Currently operates in a **Hybrid** state, directly orchestrating `BattleRenderSystem` (via `Systems.Battle3D.playAnim`) for animation sequences while using `EventBus` for logic events (like `battle:damage_dealt`). Visual feedback is a mix of `EventBus` events (logs) and direct UI window calls (Victory, LevelUp).
 *   **`BattleRenderSystem` (The Eyes):** Visualization.
+    *   *Instance Name:* Exported as `Battle3D` in `systems.js`.
     *   Listens to `BattleManager` events via `Observer`.
     *   Manages 3D sprites (`Spriteset_Battle`).
     *   Controls the Camera (Zoom, Pan).

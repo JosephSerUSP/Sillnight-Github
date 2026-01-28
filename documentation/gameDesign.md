@@ -54,6 +54,8 @@ Direct changes applied by Actions.
 *   **`elementChange`:** Replaces all elements.
 *   **Standard RPG Effects:** Damage HP, Heal HP, Add State, Remove State.
 
+> **Implementation Gap:** `elementAdd` is currently unimplemented. `Game_Battler` only supports `elementChange` via `elementTraits`.
+
 ### 2.2. Traits
 Static modifiers found on Equipment, Passives, and States.
 *   **`hit`:** Hit chance modifier (Default 0 = 100%).

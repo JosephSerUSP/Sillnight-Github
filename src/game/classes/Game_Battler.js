@@ -72,6 +72,7 @@ export class Game_Battler extends Game_BattlerBase {
 
     /** @returns {Array<string>} List of element changes/affinities. */
     get elementTraits() {
+        // @todo Implement element_add traits. Currently only element_change is supported.
         return this.traitsSet('element_change').map(t => t.element);
     }
 

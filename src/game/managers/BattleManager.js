@@ -8,7 +8,8 @@ import { Config } from '../Config.js';
 /**
  * Manages the flow and state of battle.
  * Handles encounter setup, turn processing, and victory/defeat conditions.
- * Hybrid coupling: Uses EventBus for major events but retains direct UI references for specific flows.
+ * Hybrid coupling: Uses EventBus for major logic events (damage, turn start) but directly
+ * orchestrates the BattleRenderSystem (Battle3D) for animation playback.
  * @namespace BattleManager
  */
 export const BattleManager = {
@@ -202,6 +203,8 @@ export const BattleManager = {
             ? allUnits.filter(u => u.uid !== summoner.uid)
             : allUnits;
 
+        // Current: Sort by Unit Speed (AGI).
+        // Planned: Sort by Action Speed (ASP) of selected action.
         nonSummonerUnits.sort((a, b) => b.speed - a.speed || Math.random() - 0.5);
         this.queue = (summoner && summoner.hp > 0)
             ? [summoner, ...nonSummonerUnits]

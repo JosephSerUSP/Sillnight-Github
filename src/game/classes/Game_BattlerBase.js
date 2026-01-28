@@ -39,6 +39,7 @@ export class Game_BattlerBase {
             Services.events.emit('battler:change', { unit: this, property: 'hp', value: this._hp, diff });
         }
         if (diff !== 0 && window.Game && window.Game.ui && window.Game.ui.mode === 'EXPLORE') {
+            // Legacy: Direct UI update. Should eventually rely on 'battler:change' event.
             if (window.Game.Windows && window.Game.Windows.Party) {
                 window.Game.Windows.Party.onUnitHpChange(this, diff);
             }
