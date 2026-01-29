@@ -100,6 +100,7 @@ Strictly separates the "Brain" from the "Eyes".
     *   Executes actions (`Game_Action`).
     *   Determines results (Hit/Miss/Crit).
     *   *Note:* Currently operates in a **Hybrid** state, orchestrating `BattleRenderSystem` (e.g. `playAnim`) and waiting for completion callbacks. Visual feedback is a mix of `EventBus` events (logs) and direct UI window calls (Victory, LevelUp).
+    *   *Legacy Drift:* Turn order is currently sorted by Unit Speed (`agi`), and the Summoner acts at the start of the round. This deviates from `gameDesign.md` (Action Speed sorting, Summoner at end) and is pending refactor.
 *   **`BattleRenderSystem` (The Eyes):** Visualization.
     *   Listens to `BattleManager` events via `Observer`.
     *   Manages 3D sprites (`Spriteset_Battle`).

@@ -159,6 +159,8 @@ export const BattleManager = {
     /**
      * Proceeds to the next round of combat.
      * Re-calculates turn order and checks win/loss conditions.
+     * @note Legacy Behavior: Currently sorts by Unit Speed (`agi`) and places Summoner at the start.
+     *       Deviates from `gameDesign.md` which specifies Action Speed (`asp`) sorting and Summoner at End of Round.
      */
     nextRound() {
         this.roundCount++;
@@ -272,6 +274,7 @@ export const BattleManager = {
                 actionData = itemRegistry.get(chosen);
             } else {
                 // @deprecated: Fallback for Legacy case-insensitive search
+                // Legacy Fallback: Defaults to 'attack' if resolution fails.
                 // TODO: Remove this once all data files are normalized to exact case IDs.
                 const chosenLower = chosen.toLowerCase();
                 const allSkillIds = skillRegistry.getAll().map(s => s.id);
