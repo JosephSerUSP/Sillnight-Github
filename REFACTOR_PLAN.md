@@ -122,4 +122,4 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
 
 ### Phase 4: Polish (Next Priority)
 1.  Reactive UI components (Partial: Party UI & Base Component Refactor Done).
-2.  Audio system integration.
+2.  Audio system integration (Partial: Service implemented and registered).
