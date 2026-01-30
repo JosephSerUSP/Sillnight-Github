@@ -202,6 +202,7 @@ export const BattleManager = {
             ? allUnits.filter(u => u.uid !== summoner.uid)
             : allUnits;
 
+        // TODO: Refactor to sort by Action Speed (asp) per Game Design. Currently using Unit Speed.
         nonSummonerUnits.sort((a, b) => b.speed - a.speed || Math.random() - 0.5);
         this.queue = (summoner && summoner.hp > 0)
             ? [summoner, ...nonSummonerUnits]
