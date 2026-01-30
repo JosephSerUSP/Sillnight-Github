@@ -96,15 +96,19 @@ Handles the dungeon crawling experience.
 Strictly separates the "Brain" from the "Eyes".
 
 *   **`BattleManager` (The Brain):** Logic & Orchestration.
-    *   Calculates turn order (`queue`).
+    *   Calculates turn order (`queue`) based on Unit Speed (pending refactor to Action Speed).
     *   Executes actions (`Game_Action`).
     *   Determines results (Hit/Miss/Crit).
     *   *Note:* Currently operates in a **Hybrid** state, orchestrating `BattleRenderSystem` (e.g. `playAnim`) and waiting for completion callbacks. Visual feedback is a mix of `EventBus` events (logs) and direct UI window calls (Victory, LevelUp).
-*   **`BattleRenderSystem` (The Eyes):** Visualization.
+*   **`BattleRenderSystem` (The Eyes):** Visualization (Exported as `Battle3D`).
     *   Listens to `BattleManager` events via `Observer`.
     *   Manages 3D sprites (`Spriteset_Battle`).
     *   Controls the Camera (Zoom, Pan).
-    *   Plays Effekseer particles.
+    *   **Animation System:** `playAnim` supports sequenced steps:
+        *   **Movement:** `jump`, `approach`, `retreat`.
+        *   **Visuals:** `effect` (Effekseer), `feedback` (shake/flash), `dim`/`undim`.
+        *   **Camera:** `focus`, `reset_focus`.
+        *   **Environment:** `dim_ground`, `hide_ground`, `reset_ground`.
 
 ---
 
@@ -128,7 +132,7 @@ How a skill is executed.
 ### 4.2. Entity Class Hierarchy
 The game entities follow a prototype chain but rely heavily on "Traits" for stats.
 
-*   **`Game_BattlerBase`:** Handles HP, MP, and the `traits` array.
+*   **`Game_BattlerBase`** (`src/game/classes/Game_BattlerBase.js`): Handles HP, MP, and the `traits` array.
     *   *Traits:* Instead of hardcoding `hit_rate = 95%`, we delegate to `TraitRegistry` which iterates traits: `registry.getParamValue(this, id)`. This allows equipment, passives, and buffs to all modify stats uniformly.
 *   **`Game_Battler`:** Adds `actions`, `speed`, and turn lifecycle (`onTurnStart`).
 *   **`Game_Actor`:** Adds `level`, `exp`, `equipment`.

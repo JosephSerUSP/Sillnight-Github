@@ -113,6 +113,10 @@ export class Game_BattlerBase {
      */
     get luk() { return this.param(7); }
 
+    // TODO: Implement mpd (MP Drain) - param(8)?
+    // TODO: Implement mxa (Max Actions) - param(9)?
+    // TODO: Implement mxp (Max Passives) - param(10)?
+
     /**
      * Checks if the battler is alive.
      * @returns {boolean} True if HP > 0.
