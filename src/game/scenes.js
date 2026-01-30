@@ -3,6 +3,7 @@
 
 import { Scene } from './scene.js';
 import { BattleManager } from './managers.js';
+import { Services } from './ServiceLocator.js';
 
 /**
  * Base class for all scene types.
@@ -53,6 +54,8 @@ export class Scene_Explore extends Scene_Base {
             window.Game.ui.mode = 'EXPLORE';
         }
         this.switchScene(false);
+        const audio = Services.get('AudioService');
+        if (audio) audio.playBgm('exploration_theme', 1);
     }
 
     /**
@@ -102,6 +105,8 @@ export class Scene_Battle extends Scene_Base {
             window.Game.ui.mode = 'BATTLE';
         }
         this.switchScene(true);
+        const audio = Services.get('AudioService');
+        if (audio) audio.playBgm('battle_theme', 0.5);
     }
 
     /**

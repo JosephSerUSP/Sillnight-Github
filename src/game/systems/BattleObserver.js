@@ -63,6 +63,7 @@ export class BattleObserver {
 
     onActionMissed({ target }) {
         Log.battle(`> Missed ${target.name}!`);
+        this._playSfx('miss');
     }
 
     onDamageDealt({ source, target, value, isCrit }) {
@@ -70,6 +71,7 @@ export class BattleObserver {
         Systems.Battle3D.showDamageNumber(target.uid, -value, isCrit);
         Systems.Battle3D.playAnim(target.uid, [{type: 'feedback', bind: 'self', shake: 0.8, opacity: 0.7, color: 0xffffff}]);
         window.Game.Windows.Party.refresh();
+        this._playSfx('damage');
     }
 
     onHealDealt({ source, target, value }) {
@@ -87,9 +89,11 @@ export class BattleObserver {
         Log.battle(`> ${unit.name} was defeated!`);
         Systems.Battle3D.playDeathFade(unit.uid);
         if (Systems.Observer) Systems.Observer.fire('onUnitDeath', unit);
+        this._playSfx('collapse');
     }
 
     onVictory({ xp, gold, party }) {
+        this._playSfx('victory');
         // Handled by Victory Window in BattleManager logic currently,
         // but can be moved here eventually.
         // For now, BattleManager calls Window_Victory directly because of the async await flow.
@@ -134,5 +138,10 @@ export class BattleObserver {
         if (registry) {
             registry.trigger(triggerName, subject, ...args);
         }
+    }
+
+    _playSfx(name) {
+        const audio = Services.get('AudioService');
+        if (audio) audio.playSfx(name);
     }
 }

@@ -22,6 +22,7 @@ import { EquipmentRegistry } from './registries/EquipmentRegistry.js';
 import { ItemRegistry } from './registries/ItemRegistry.js';
 import { DungeonRegistry } from './registries/DungeonRegistry.js';
 import { EventDataRegistry } from './registries/EventDataRegistry.js';
+import { AudioService } from './services/AudioService.js';
 import { Game_Actor } from './classes/Game_Actor.js';
 import { Game_Enemy } from './classes/Game_Enemy.js';
 import { Game_Event } from './classes/Game_Event.js';
@@ -86,6 +87,7 @@ export const Game = {
         Services.register('EventDataRegistry', new EventDataRegistry());
         Services.register('GameVariables', new Game_Variables());
         Services.register('GameSwitches', new Game_Switches());
+        Services.register('AudioService', new AudioService());
         console.log("Game.init: Services registered.");
 
         // Load Data into Registries
