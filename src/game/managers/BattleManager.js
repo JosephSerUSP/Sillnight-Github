@@ -50,7 +50,8 @@ export const BattleManager = {
     },
 
     /**
-     * Helper to start a fixed encounter by enemy IDs (e.g. for testing).
+     * Helper to start a fixed encounter by enemy IDs.
+     * @debug Intended for testing and debug console use only.
      * @param {Array<string>} enemyIds - List of enemy species IDs.
      */
     async startFixedEncounter(enemyIds) {
@@ -215,6 +216,7 @@ export const BattleManager = {
     /**
      * Processes the next turn in the queue.
      * Executes AI actions or waits for animations.
+     * Includes fallback logic for legacy case-insensitive ID lookups.
      */
     processNextTurn() {
             // Replaces: window.Game.Windows.Party.refresh();

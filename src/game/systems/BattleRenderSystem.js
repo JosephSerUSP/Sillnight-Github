@@ -540,6 +540,23 @@ export class BattleRenderSystem {
 
     /**
      * Plays a sequence of animations for a unit.
+     * Supported step types:
+     * - `jump`: Unit jumps (axis: z). Props: `height` (default 0.8), `duration`.
+     * - `approach`: Unit moves to target(s). Props: `distance`, `duration`.
+     * - `retreat`: Unit returns to origin. Props: `duration`.
+     * - `effect`: Plays Effekseer effect. Props: `effect` (name), `bind` ('self'|'target'|'center'), `anchor` (0-1), `wait` (bool), `hold` (ms).
+     * - `feedback`: Visual feedback (shake/flash). Props: `shake` (intensity), `color` (hex), `duration`.
+     * - `focus`: Move camera. Props: `target` ('unit'|'enemy'|'center'|'target'), `duration`.
+     * - `reset_focus`: Reset camera to neutral. Props: `duration`.
+     * - `dim`: Dim other units. Props: `target` ('target'|'self'), `duration`.
+     * - `undim`: Reset unit brightness. Props: `duration`.
+     * - `dim_ground`: Dim the floor. Props: `duration`.
+     * - `hide_ground`: Fade floor out. Props: `duration`.
+     * - `reset_ground`: Reset floor. Props: `duration`.
+     * - `reset_visuals`: Reset all visuals (focus, dim, ground). Props: `duration`.
+     * - `wait`: Pause. Props: `duration`.
+     * - `apply`: Trigger effect application callback. Props: `duration`.
+     *
      * @param {string} uid - The unit ID.
      * @param {Array<Object>} steps - The animation steps.
      * @param {Object} [context={}] - Context containing targets and callbacks.

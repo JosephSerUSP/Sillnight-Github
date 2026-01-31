@@ -106,7 +106,7 @@ Strictly separates the "Brain" from the "Eyes".
     *   Controls the Camera (Zoom, Pan).
     *   **Animation System:** `playAnim` supports sequenced steps:
         *   **Movement:** `jump`, `approach`, `retreat`.
-        *   **Visuals:** `effect` (Effekseer), `feedback` (shake/flash), `dim`/`undim`.
+        *   **Visuals:** `effect` (Effekseer), `feedback` (shake/flash), `dim`/`undim`, `reset_visuals`.
         *   **Camera:** `focus`, `reset_focus`.
         *   **Environment:** `dim_ground`, `hide_ground`, `reset_ground`.
 
@@ -132,7 +132,7 @@ How a skill is executed.
 ### 4.2. Entity Class Hierarchy
 The game entities follow a prototype chain but rely heavily on "Traits" for stats.
 
-*   **`Game_BattlerBase`** (`src/game/classes/Game_BattlerBase.js`): Handles HP, MP, and the `traits` array.
+*   **`Game_BattlerBase`** (`src/game/classes/Game_BattlerBase.js`): Handles HP, MP, TP, and the `traits` array.
     *   *Traits:* Instead of hardcoding `hit_rate = 95%`, we delegate to `TraitRegistry` which iterates traits: `registry.getParamValue(this, id)`. This allows equipment, passives, and buffs to all modify stats uniformly.
 *   **`Game_Battler`:** Adds `actions`, `speed`, and turn lifecycle (`onTurnStart`).
 *   **`Game_Actor`:** Adds `level`, `exp`, `equipment`.
