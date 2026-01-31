@@ -90,7 +90,7 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
 ### 4.2. Variable Store & Quest System
 *   `Game_Variables` / `Game_Switches`: Persistent state tracking.
 *   `QuestManager`: Tracks objective states (`ACTIVE`, `COMPLETED`, `FAILED`).
-*   **Current Status:** `Game_Variables` and `Game_Switches` implemented and registered in `Services`.
+*   **Current Status:** `Game_Variables` and `Game_Switches` implemented and registered in `Services` (Events active).
 
 ---
 
@@ -121,5 +121,5 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
     - Implement `Game_Variables` and `Game_Switches` (Done).
 
 ### Phase 4: Polish (Next Priority)
-1.  Reactive UI components (Partial: Party UI & Base Component Refactor Done).
+1. Reactive UI components (Partial: Party UI & Base Component Refactor Done; Variables/Switches Events Done).
 2.  Audio system integration.
