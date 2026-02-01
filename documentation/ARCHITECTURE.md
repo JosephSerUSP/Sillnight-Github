@@ -121,7 +121,7 @@ How a skill is executed.
 2.  **Instantiation:** A `Game_Action` is created with the subject and the skill data.
 3.  **Targeting:** `Game_Action` determines valid targets (e.g., "All Enemies").
 4.  **Application:** `action.apply(target)` is called for each target.
-    *   **Formula Eval:** `Game_Action.evalDamageFormula()` parses the math (e.g., `a.mat * 4 - b.mdf * 2`).
+    *   **Formula Eval:** `Game_Action.evalDamageFormula()` parses the math using `eval()` (e.g., `a.mat * 4 - b.mdf * 2`).
     *   **Element Mod:** Checks `target.elements` vs `action.element` for multipliers.
     *   **Variance/Crit:** Applies RNG.
 5.  **Event Emission:** The result is passed to `EffectRegistry` via `BattleManager` callbacks. Events are fired:
@@ -132,7 +132,7 @@ How a skill is executed.
 ### 4.2. Entity Class Hierarchy
 The game entities follow a prototype chain but rely heavily on "Traits" for stats.
 
-*   **`Game_BattlerBase`** (`src/game/classes/Game_BattlerBase.js`): Handles HP, MP, and the `traits` array.
+*   **`Game_BattlerBase`** (`src/game/classes/Game_BattlerBase.js`): Handles HP, MP, TP, and the `traits` array. Implements core parameters 0-7 (`mhp`, `mmp`, `atk`, `def`, `mat`, `mdf`, `agi`, `luk`).
     *   *Traits:* Instead of hardcoding `hit_rate = 95%`, we delegate to `TraitRegistry` which iterates traits: `registry.getParamValue(this, id)`. This allows equipment, passives, and buffs to all modify stats uniformly.
 *   **`Game_Battler`:** Adds `actions`, `speed`, and turn lifecycle (`onTurnStart`).
 *   **`Game_Actor`:** Adds `level`, `exp`, `equipment`.
@@ -147,7 +147,7 @@ The game is data-driven, using a Registry pattern for logic execution and a Data
     *   **Loader:** `DataManager` hydrates this raw JSON into the global `Data` object.
 *   **Registries (`src/game/registries/`):** Handle logic execution for data-driven behaviors.
     *   **`TraitRegistry`:** Calculates final parameter values (`getParamValue`) by aggregating traits (Passives, Equipment) found on a battler. It handles event triggers like `onTurnStart`.
-    *   **`EffectRegistry`:** Handles the application of action effects (`apply`), executing logic for damage, healing, state addition, etc.
+    *   **`EffectRegistry`:** Handles the application of action effects (`apply`), executing logic for damage, healing, state addition, etc. Note that for standard healing (`hp_heal`), the value is calculated in `Game_Action` and passed to the handler, rather than calculated inside the registry.
 
 ---
 
