@@ -1,3 +1,5 @@
+import { Services } from './ServiceLocator.js';
+
 // Window and shell UI layer (similar to rmmz_windows.js).
 // All DOM-related code for the persistent PC-98 shell lives here. Add new window
 // types by subclassing Window_Base and wiring them into the ShellUI container.
@@ -270,18 +272,34 @@ export class Window_Selectable extends Window_Base {
         }
     }
 
+    /**
+     * Plays a UI sound effect via the event bus.
+     * @param {string} type - 'cursor', 'ok', 'cancel', 'buzzer'
+     * @private
+     */
+    _playSfx(type) {
+        if (Services.events) {
+            Services.events.emit(`ui:${type}`);
+        }
+    }
+
     processOk() {
         if (this._index >= 0) {
+            this._playSfx('ok');
             // Call 'ok' handler if exists, or 'click' for compatibility
             if (this._handlers['ok']) {
                 this.callHandler('ok', this._index);
             } else if (this._handlers['click']) {
                 this.callHandler('click', this._index);
             }
+        } else {
+            // Nothing selected? maybe buzzer?
+            // this._playSfx('buzzer');
         }
     }
 
     processCancel() {
+        this._playSfx('cancel');
         if (this._handlers['cancel']) {
             this.callHandler('cancel');
         } else {
@@ -295,8 +313,10 @@ export class Window_Selectable extends Window_Base {
         const maxCols = this.maxCols();
         if (index < maxItems - maxCols || (wrap && maxCols === 1)) {
             this.select((index + maxCols) % maxItems);
+            this._playSfx('cursor');
         } else if (index === -1) {
             this.select(0);
+            this._playSfx('cursor');
         }
     }
 
@@ -306,8 +326,10 @@ export class Window_Selectable extends Window_Base {
         const maxCols = this.maxCols();
         if (index >= maxCols || (wrap && maxCols === 1)) {
             this.select((index - maxCols + maxItems) % maxItems);
+            this._playSfx('cursor');
         } else if (index === -1) {
              this.select(maxItems - 1);
+             this._playSfx('cursor');
         }
     }
 
@@ -318,9 +340,11 @@ export class Window_Selectable extends Window_Base {
         if (maxCols >= 2 && (index % maxCols < maxCols - 1)) {
             if (index + 1 < maxItems) {
                 this.select(index + 1);
+                this._playSfx('cursor');
             }
         } else if (index === -1) {
              this.select(0);
+             this._playSfx('cursor');
         }
     }
 
@@ -329,8 +353,10 @@ export class Window_Selectable extends Window_Base {
         const maxCols = this.maxCols();
         if (maxCols >= 2 && (index % maxCols > 0)) {
             this.select(index - 1);
+            this._playSfx('cursor');
         } else if (index === -1) {
             this.select(this.maxItems() - 1);
+            this._playSfx('cursor');
         }
     }
 
