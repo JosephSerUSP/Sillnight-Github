@@ -91,7 +91,10 @@ export class Game_Action {
 
     /**
      * Calculates the element rate for a target.
-     * Uses a hardcoded strength cycle (G>B>R>G, W<>K).
+     * Uses a hardcoded strength cycle:
+     * - Green > Blue > Red > Green
+     * - White <> Black (Mutually effective)
+     *
      * @param {Game_Battler} target - The target battler.
      * @returns {number} The element multiplier.
      */

@@ -36,6 +36,7 @@ export const BattleManager = {
 
     /**
      * Sets up the battle state with specific units.
+     * Initializes the battle phase and participants.
      * @param {Array<Object>} allies - The ally units.
      * @param {Array<Object>} enemies - The enemy units.
      */
@@ -159,6 +160,9 @@ export const BattleManager = {
     /**
      * Proceeds to the next round of combat.
      * Re-calculates turn order and checks win/loss conditions.
+     *
+     * Note: Currently places Summoner at start of queue and sorts others by Unit Speed.
+     * Design intent is Summoner at End of Round and others by Action Speed.
      */
     nextRound() {
         this.roundCount++;

@@ -3,6 +3,11 @@ import { Services } from '../ServiceLocator.js';
 /**
  * The foundational class for any entity that participates in battle.
  * Manages basic parameters (HP, MP, TP), states, and buffs.
+ *
+ * @property {Array<string>} elements - (Planned) The elemental alignments of the battler. Currently missing in implementation.
+ * @property {number} mpd - (Planned) MP Drain per action. Currently missing.
+ * @property {number} mxa - (Planned) Max Actions. Currently missing.
+ * @property {number} mxp - (Planned) Max Passives. Currently missing.
  */
 export class Game_BattlerBase {
     constructor() {

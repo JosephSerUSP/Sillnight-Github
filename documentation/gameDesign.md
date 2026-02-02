@@ -42,6 +42,8 @@ Units that fight in battle. They act autonomously based on user commands or AI.
 
 > **Implementation Gap:** Current codebase uses standard RPG stats (`agi`, `luk`) and lacks `mpd`/`mxa`/`mxp`. `Game_BattlerBase` needs refactoring to support these design-specific parameters.
 
+> **Implementation Gap:** Current `Game_Action.calcElementRate` uses a hardcoded cycle (Green/Blue/Red/White/Black) rather than the flexible alignment array described here.
+
 ---
 
 ## 2. Effect & Trait System
