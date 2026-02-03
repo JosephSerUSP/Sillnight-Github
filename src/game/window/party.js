@@ -1,4 +1,5 @@
 import { Window_Selectable } from '../windows.js';
+import { Services } from '../ServiceLocator.js';
 import { renderCreaturePanel } from './common.js';
 import { GridLayout } from '../layout/GridLayout.js';
 import { Component } from '../layout/Component.js';
@@ -70,6 +71,9 @@ export class Window_Party extends Window_Selectable {
         this.defineLayout();
         this.items = window.$gameParty.activeSlots;
         this.addHandler('click', this.onClick.bind(this));
+
+        // Listen for Battler changes (HP updates)
+        Services.events.on('battler:change', this.onBattlerChange.bind(this));
     }
 
     defineLayout() {
@@ -83,6 +87,16 @@ export class Window_Party extends Window_Selectable {
         // Ensure root has standard window styles if not already set by Window_Base default
         // Window_Party usually lives in a container, but 'party-grid' is the ID.
         // It might be absolutely positioned by the main layout.
+    }
+
+    /**
+     * Handles battler change events (e.g. HP change).
+     * @param {Object} payload
+     */
+    onBattlerChange({ unit, property, value, diff }) {
+        if (property === 'hp' && window.Game.ui.mode === 'EXPLORE') {
+             this.onUnitHpChange(unit, diff);
+        }
     }
 
     /**

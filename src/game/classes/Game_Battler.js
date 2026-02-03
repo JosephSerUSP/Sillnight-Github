@@ -43,6 +43,20 @@ export class Game_Battler extends Game_BattlerBase {
     /** @param {number} value - The new speed value. */
     set speed(value) { this._speed = value; }
 
+    /**
+     * @returns {number} Action Speed (Agility + Bonus).
+     */
+    get asp() {
+        return this.agi + this.traitsSum('speed_bonus');
+    }
+
+    /**
+     * @returns {Array} Elements list (defaults to traits).
+     */
+    get elements() {
+        return this.elementTraits;
+    }
+
     // --- Derived Stats (Traits) ---
 
     /** @returns {number} Critical Hit Rate (0-1). Base 5% + traits. */

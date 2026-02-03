@@ -202,8 +202,12 @@ export const BattleManager = {
             ? allUnits.filter(u => u.uid !== summoner.uid)
             : allUnits;
 
-        // TODO: Refactor to sort by Action Speed (asp) per Game Design. Currently using Unit Speed.
-        nonSummonerUnits.sort((a, b) => b.speed - a.speed || Math.random() - 0.5);
+        // Refactor to sort by Action Speed (asp) per Game Design.
+        nonSummonerUnits.sort((a, b) => {
+            const aspA = (typeof a.asp !== 'undefined') ? a.asp : (a.speed || a.agi || 0);
+            const aspB = (typeof b.asp !== 'undefined') ? b.asp : (b.speed || b.agi || 0);
+            return aspB - aspA || Math.random() - 0.5;
+        });
         this.queue = (summoner && summoner.hp > 0)
             ? [summoner, ...nonSummonerUnits]
             : nonSummonerUnits;
@@ -274,6 +278,7 @@ export const BattleManager = {
             } else {
                 // @deprecated: Fallback for Legacy case-insensitive search
                 // TODO: Remove this once all data files are normalized to exact case IDs.
+                console.warn("Legacy case-insensitive lookup used for action:", chosen);
                 const chosenLower = chosen.toLowerCase();
                 const allSkillIds = skillRegistry.getAll().map(s => s.id);
                 const skillKey = allSkillIds.find(k => k.toLowerCase() === chosenLower);

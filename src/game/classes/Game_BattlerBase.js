@@ -38,11 +38,6 @@ export class Game_BattlerBase {
         if (diff !== 0) {
             Services.events.emit('battler:change', { unit: this, property: 'hp', value: this._hp, diff });
         }
-        if (diff !== 0 && window.Game && window.Game.ui && window.Game.ui.mode === 'EXPLORE') {
-            if (window.Game.Windows && window.Game.Windows.Party) {
-                window.Game.Windows.Party.onUnitHpChange(this, diff);
-            }
-        }
     }
 
     /**
@@ -113,9 +108,20 @@ export class Game_BattlerBase {
      */
     get luk() { return this.param(7); }
 
-    // TODO: Implement mpd (MP Drain) - param(8)?
-    // TODO: Implement mxa (Max Actions) - param(9)?
-    // TODO: Implement mxp (Max Passives) - param(10)?
+    /**
+     * @returns {number} MP Drain.
+     */
+    get mpd() { return this.param(8); }
+
+    /**
+     * @returns {number} Max Actions.
+     */
+    get mxa() { return this.param(9); }
+
+    /**
+     * @returns {number} Max Passives.
+     */
+    get mxp() { return this.param(10); }
 
     /**
      * Checks if the battler is alive.
