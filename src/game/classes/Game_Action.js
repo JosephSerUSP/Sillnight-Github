@@ -91,7 +91,7 @@ export class Game_Action {
 
     /**
      * Calculates the element rate for a target.
-     * Uses a hardcoded strength cycle (G>B>R>G, W<>K).
+     * @legacy Uses a hardcoded strength cycle (G>B>R>G, W<>K) instead of the flexible array-based alignment design.
      * @param {Game_Battler} target - The target battler.
      * @returns {number} The element multiplier.
      */
@@ -123,11 +123,12 @@ export class Game_Action {
     /**
      * Evaluates the damage formula and calculates final damage/healing.
      * Pipeline:
-     * 1. Eval formula (Base)
-     * 2. Apply Stat Multiplier (ATK/DEF or MAT/MDF)
-     * 3. Apply Element Boost (STAB & Weakness)
-     * 4. Apply Critical Hit (RNG)
-     * 5. Apply Guarding (50% reduction)
+     * 1. Eval formula string to get BASE value.
+     * 2. Apply Stat Multiplier (ATK/DEF or MAT/MDF).
+     * 3. Apply Element Boost (STAB & Weakness).
+     * 4. Apply Critical Hit (RNG).
+     * 5. Apply Guarding (50% reduction).
+     * @note This differs from design which specifies the formula should handle the full calculation.
      * @param {Game_Battler} target - The target battler.
      * @param {Object} effect - The specific effect being applied.
      * @returns {number} The final calculated value.

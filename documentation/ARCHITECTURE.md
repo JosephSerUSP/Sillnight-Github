@@ -68,7 +68,7 @@ graph TD
 ### Key Components
 
 *   **`Game` (Bootstrapper):** The entry point (`src/game/main.js`). It initializes the `DataManager`, `ServiceLocator`, and core `Systems` before handing control to the `SceneManager`.
-*   **`ServiceLocator`:** A registry for global services (like `Input`, `Audio`, `Persistence`), allowing modules to access dependencies without tight coupling.
+*   **`ServiceLocator`:** A registry for global services (like `GameVariables`, `Registries`), allowing modules to access dependencies without tight coupling.
 *   **`SceneManager`:** Manages the high-level state of the application (`Scene_Explore`, `Scene_Battle`). It handles the main loop and transitions.
 *   **`EventBus` (`Observer`):** The critical bridge between Logic and View. Logic emits events (`battle:damage_dealt`), and Views listen to them to update the UI or play animations.
 
@@ -96,7 +96,8 @@ Handles the dungeon crawling experience.
 Strictly separates the "Brain" from the "Eyes".
 
 *   **`BattleManager` (The Brain):** Logic & Orchestration.
-    *   Calculates turn order (`queue`) based on Unit Speed (pending refactor to Action Speed).
+    *   Calculates turn order (`queue`) based on Unit Speed (legacy) rather than Action Speed.
+    *   Places Summoner at the start of the queue (legacy) rather than end of round.
     *   Executes actions (`Game_Action`).
     *   Determines results (Hit/Miss/Crit).
     *   *Note:* Currently operates in a **Hybrid** state, orchestrating `BattleRenderSystem` (e.g. `playAnim`) and waiting for completion callbacks. Visual feedback is a mix of `EventBus` events (logs) and direct UI window calls (Victory, LevelUp).
@@ -121,8 +122,8 @@ How a skill is executed.
 2.  **Instantiation:** A `Game_Action` is created with the subject and the skill data.
 3.  **Targeting:** `Game_Action` determines valid targets (e.g., "All Enemies").
 4.  **Application:** `action.apply(target)` is called for each target.
-    *   **Formula Eval:** `Game_Action.evalDamageFormula()` parses the math (e.g., `a.mat * 4 - b.mdf * 2`).
-    *   **Element Mod:** Checks `target.elements` vs `action.element` for multipliers.
+    *   **Formula Eval:** `Game_Action.evalDamageFormula()` evaluates the formula string (base value) then applies stat multipliers (Atk/Def).
+    *   **Element Mod:** Checks `target.elements` using a hardcoded cycle (Green>Blue>Red) for multipliers.
     *   **Variance/Crit:** Applies RNG.
 5.  **Event Emission:** The result is passed to `EffectRegistry` via `BattleManager` callbacks. Events are fired:
     *   `battle:action_used` (Starts animation)
@@ -133,6 +134,7 @@ How a skill is executed.
 The game entities follow a prototype chain but rely heavily on "Traits" for stats.
 
 *   **`Game_BattlerBase`** (`src/game/classes/Game_BattlerBase.js`): Handles HP, MP, and the `traits` array.
+    *   *Stats:* Implements standard params 0-7 (MHP..LUK). Advanced stats (MPD, MXA) are pending implementation.
     *   *Traits:* Instead of hardcoding `hit_rate = 95%`, we delegate to `TraitRegistry` which iterates traits: `registry.getParamValue(this, id)`. This allows equipment, passives, and buffs to all modify stats uniformly.
 *   **`Game_Battler`:** Adds `actions`, `speed`, and turn lifecycle (`onTurnStart`).
 *   **`Game_Actor`:** Adds `level`, `exp`, `equipment`.

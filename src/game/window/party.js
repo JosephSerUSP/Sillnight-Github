@@ -59,6 +59,7 @@ class PartySlotComponent extends Component {
 
 /**
  * Window showing the active party in the main UI.
+ * @todo Implement setHelpText() to satisfy Window_Selectable contract.
  */
 export class Window_Party extends Window_Selectable {
     constructor() {
