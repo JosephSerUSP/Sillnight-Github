@@ -91,7 +91,7 @@ export class Game_Action {
 
     /**
      * Calculates the element rate for a target.
-     * Uses a hardcoded strength cycle (G>B>R>G, W<>K).
+     * Delegates to TraitRegistry for data-driven calculation.
      * @param {Game_Battler} target - The target battler.
      * @returns {number} The element multiplier.
      */
@@ -99,25 +99,8 @@ export class Game_Action {
         const actionElement = this.item().element;
         if (!actionElement) return 1.0;
 
-        const targetElements = target.elements || [];
-
-        // Hardcoded element relationships
-        const strengths = { G: 'B', B: 'R', R: 'G', W: 'K', K: 'W' };
-
-        return targetElements.reduce((mult, e) => {
-            let rate = 1.0;
-            if (e === actionElement) {
-                // Same element resist
-                rate = 0.75;
-            } else if (strengths[actionElement] === e) {
-                // Action Strong vs Target Element
-                rate = 1.25;
-            } else if (strengths[e] === actionElement) {
-                // Target Element Strong vs Action
-                rate = 0.75;
-            }
-            return mult * rate;
-        }, 1.0);
+        // Use TraitRegistry to calculate multiplier based on ELEMENT_RATE traits
+        return Services.get('TraitRegistry').traitsPi(target, 'ELEMENT_RATE', actionElement);
     }
 
     /**

@@ -16,5 +16,10 @@ export const Config = {
         baseGoldPerEnemy: 20,
         baseXpPerEnemy: 5
     },
+    Audio: {
+        MasterVolume: 1.0,
+        BgmVolume: 0.5,
+        SfxVolume: 0.8
+    },
     TestBuild: true
 };

@@ -66,8 +66,38 @@ export class CreatureRegistry extends Registry {
             return { ...data };
         }
 
+        // Helper to inject element traits
+        const injectElementTraits = (obj) => {
+            if (obj.elements && Array.isArray(obj.elements)) {
+                if (!obj.traits) obj.traits = [];
+                // Filter out previously auto-generated traits to avoid duplication/stale data
+                obj.traits = obj.traits.filter(t => t._source !== 'auto_element');
+
+                const strengths = { G: 'B', B: 'R', R: 'G', W: 'K', K: 'W' };
+
+                obj.elements.forEach(element => {
+                    // 1. Resist Self
+                    obj.traits.push({ code: 'ELEMENT_RATE', dataId: element, value: 0.75, _source: 'auto_element' });
+
+                    // 2. Weakness (Who is strong against me?)
+                    const weakSource = Object.keys(strengths).find(k => strengths[k] === element);
+                    if (weakSource) {
+                        obj.traits.push({ code: 'ELEMENT_RATE', dataId: weakSource, value: 1.25, _source: 'auto_element' });
+                    }
+
+                    // 3. Resistance (Who am I strong against?)
+                    const strongTarget = strengths[element];
+                    if (strongTarget) {
+                        obj.traits.push({ code: 'ELEMENT_RATE', dataId: strongTarget, value: 0.75, _source: 'auto_element' });
+                    }
+                });
+            }
+            return obj;
+        };
+
         if (!data.parent) {
-            return { ...data };
+            // Even for base, we inject traits
+            return injectElementTraits({ ...data });
         }
 
         stack.add(id);
@@ -93,10 +123,13 @@ export class CreatureRegistry extends Registry {
 
         stack.delete(id);
 
-        return {
+        const merged = {
             ...parentResolved,
             ...data,
             id: id // Ensure ID is correct
         };
+
+        // Inject traits into the merged result
+        return injectElementTraits(merged);
     }
 }

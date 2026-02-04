@@ -86,6 +86,15 @@ export class Window_Party extends Window_Selectable {
     }
 
     /**
+     * Sets the help text in the footer.
+     * @param {string} text
+     */
+    setHelpText(text) {
+        const el = document.getElementById('party-help');
+        if (el) el.innerText = text;
+    }
+
+    /**
      * Toggles formation editing mode.
      */
     toggleFormationMode() {
