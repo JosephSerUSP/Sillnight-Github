@@ -22,7 +22,7 @@ The PC acts as the anchor for the party.
         *   **Flee:** Attempt to escape (costs MP/Gold).
     *   **Targeting:** The Summoner is untargetable unless all creatures are downed or in reserve.
 
-> **Implementation Gap:** Current codebase places the Summoner at the start of the turn queue (`BattleManager.queue`) rather than at the end of the round.
+> **Implementation Gap:** Current codebase places the Summoner at the **start** of the turn queue (`BattleManager.queue`) rather than at the end of the round as designed.
 
 ### 1.2. Battlers (Creatures & Enemies)
 Units that fight in battle. They act autonomously based on user commands or AI.
@@ -84,7 +84,7 @@ The primary means of interaction in battle.
     *   **`ele` (Element):** Elemental alignment of the attack.
     *   **`cnd` (Condition):** Prerequisite (e.g., "HP < 50%", "Front Row").
 
-> **Implementation Gap:** Current `BattleManager` sorts by Unit Speed (`agi`). It needs to be refactored to sort by the selected Action's `asp` (with unit speed as a tiebreaker or secondary modifier).
+> **Implementation Gap:** Current `BattleManager` sorts by Unit Speed (`agi`). It needs to be refactored to sort by the selected Action's `asp`. Additionally, `Game_Action` currently relies on a hardcoded element cycle (`G>B>R`) rather than the full alignment system.
 
 ### 3.2. Trait Objects
 Entities that carry Traits.
