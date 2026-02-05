@@ -16,7 +16,7 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
 *   **Solution:** `Registry` classes.
     *   `CreatureRegistry`: Loads creature definitions, resolves inheritance (e.g., "Goblin Archer" inherits "Goblin").
     *   `ItemRegistry`, `SkillRegistry`.
-    *   **Feature:** *Dynamic Tooltips*. The registry generates descriptions based on the actual effects (e.g., "Deals 50 Fire DMG") rather than static strings.
+    *   **Feature (Pending):** *Dynamic Tooltips*. The registry generates descriptions based on the actual effects (e.g., "Deals 50 Fire DMG") rather than static strings. (Currently deferred; using static descriptions).
 
 ### 1.2. The Event Bus (Pub/Sub)
 **Goal:** Decouple Game Logic from UI and Rendering.
@@ -26,7 +26,7 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
     *   `BattleManager` emits `battle:damage_dealt` { target, amount }.
     *   `BattleLog` listens to `battle:damage_dealt` and renders text.
     *   `BattleRenderSystem` listens to `battle:damage_dealt` and spawns floating numbers.
-    *   `AudioManager` listens and plays a hit sound.
+    *   `AudioService` listens and plays a hit sound.
 
 ### 1.3. Service Locator Pattern
 **Goal:** Manage dependencies cleanly without global spaghetti.
@@ -120,6 +120,6 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
     - Expand `Game_Interpreter` to support conditional logic (`IF/ELSE`, `CHECK_VAR`) (Done).
     - Implement `Game_Variables` and `Game_Switches` (Done).
 
-### Phase 4: Polish (Next Priority)
+### Phase 4: Polish (In Progress)
 1.  Reactive UI components (Partial: Party UI & Base Component Refactor Done).
-2.  Audio system integration.
+2.  Audio system integration (In Progress: Framework implementation).
