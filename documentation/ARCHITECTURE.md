@@ -105,8 +105,9 @@ Strictly separates the "Brain" from the "Eyes".
     *   Manages 3D sprites (`Spriteset_Battle`).
     *   Controls the Camera (Zoom, Pan).
     *   **Animation System:** `playAnim` supports sequenced steps:
+        *   **Flow:** `wait`, `apply` (trigger effect application).
         *   **Movement:** `jump`, `approach`, `retreat`.
-        *   **Visuals:** `effect` (Effekseer), `feedback` (shake/flash), `dim`/`undim`.
+        *   **Visuals:** `effect` (Effekseer), `feedback` (shake/flash), `dim`/`undim`, `reset_visuals`.
         *   **Camera:** `focus`, `reset_focus`.
         *   **Environment:** `dim_ground`, `hide_ground`, `reset_ground`.
 
@@ -121,8 +122,11 @@ How a skill is executed.
 2.  **Instantiation:** A `Game_Action` is created with the subject and the skill data.
 3.  **Targeting:** `Game_Action` determines valid targets (e.g., "All Enemies").
 4.  **Application:** `action.apply(target)` is called for each target.
-    *   **Formula Eval:** `Game_Action.evalDamageFormula()` parses the math (e.g., `a.mat * 4 - b.mdf * 2`).
+    *   **Formula Eval:** `Game_Action.evalDamageFormula()` uses a hybrid "Base Power + Ratio" system.
+        *   The formula string (e.g. `4 + a.level`) provides the Base Power.
+        *   This Base Power is then automatically scaled by the `ATK/DEF` (or `MAT/MDF`) ratio.
     *   **Element Mod:** Checks `target.elements` vs `action.element` for multipliers.
+        *   *Legacy Drift:* `Game_Action` currently enforces a hardcoded legacy strength cycle (`G`>`B`>`R`, `W`<>`K`) in addition to standard alignment matching. This diverges from the pure alignment model in `gameDesign.md`.
     *   **Variance/Crit:** Applies RNG.
 5.  **Event Emission:** The result is passed to `EffectRegistry` via `BattleManager` callbacks. Events are fired:
     *   `battle:action_used` (Starts animation)
@@ -153,7 +157,7 @@ The game is data-driven, using a Registry pattern for logic execution and a Data
 
 ## 5. Future Direction (Refactor Goals)
 
-The codebase is currently in a transitional state (Phase 1 of Refactor). The ultimate goals are:
+The codebase is currently in **Phase 4 (Polish)** of the Refactor, with Registries, EventBus, and World Generation largely implemented (see `REFACTOR_PLAN.md`). The ultimate goals are:
 
 WHEN IMPLEMENTING THE REFACTOR, UPDATE THE DOCUMENT ACCORDINGLY.
 
