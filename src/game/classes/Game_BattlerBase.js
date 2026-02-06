@@ -187,7 +187,8 @@ export class Game_BattlerBase {
     /**
      * Calculates the value of a parameter.
      * Delegates calculation to the TraitRegistry, which aggregates traits.
-     * @param {number} paramId - 0:mhp, 1:mmp, 2:atk, 3:def, 4:mat, 5:mdf, 6:agi, 7:luk
+     * @param {number} paramId - 0:mhp, 1:mmp, 2:atk, 3:def, 4:mat, 5:mdf, 6:agi, 7:luk.
+     *                           (Note: IDs 8:mpd, 9:mxa, 10:mxp are planned but not yet implemented).
      * @returns {number} The final parameter value.
      */
     param(paramId) {

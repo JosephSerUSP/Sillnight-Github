@@ -22,23 +22,24 @@ The PC acts as the anchor for the party.
         *   **Flee:** Attempt to escape (costs MP/Gold).
     *   **Targeting:** The Summoner is untargetable unless all creatures are downed or in reserve.
 
-> **Implementation Gap:** Current codebase places the Summoner at the start of the turn queue (`BattleManager.queue`) rather than at the end of the round.
+> **Implementation Gap:** Current codebase places the Summoner at the start of the turn queue (`BattleManager.queue`) rather than at the end of the round. This is a known issue.
 
 ### 1.2. Battlers (Creatures & Enemies)
 Units that fight in battle. They act autonomously based on user commands or AI.
 
 #### Core Parameters
 *   **`mhp` (Max HP):** Maximum health.
-*   **`mpd` (MP Drain):** (Creatures only) Amount of Summoner MP consumed per action/step.
+*   **`mpd` (MP Drain):** (Creatures only) Amount of Summoner MP consumed per action/step. *[Status: Planned / Not Implemented]*
 *   **`atk` (Attack):** Multiplier for physical output (Base 10 = 100%).
 *   **`mat` (Magic):** Multiplier for magical output.
 *   **`def` (Defense):** Multiplier for incoming physical damage.
 *   **`mdf` (Resist):** Multiplier for incoming magical damage.
-*   **`mxa` (Max Actions):** Maximum number of learnable Actions (default 4).
-*   **`mxp` (Max Passives):** Maximum number of learnable Passives (default 2).
+*   **`mxa` (Max Actions):** Maximum number of learnable Actions (default 4). *[Status: Planned / Not Implemented]*
+*   **`mxp` (Max Passives):** Maximum number of learnable Passives (default 2). *[Status: Planned / Not Implemented]*
 *   **`ele` (Elements):** Array of aligned elements (e.g., `['Fire', 'Fire']` = Double Fire).
     *   **Offense:** 1.25x damage for each matching element instance.
     *   **Defense:** 1.25x damage taken for Weakness, 0.75x for Resistance.
+    *   **Current Implementation:** The codebase currently uses a hardcoded legacy strength cycle (Green > Blue > Red > Green, White <> Black). `Game_Action.calcElementRate` implements this logic: 1.25x for Strong, 0.75x for Resist/Same.
 
 > **Implementation Gap:** Current codebase uses standard RPG stats (`agi`, `luk`) and lacks `mpd`/`mxa`/`mxp`. `Game_BattlerBase` needs refactoring to support these design-specific parameters.
 
@@ -81,6 +82,7 @@ The primary means of interaction in battle.
 *   **Properties:**
     *   **`asp` (Action Speed):** The **primary determinant** of turn order.
         *   *Design Note:* Fast attacks (Dagger Slash) should act before slow attacks (Hammer Smash), regardless of who is using them.
+        *   *Current Implementation Gap:* `BattleManager` currently sorts by Unit Speed (`speed`/`agi`). Refactoring to `asp` sorting is a planned task.
     *   **`ele` (Element):** Elemental alignment of the attack.
     *   **`cnd` (Condition):** Prerequisite (e.g., "HP < 50%", "Front Row").
 
