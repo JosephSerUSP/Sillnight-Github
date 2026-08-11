@@ -2,9 +2,11 @@
 
 **Repository:** `JosephSerUSP/Sillnight-Github`  
 **Snapshot date:** 2026-08-11  
-**Current main:** `403b433`  
-**Remote refs reviewed:** 97 non-`main` branches  
+**Current main:** `bf7a4af`  
+**Remote refs reviewed:** 97 baseline non-`main` branches; 90 remain after seven verified duplicate deletions  
 **Open pull requests:** 0
+
+The complete branch-by-branch evidence is in [BRANCH_CLEANUP_AUDIT.md](BRANCH_CLEANUP_AUDIT.md) and [BRANCH_CLEANUP_AUDIT.csv](BRANCH_CLEANUP_AUDIT.csv). The final recovery bundle is stored outside the repository at `D:\Github\Sillnight-branch-archives\2026-08-11\sillnight-remote-branches-final-audit-2026-08-11.bundle`.
 
 ## Purpose
 
@@ -26,7 +28,7 @@ The following work is already represented on current `main` as focused commits:
 | `9f2ac17` | Local `.claude` settings ignored. |
 | `403b433` | Final PR-triage cleanup record. |
 
-All 99 open PRs were closed with replacement-commit or future-Issue references. The remaining branches are therefore not open review work; they are either unmerged alternatives, historical snapshots, or refs without a currently associated PR.
+All 99 open PRs were closed with replacement-commit or future-Issue references. The category lists below describe the 97-branch baseline; the audit records the seven subsequently deleted duplicate refs and the 90 current retained refs. The remaining branches are therefore not open review work; they are either unmerged alternatives, historical snapshots, or refs without a currently associated PR.
 
 ## Risk model
 
