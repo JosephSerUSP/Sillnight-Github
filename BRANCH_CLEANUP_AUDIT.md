@@ -123,3 +123,7 @@ The four duplicate branches `doc-drift-audit-9865479593348390183`, `documentatio
 Seven exact branches were deleted in two reviewed batches. The final remote non-main count is 90. `origin/main` was unchanged by deletion and is now recorded at the final audit commit. Recovery bundles: `D:\Github\Sillnight-branch-archives\2026-08-11\sillnight-remote-branches.bundle`, `D:\Github\Sillnight-branch-archives\2026-08-11\sillnight-remote-branches-post-absorption.bundle`, `D:\Github\Sillnight-branch-archives\2026-08-11\sillnight-remote-branches-pre-duplicate-deletion.bundle`, and `D:\Github\Sillnight-branch-archives\2026-08-11\sillnight-remote-branches-final-audit-2026-08-11.bundle`. The final bundle verified as a complete history with 98 refs: current main, current remote branches, and seven deleted-branch archive tags.
 
 No remaining branch is marked deletion-permitted; retained branches require individual product or implementation decisions.
+
+## Independent gameplay review
+
+Two narrow branches were rejected after current-main code review. `bugfix/recruit-error-fix` patches a legacy recruit modal that has been replaced by `Window_Recruit`, which already calls `Game_Party.addActor(speciesId, level)`. `fix/shop-ui-persistence-17639534428531026715` bypasses the base window show/hide lifecycle and would skip SceneManager registration; the reproducible browser fix remains tracked in Issue #297. Both exact tips remain in the bundle and archive tags and are approved for deletion.
