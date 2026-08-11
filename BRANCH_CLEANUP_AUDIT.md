@@ -10,6 +10,16 @@ Every branch tip is preserved in the external bundle and archive tags documented
 
 The CSV is the detailed inventory: tip SHA, merge-base, tip metadata, branch-only commit count, merge-base-relative diff summary, changed-path count, content flags, and disposition.
 
+## Absorption record
+
+The three branches below contained the same one-line verification correction: replace the invalid `slime` enemy fixture with the valid `goblin` fixture in `verification/verify_animations.py`.
+
+- `maintenance-fix-verification-870040479274439439` at `473727655c458665ddae585ddd5683492ce11a0c`
+- `maintenance-fix-verification-script-10796663856295131595` at `917616c83bcdd44c781c62af6dfd3148122fcaea`
+- `maintenance/fix-verification-script-12902203665249126600` at `d3dbfd16a375db439599342144c0828cf9f4eed7`
+
+The change was manually ported as focused commit `86e1d14` on `main`. Verification: `git diff --check` passed; a Python runtime was unavailable for bytecode compilation in this environment. The three source branches are classified `absorbed`; their archive tags and bundle entries preserve the original tips.
+
 | Branch | Tip | Merge-base | Branch-only commits | Changed paths | Diff summary | Disposition |
 |---|---|---|---:|---:|---|---|
 | `analysis-gameplay-emergence` | `e931ec7b7aa3` | `b4a2b2f2f648` | 1 | 1 | 1 file changed, 79 insertions(+) | retained-pending-review |
@@ -111,4 +121,3 @@ The CSV is the detailed inventory: tip SHA, merge-base, tip metadata, branch-onl
 | `xp-calc-fix-1238135631318676896` | `2c4e0aa1cdd1` | `418ba4f3848a` | 1 | 5 | 5 files changed, 103 insertions(+), 9 deletions(-) | retained-pending-review |
 
 No remote branch is deleted by this baseline record.
-
