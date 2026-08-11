@@ -1,7 +1,9 @@
 # Game Design Document
 
-**Status:** Prescriptive / North Star
-**Description:** This document dictates the intended gameplay mechanics and rules for **Stillnight**. Where the current codebase diverges from this document, the code is considered "Work in Progress" or "Legacy" and should be refactored to match this design.
+**Status:** Detailed mechanics reference / partially historical  
+**Authority:** [`GAME_THESIS_2026.md`](GAME_THESIS_2026.md) is the current game/product North Star. This document preserves detailed intended mechanics and implementation-gap notes, but historical formulas or assumptions remain subject to newer ratified decisions under #307 and its child issues.
+
+Where a mechanic in this document conflicts with the 2026 thesis or a newer explicit decision, preserve this file as design archaeology until the mechanic is deliberately updated rather than treating the older text as immutable law.
 
 ---
 

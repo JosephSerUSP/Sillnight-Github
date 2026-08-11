@@ -16,9 +16,10 @@ The game is served as a browser application from `index.html`. The repository cu
 
 ## Documentation
 
+- [`documentation/GAME_THESIS_2026.md`](documentation/GAME_THESIS_2026.md) defines the current game/product North Star.
 - [`REFACTOR_PLAN.md`](REFACTOR_PLAN.md) describes current architecture status and remaining gaps.
 - [`documentation/ARCHITECTURE.md`](documentation/ARCHITECTURE.md) describes the implemented architecture.
-- [`documentation/gameDesign.md`](documentation/gameDesign.md) records design intent and implementation gaps.
+- [`documentation/gameDesign.md`](documentation/gameDesign.md) preserves detailed mechanics intent and historical implementation gaps subordinate to the current thesis and newer ratified decisions.
 - [`documentation/PROJECT_TECHNOLOGY_PRINCIPLES.md`](documentation/PROJECT_TECHNOLOGY_PRINCIPLES.md) defines the criteria used to judge major technology, engine, tooling, and infrastructure choices.
 
 ## Contribution expectations
