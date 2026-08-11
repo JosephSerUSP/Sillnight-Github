@@ -2,6 +2,10 @@ import { resolveAssetPath } from '../core.js';
 import * as Systems from '../systems.js';
 import { Config } from '../Config.js';
 
+/**
+ * Handles the 3D visualization of the battle.
+ * Exported as `Battle3D` in `src/game/systems.js`.
+ */
 export class BattleRenderSystem {
     constructor() {
         this.scene = null;
