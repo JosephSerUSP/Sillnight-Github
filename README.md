@@ -19,6 +19,7 @@ The game is served as a browser application from `index.html`. The repository cu
 - [`REFACTOR_PLAN.md`](REFACTOR_PLAN.md) describes current architecture status and remaining gaps.
 - [`documentation/ARCHITECTURE.md`](documentation/ARCHITECTURE.md) describes the implemented architecture.
 - [`documentation/gameDesign.md`](documentation/gameDesign.md) records design intent and implementation gaps.
+- [`documentation/PROJECT_TECHNOLOGY_PRINCIPLES.md`](documentation/PROJECT_TECHNOLOGY_PRINCIPLES.md) defines the criteria used to judge major technology, engine, tooling, and infrastructure choices.
 
 ## Contribution expectations
 
