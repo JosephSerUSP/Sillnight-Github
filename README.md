@@ -17,6 +17,7 @@ The game is served as a browser application from `index.html`. The repository cu
 ## Documentation
 
 - [`documentation/GAME_THESIS_2026.md`](documentation/GAME_THESIS_2026.md) defines the current game/product North Star.
+- [`documentation/SUBSTRATE_EVALUATION_2026.md`](documentation/SUBSTRATE_EVALUATION_2026.md) evaluates the current Three.js runtime against Godot and Defold and defines the evidence gate for any engine migration.
 - [`REFACTOR_PLAN.md`](REFACTOR_PLAN.md) describes current architecture status and remaining gaps.
 - [`documentation/ARCHITECTURE.md`](documentation/ARCHITECTURE.md) describes the implemented architecture.
 - [`documentation/gameDesign.md`](documentation/gameDesign.md) preserves detailed mechanics intent and historical implementation gaps subordinate to the current thesis and newer ratified decisions.
