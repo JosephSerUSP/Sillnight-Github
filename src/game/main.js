@@ -28,6 +28,7 @@ import { Game_Event } from './classes/Game_Event.js';
 import { Game_Action } from './classes/Game_Action.js';
 import { Game_Variables } from './classes/Game_Variables.js';
 import { Game_Switches } from './classes/Game_Switches.js';
+import { AudioService } from './services/AudioService.js';
 
 /**
  * Core game bootstrapper; keeps entrypoint slim while delegating to managers/scenes.
@@ -86,6 +87,7 @@ export const Game = {
         Services.register('EventDataRegistry', new EventDataRegistry());
         Services.register('GameVariables', new Game_Variables());
         Services.register('GameSwitches', new Game_Switches());
+        Services.register('AudioService', new AudioService());
         console.log("Game.init: Services registered.");
 
         // Load Data into Registries
