@@ -26,4 +26,15 @@ Every PR listed in `PR_TRIAGE_PLAN.md` was fetched through the GitHub PR-diff en
 - Reactive state: #226, #227, #228, #229, #230, #234, #237, #239, #241, #254, #274, #278, #280.
 - One-offs: #105, #120, #165, #204, #216, #223, #245, #257, #288.
 
-No PR was closed, merged, or commented on.
+## Cleanup result
+
+The selected work was ported to current `main` as focused commits:
+
+- `f711b10` — documentation drift and implementation-gap notes.
+- `08739bd` — event-driven `AudioService` integration.
+- `42b8674` — reactive variable/switch events, action-speed turn ordering, and enemy action extraction.
+- `44a3cd6` — `BattleRenderSystem` ownership JSDoc.
+- `36be5cc` — README, roadmap, and triage-record alignment.
+- `9f2ac17` — ignore local agent settings.
+
+All open PRs were closed with replacement-commit or future-Issue references. Future directions are tracked in Issues #289–#304. Remote branches were deleted only where their contents were verified as merged or fully represented by the selected commits/issues; unresolved alternatives remain retained until their contents receive branch-specific review.
