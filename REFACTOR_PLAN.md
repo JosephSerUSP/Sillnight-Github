@@ -33,7 +33,7 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
 *   **Solution:** `Game.Services`.
     *   Registers `InputService`, `AudioService`, `PersistenceService`.
     *   Allows for easy mocking in tests.
-*   **Status:** Implemented (`src/game/ServiceLocator.js`).
+*   **Status:** Implemented (`src/game/ServiceLocator.js`). `AudioService` is registered during game initialization and consumes EventBus events.
 
 ---
 
@@ -120,6 +120,14 @@ THIS DOCUMENT MUST ALWAYS BE UPDATED AS THE REFACTOR IS EXECUTED.
     - Expand `Game_Interpreter` to support conditional logic (`IF/ELSE`, `CHECK_VAR`) (Done).
     - Implement `Game_Variables` and `Game_Switches` (Done).
 
-### Phase 4: Polish (Next Priority)
+### Phase 4: Polish (Current)
 1.  Reactive UI components (Partial: Party UI & Base Component Refactor Done).
-2.  Audio system integration.
+2.  Audio system integration (Implemented: `AudioService` is registered and handles UI and battle events).
+3.  Reactive variable and switch events (Implemented: state changes emit EventBus notifications).
+4.  Action-speed turn ordering (Implemented: action speed is the primary sort key, with unit speed as a tiebreaker).
+
+### Known gaps and future direction
+
+- Audio asset coverage and scene-level BGM policy still need product decisions.
+- Battle model/view separation remains a proposal; the current BattleManager still coordinates rendering and some UI.
+- Fog-of-War wall displacement, responsive party layout, and transition effects have competing implementations that require explicit selection before landing.
