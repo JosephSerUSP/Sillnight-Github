@@ -159,6 +159,8 @@ export const BattleManager = {
     /**
      * Proceeds to the next round of combat.
      * Re-calculates turn order and checks win/loss conditions.
+     * Note: Currently sorts by Unit Speed (agi) as a legacy implementation.
+     *       Refactoring to Action Speed (asp) sorting is planned.
      */
     nextRound() {
         this.roundCount++;
@@ -272,8 +274,10 @@ export const BattleManager = {
             } else if (itemRegistry.get(chosen)) {
                 actionData = itemRegistry.get(chosen);
             } else {
-                // @deprecated: Fallback for Legacy case-insensitive search
-                // TODO: Remove this once all data files are normalized to exact case IDs.
+                /**
+                 * @deprecated Fallback for Legacy case-insensitive search.
+                 * TODO: Remove this once all data files are normalized to exact case IDs.
+                 */
                 const chosenLower = chosen.toLowerCase();
                 const allSkillIds = skillRegistry.getAll().map(s => s.id);
                 const skillKey = allSkillIds.find(k => k.toLowerCase() === chosenLower);

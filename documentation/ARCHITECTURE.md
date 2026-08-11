@@ -96,7 +96,8 @@ Handles the dungeon crawling experience.
 Strictly separates the "Brain" from the "Eyes".
 
 *   **`BattleManager` (The Brain):** Logic & Orchestration.
-    *   Calculates turn order (`queue`) based on Unit Speed (pending refactor to Action Speed).
+    *   Calculates turn order (`queue`) based on Unit Speed (Legacy/Current).
+        *   *Note:* `gameDesign.md` specifies sorting by Action Speed (`asp`), which is a planned refactor.
     *   Executes actions (`Game_Action`).
     *   Determines results (Hit/Miss/Crit).
     *   *Note:* Currently operates in a **Hybrid** state, orchestrating `BattleRenderSystem` (e.g. `playAnim`) and waiting for completion callbacks. Visual feedback is a mix of `EventBus` events (logs) and direct UI window calls (Victory, LevelUp).
@@ -123,6 +124,7 @@ How a skill is executed.
 4.  **Application:** `action.apply(target)` is called for each target.
     *   **Formula Eval:** `Game_Action.evalDamageFormula()` parses the math (e.g., `a.mat * 4 - b.mdf * 2`).
     *   **Element Mod:** Checks `target.elements` vs `action.element` for multipliers.
+        *   *Note:* Currently uses a hardcoded legacy strength cycle (Green > Blue > Red > Green, White <> Black) for resistance/weakness calculation.
     *   **Variance/Crit:** Applies RNG.
 5.  **Event Emission:** The result is passed to `EffectRegistry` via `BattleManager` callbacks. Events are fired:
     *   `battle:action_used` (Starts animation)
@@ -134,6 +136,7 @@ The game entities follow a prototype chain but rely heavily on "Traits" for stat
 
 *   **`Game_BattlerBase`** (`src/game/classes/Game_BattlerBase.js`): Handles HP, MP, and the `traits` array.
     *   *Traits:* Instead of hardcoding `hit_rate = 95%`, we delegate to `TraitRegistry` which iterates traits: `registry.getParamValue(this, id)`. This allows equipment, passives, and buffs to all modify stats uniformly.
+    *   *Parameters:* Currently implements IDs 0-7 (`mhp` to `luk`). IDs 8-10 (`mpd`, `mxa`, `mxp`) are planned but not yet implemented.
 *   **`Game_Battler`:** Adds `actions`, `speed`, and turn lifecycle (`onTurnStart`).
 *   **`Game_Actor`:** Adds `level`, `exp`, `equipment`.
 *   **`Game_Enemy`:** Adds `dropItems`, `ai_pattern`.
