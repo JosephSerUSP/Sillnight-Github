@@ -8,7 +8,7 @@ Every branch tip is preserved in the external bundle and archive tags documented
 - Archive tags: `archive/branch-cleanup-2026-08-11/<branch-name>`
 - Deletion gate: `deletion_permitted` remains `false` until the branch has been individually reviewed and its disposition is supported by evidence.
 
-The CSV is the detailed inventory: tip SHA, merge-base, tip metadata, branch-only commit count, merge-base-relative diff summary, changed-path count, content flags, and disposition.
+The CSV is the detailed inventory: tip SHA, merge-base, tip metadata, branch-only commit count, merge-base-relative diff summary, changed-path count, content flags, functional area, reviewer rationale, disposition, and deletion gate.
 
 | Branch | Tip | Merge-base | Branch-only commits | Changed paths | Diff summary | Disposition |
 |---|---|---|---:|---:|---|---|
