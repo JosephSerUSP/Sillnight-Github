@@ -1,0 +1,294 @@
+{
+  "contract_version": 1,
+  "id": "sillnight_substrate_battle_fixture_v1",
+  "purpose": "Cross-substrate semantic comparison for issue #310.",
+  "synthetic_fixture": true,
+  "design_authority": false,
+  "seed": 31020260811,
+  "notes": [
+    "This fixture borrows existing Sillnight creature and skill names for recognizability, but freezes its own semantics and does not import current runtime formulas or AI behavior.",
+    "The fixture intentionally uses a simple row-sensitive behavior rule so formation visibly changes the forecast. It does not ratify row/parity AI, mini-gambits, temperament semantics, or final targeting rules.",
+    "All action effects are fixed integers. There are no hit checks, criticals, variance, elemental modifiers, or random target choices in v1.",
+    "Targets are selected when the forecast is produced and remain locked for the fixture round. This is a comparison simplification, not a final battle-design decision.",
+    "Higher action_speed resolves first. actor_speed is present for future tie-break experiments but v1 contains no action_speed ties."
+  ],
+  "formation": {
+    "party_slots": ["front_1", "front_2", "front_3", "back_1", "back_2", "back_3"],
+    "enemy_slots": ["front_1", "back_1"]
+  },
+  "party": [
+    {
+      "id": "skeleton",
+      "name": "Skeleton",
+      "slot": "front_1",
+      "hp": 18,
+      "max_hp": 18,
+      "actor_speed": 11,
+      "behavior_by_row": {
+        "front": {
+          "action": "slash",
+          "action_speed": 40,
+          "target": "enemy_lowest_hp",
+          "effect": {"type": "damage", "amount": 4}
+        },
+        "back": {
+          "action": "guard",
+          "action_speed": 30,
+          "target": "self",
+          "effect": {"type": "add_state", "state": "guarding"}
+        }
+      }
+    },
+    {
+      "id": "nurse",
+      "name": "Nurse",
+      "slot": "front_2",
+      "hp": 10,
+      "max_hp": 20,
+      "actor_speed": 9,
+      "behavior_by_row": {
+        "front": {
+          "action": "injection",
+          "action_speed": 55,
+          "target": "enemy_highest_threat",
+          "effect": {"type": "damage", "amount": 3}
+        },
+        "back": {
+          "action": "triage",
+          "action_speed": 65,
+          "target": "ally_lowest_hp_ratio",
+          "effect": {"type": "heal", "amount": 4}
+        }
+      }
+    },
+    {
+      "id": "golem",
+      "name": "Golem",
+      "slot": "front_3",
+      "hp": 32,
+      "max_hp": 32,
+      "actor_speed": 4,
+      "behavior_by_row": {
+        "front": {
+          "action": "attackRow",
+          "action_speed": 20,
+          "target": "enemy_front_all",
+          "effect": {"type": "damage", "amount": 3}
+        },
+        "back": {
+          "action": "wait",
+          "action_speed": 10,
+          "target": "self",
+          "effect": {"type": "none"}
+        }
+      }
+    },
+    {
+      "id": "pixie",
+      "name": "Pixie",
+      "slot": "back_1",
+      "hp": 10,
+      "max_hp": 14,
+      "actor_speed": 13,
+      "behavior_by_row": {
+        "front": {
+          "action": "thunder",
+          "action_speed": 60,
+          "target": "enemy_highest_threat",
+          "effect": {"type": "damage", "amount": 5}
+        },
+        "back": {
+          "action": "cure",
+          "action_speed": 70,
+          "target": "ally_lowest_hp_ratio",
+          "effect": {"type": "heal", "amount": 4}
+        }
+      }
+    },
+    {
+      "id": "lich",
+      "name": "Lich",
+      "slot": "back_2",
+      "hp": 24,
+      "max_hp": 24,
+      "actor_speed": 7,
+      "behavior_by_row": {
+        "front": {
+          "action": "curse",
+          "action_speed": 35,
+          "target": "enemy_lowest_hp",
+          "effect": {"type": "damage", "amount": 5}
+        },
+        "back": {
+          "action": "curse",
+          "action_speed": 35,
+          "target": "enemy_lowest_hp",
+          "effect": {"type": "damage", "amount": 5}
+        }
+      }
+    },
+    {
+      "id": "no7",
+      "name": "No. 7",
+      "slot": "back_3",
+      "hp": 26,
+      "max_hp": 26,
+      "actor_speed": 15,
+      "behavior_by_row": {
+        "front": {
+          "action": "windBlades",
+          "action_speed": 50,
+          "target": "enemy_highest_threat",
+          "effect": {"type": "damage", "amount": 4}
+        },
+        "back": {
+          "action": "attack",
+          "action_speed": 45,
+          "target": "enemy_lowest_hp",
+          "effect": {"type": "damage", "amount": 3}
+        }
+      }
+    }
+  ],
+  "enemies": [
+    {
+      "id": "iron_maw",
+      "name": "Iron Maw",
+      "slot": "front_1",
+      "hp": 30,
+      "max_hp": 30,
+      "threat": 3,
+      "actor_speed": 8,
+      "action": {
+        "id": "maul",
+        "action_speed": 52,
+        "target": "ally_front_lowest_hp_ratio",
+        "effect": {"type": "damage", "amount": 4}
+      }
+    },
+    {
+      "id": "lantern_wight",
+      "name": "Lantern Wight",
+      "slot": "back_1",
+      "hp": 18,
+      "max_hp": 18,
+      "threat": 5,
+      "actor_speed": 10,
+      "action": {
+        "id": "hex",
+        "action_speed": 48,
+        "target": "ally_back_lowest_hp_ratio",
+        "effect": {"type": "add_state", "state": "hexed"}
+      }
+    }
+  ],
+  "summoner": {
+    "id": "summoner",
+    "inventory": {
+      "potionSmall": 1
+    },
+    "fixture_item_semantics": {
+      "potionSmall": {
+        "name": "Small Potion",
+        "target": "ally_single",
+        "effect": {"type": "heal_max_hp_ratio", "ratio": 0.3, "rounding": "floor"}
+      }
+    }
+  },
+  "steps": [
+    {
+      "id": "initial_forecast",
+      "operation": "forecast",
+      "expected": [
+        {"order": 1, "actor": "pixie", "action": "cure", "targets": ["nurse"], "action_speed": 70},
+        {"order": 2, "actor": "nurse", "action": "injection", "targets": ["lantern_wight"], "action_speed": 55},
+        {"order": 3, "actor": "iron_maw", "action": "maul", "targets": ["nurse"], "action_speed": 52},
+        {"order": 4, "actor": "lantern_wight", "action": "hex", "targets": ["pixie"], "action_speed": 48},
+        {"order": 5, "actor": "no7", "action": "attack", "targets": ["lantern_wight"], "action_speed": 45},
+        {"order": 6, "actor": "skeleton", "action": "slash", "targets": ["lantern_wight"], "action_speed": 40},
+        {"order": 7, "actor": "lich", "action": "curse", "targets": ["lantern_wight"], "action_speed": 35},
+        {"order": 8, "actor": "golem", "action": "attackRow", "targets": ["iron_maw"], "action_speed": 20}
+      ]
+    },
+    {
+      "id": "formation_intervention",
+      "operation": "swap_party_slots",
+      "a": "nurse",
+      "b": "pixie",
+      "expected_slots": {
+        "nurse": "back_1",
+        "pixie": "front_2"
+      }
+    },
+    {
+      "id": "post_formation_forecast",
+      "operation": "forecast",
+      "expected": [
+        {"order": 1, "actor": "nurse", "action": "triage", "targets": ["nurse"], "action_speed": 65},
+        {"order": 2, "actor": "pixie", "action": "thunder", "targets": ["lantern_wight"], "action_speed": 60},
+        {"order": 3, "actor": "iron_maw", "action": "maul", "targets": ["pixie"], "action_speed": 52},
+        {"order": 4, "actor": "lantern_wight", "action": "hex", "targets": ["nurse"], "action_speed": 48},
+        {"order": 5, "actor": "no7", "action": "attack", "targets": ["lantern_wight"], "action_speed": 45},
+        {"order": 6, "actor": "skeleton", "action": "slash", "targets": ["lantern_wight"], "action_speed": 40},
+        {"order": 7, "actor": "lich", "action": "curse", "targets": ["lantern_wight"], "action_speed": 35},
+        {"order": 8, "actor": "golem", "action": "attackRow", "targets": ["iron_maw"], "action_speed": 20}
+      ]
+    },
+    {
+      "id": "summoner_intervention",
+      "operation": "use_item",
+      "actor": "summoner",
+      "item": "potionSmall",
+      "target": "nurse",
+      "expected": {
+        "hp_before": 10,
+        "heal": 6,
+        "hp_after": 16,
+        "inventory_after": 0
+      }
+    },
+    {
+      "id": "post_summoner_forecast",
+      "operation": "forecast",
+      "expected": [
+        {"order": 1, "actor": "nurse", "action": "triage", "targets": ["pixie"], "action_speed": 65},
+        {"order": 2, "actor": "pixie", "action": "thunder", "targets": ["lantern_wight"], "action_speed": 60},
+        {"order": 3, "actor": "iron_maw", "action": "maul", "targets": ["pixie"], "action_speed": 52},
+        {"order": 4, "actor": "lantern_wight", "action": "hex", "targets": ["nurse"], "action_speed": 48},
+        {"order": 5, "actor": "no7", "action": "attack", "targets": ["lantern_wight"], "action_speed": 45},
+        {"order": 6, "actor": "skeleton", "action": "slash", "targets": ["lantern_wight"], "action_speed": 40},
+        {"order": 7, "actor": "lich", "action": "curse", "targets": ["lantern_wight"], "action_speed": 35},
+        {"order": 8, "actor": "golem", "action": "attackRow", "targets": ["iron_maw"], "action_speed": 20}
+      ]
+    },
+    {
+      "id": "resolve_locked_forecast",
+      "operation": "resolve_round",
+      "source_forecast": "post_summoner_forecast",
+      "expected_transcript": [
+        {"type": "heal", "actor": "nurse", "action": "triage", "target": "pixie", "amount": 4, "hp_before": 10, "hp_after": 14},
+        {"type": "damage", "actor": "pixie", "action": "thunder", "target": "lantern_wight", "amount": 5, "hp_before": 18, "hp_after": 13},
+        {"type": "damage", "actor": "iron_maw", "action": "maul", "target": "pixie", "amount": 4, "hp_before": 14, "hp_after": 10},
+        {"type": "add_state", "actor": "lantern_wight", "action": "hex", "target": "nurse", "state": "hexed"},
+        {"type": "damage", "actor": "no7", "action": "attack", "target": "lantern_wight", "amount": 3, "hp_before": 13, "hp_after": 10},
+        {"type": "damage", "actor": "skeleton", "action": "slash", "target": "lantern_wight", "amount": 4, "hp_before": 10, "hp_after": 6},
+        {"type": "damage", "actor": "lich", "action": "curse", "target": "lantern_wight", "amount": 5, "hp_before": 6, "hp_after": 1},
+        {"type": "damage", "actor": "golem", "action": "attackRow", "target": "iron_maw", "amount": 3, "hp_before": 30, "hp_after": 27}
+      ],
+      "expected_end_state": {
+        "party": {
+          "skeleton": {"hp": 18, "states": []},
+          "nurse": {"hp": 16, "states": ["hexed"]},
+          "golem": {"hp": 32, "states": []},
+          "pixie": {"hp": 10, "states": []},
+          "lich": {"hp": 24, "states": []},
+          "no7": {"hp": 26, "states": []}
+        },
+        "enemies": {
+          "iron_maw": {"hp": 27, "states": []},
+          "lantern_wight": {"hp": 1, "states": []}
+        }
+      }
+    }
+  ]
+}
