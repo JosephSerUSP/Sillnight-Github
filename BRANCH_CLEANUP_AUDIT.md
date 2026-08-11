@@ -24,10 +24,10 @@ The CSV is the detailed inventory: tip SHA, merge-base, tip metadata, branch-onl
 | `audit-documentation-drift-9002616420988873752` | `18c829df07ef` | `51720ab7c73a` | 1 | 4 | 4 files changed, 47 insertions(+), 6 deletions(-) | retained-pending-decision |
 | `battle-pacing-improvements` | `8525d1c46d17` | `4d7365b80213` | 1 | 2 | 2 files changed, 70 insertions(+), 23 deletions(-) | retained-pending-decision |
 | `battle-shatter-transition-15597759711949042376` | `1e6a5a7d708d` | `a8b08806939f` | 3 | 2 | 2 files changed, 287 insertions(+), 76 deletions(-) | retained-pending-decision |
-| `bugfix/recruit-error-fix` | `655f92f52d54` | `81cfc9f52334` | 1 | 2 | 2 files changed, 4 insertions(+), 9 deletions(-) | retained-pending-decision |
+| `bugfix/recruit-error-fix` | `655f92f52d54` | `81cfc9f52334` | 1 | 2 | 2 files changed, 4 insertions(+), 9 deletions(-) | deleted |
 | `doc-drift-audit-15100197966629171290` | `bb8ac8dd47ac` | `9aa17c569d1f` | 1 | 4 | 4 files changed, 24 insertions(+), 3 deletions(-) | retained-pending-decision |
 | `doc-drift-audit-17292721646525560420` | `d887c2ec4325` | `1e14a672d7dc` | 1 | 2 | 2 files changed, 5 insertions(+), 3 deletions(-) | retained-pending-decision |
-| `doc-drift-audit-9865479593348390183` | `f8510036f775` | `0e72de37b363` | 1 | 0 |  | retained-pending-decision |
+| `doc-drift-audit-9865479593348390183` | `f8510036f775` | `0e72de37b363` | 1 | 0 |  | deleted |
 | `doc-window-comparison` | `1b5d239fff4e` | `503e8b0f13ac` | 1 | 2 | 2 files changed, 195 insertions(+) | retained-pending-decision |
 | `doc-window-refactor` | `5f88fc99e119` | `503e8b0f13ac` | 1 | 1 | 1 file changed, 130 insertions(+) | retained-pending-decision |
 | `doc-window-system-refactor` | `c7158e8d44b0` | `503e8b0f13ac` | 1 | 2 | 2 files changed, 244 insertions(+) | retained-pending-decision |
@@ -41,9 +41,9 @@ The CSV is the detailed inventory: tip SHA, merge-base, tip metadata, branch-onl
 | `docs/revise-gameplay-guide` | `2bfd817ade67` | `4d7365b80213` | 1 | 1 | 1 file changed, 88 insertions(+) | retained-pending-decision |
 | `documentation-audit-14046895942092325370` | `859e9b0b16ef` | `9aa17c569d1f` | 1 | 5 | 5 files changed, 38 insertions(+), 20 deletions(-) | retained-pending-decision |
 | `documentation-audit-update-1430419203719429558` | `d01302cb0a50` | `9aa17c569d1f` | 1 | 4 | 4 files changed, 31 insertions(+), 24 deletions(-) | retained-pending-decision |
-| `documentation-audit-updates-179830062199797946` | `4ac22c4494ab` | `0e72de37b363` | 1 | 2 | 2 files changed, 6 insertions(+), 6 deletions(-) | retained-pending-decision |
+| `documentation-audit-updates-179830062199797946` | `4ac22c4494ab` | `0e72de37b363` | 1 | 2 | 2 files changed, 6 insertions(+), 6 deletions(-) | deleted |
 | `documentation-audit-updates-2082069002758705748` | `727c7835e58d` | `0e72de37b363` | 1 | 2 | 2 files changed, 6 insertions(+), 6 deletions(-) | retained-pending-decision |
-| `documentation-audit-updates-9681998856619555653` | `6dda9db5263b` | `0e72de37b363` | 1 | 2 | 2 files changed, 6 insertions(+), 6 deletions(-) | retained-pending-decision |
+| `documentation-audit-updates-9681998856619555653` | `6dda9db5263b` | `0e72de37b363` | 1 | 2 | 2 files changed, 6 insertions(+), 6 deletions(-) | deleted |
 | `documentation-drift-audit-10406535168140030955` | `36c2b829f0ff` | `1e14a672d7dc` | 1 | 6 | 6 files changed, 56 insertions(+), 11 deletions(-) | retained-pending-decision |
 | `documentation-drift-audit-13304102890181895345` | `a06c5e70e3df` | `51f811a7d80b` | 1 | 3 | 3 files changed, 15 insertions(+), 2 deletions(-) | retained-pending-decision |
 | `documentation-drift-audit-1583803531309484466` | `9b3564dee416` | `f528535a263b` | 1 | 4 | 4 files changed, 32 insertions(+), 16 deletions(-) | retained-pending-decision |
@@ -53,32 +53,15 @@ The CSV is the detailed inventory: tip SHA, merge-base, tip metadata, branch-onl
 | `feat/data-editor-3972108228662286533` | `d1c2efad2afa` | `1e14a672d7dc` | 1 | 5 | 5 files changed, 744 insertions(+) | retained-pending-decision |
 | `feat/gameplay-guide` | `3166a06aa7af` | `4d7365b80213` | 1 | 1 | 1 file changed, 123 insertions(+) | retained-pending-decision |
 | `feat/randomized-starting-inventory` | `919c7b167b54` | `4d7365b80213` | 1 | 2 | 2 files changed, 41 insertions(+) | retained-pending-decision |
-| `feature/camera-easing-summoner-pos-652246758887171837` | `58fe1cb695cf` | `fd90caf85b11` | 1 | 3 | 3 files changed, 62 insertions(+), 29 deletions(-) | retained-pending-decision |
-| `feature/map-effects-and-popups-v2` | `73d72c7f5483` | `ba25f1d761a9` | 1 | 13 | 13 files changed, 354 insertions(+), 183 deletions(-) | retained-pending-decision |
-| `feature/scene-transitions-9186627439843748144` | `ce7d9bd61102` | `15565fe7a941` | 1 | 12 | 12 files changed, 264 insertions(+), 25 deletions(-) | retained-pending-decision |
-| `feature/visual-transitions-8417055012383503091` | `bb94e4f84b24` | `15565fe7a941` | 1 | 7 | 7 files changed, 651 insertions(+), 34 deletions(-) | retained-pending-decision |
-| `fix-battle-pacing-13099592463894018345` | `44a1260b8562` | `f528535a263b` | 3 | 3 | 3 files changed, 65 insertions(+), 3 deletions(-) | retained-pending-decision |
-| `fix-fog-of-war-animation` | `020455130119` | `3839ba62430a` | 1 | 1 | 1 file changed, 57 insertions(+), 32 deletions(-) | retained-pending-decision |
-| `fix-fog-wall-displacement` | `da1854b24d35` | `c8d08d016c11` | 1 | 1 | 1 file changed, 1 insertion(+), 1 deletion(-) | retained-pending-decision |
-| `fix-recruit-and-treasure-find` | `274265d55fd6` | `efdeb1912137` | 1 | 2 | 2 files changed, 25 insertions(+), 12 deletions(-) | retained-pending-decision |
-| `fix/explore-effects-and-recruit` | `2fd1ae64ebf9` | `ba25f1d761a9` | 1 | 11 | 11 files changed, 311 insertions(+), 187 deletions(-) | retained-pending-decision |
-| `fix/fog-of-war` | `8cbe0cb3800a` | `699d1a0e2925` | 1 | 3 | 3 files changed, 133 insertions(+), 59 deletions(-) | retained-pending-decision |
-| `fix/shop-ui-persistence-17639534428531026715` | `ce386c76df9b` | `fbe6993bf0a2` | 1 | 1 | 1 file changed, 5 insertions(+), 3 deletions(-) | retained-pending-decision |
-| `fog-displacement-fix-v2` | `01ae126ac491` | `f1f8d9681951` | 1 | 3 | 3 files changed, 81 insertions(+), 13 deletions(-) | retained-pending-decision |
-| `fog-displacement-fix-v3` | `445f288b30e1` | `f1f8d9681951` | 1 | 3 | 3 files changed, 77 insertions(+), 15 deletions(-) | retained-pending-decision |
-| `fog-of-war-and-fix-spawn` | `f7e1ba10cc28` | `efdeb1912137` | 1 | 5 | 5 files changed, 137 insertions(+), 92 deletions(-) | retained-pending-decision |
-| `fog-of-war-shader-fix` | `57ac2262442b` | `f1f8d9681951` | 1 | 2 | 2 files changed, 59 insertions(+), 1 deletion(-) | retained-pending-decision |
-| `fog-persistence-fix` | `af2ebc1e9d04` | `699d1a0e2925` | 1 | 2 | 2 files changed, 186 insertions(+), 97 deletions(-) | retained-pending-decision |
-| `jules-fix-exp-math-5379748466734844540` | `2493299d5a27` | `23cffca33a61` | 3 | 3 | 3 files changed, 107 insertions(+), 26 deletions(-) | retained-pending-decision |
-| `jules-maintenance-audio-11583633844333495691` | `be1f281015bd` | `eb5a1616147d` | 1 | 38 | 38 files changed, 83 insertions(+), 2 deletions(-) | retained-pending-decision |
+| `feature/camera-easing-summoner-pos-652246758887171837` | `58fe1cb695cf` | `fd90caf85b11` | 1 | 3 | 3 files changed, 62 insertions(+), 29 deletions(-) | eb5a1616147de758f279ad635a4606d0c8a9a7ce |
 | `jules-stillnight-threejs-spec-22793016497390911` | `b45d6c96ad77` | `f528535a263b` | 1 | 1 | 1 file changed, 140 insertions(+) | retained-pending-decision |
 | `maintain-audio-integration-17985976936438372451` | `e03c1e20da57` | `1e14a672d7dc` | 1 | 6 | 6 files changed, 238 insertions(+), 2 deletions(-) | retained-pending-decision |
 | `maintenance-audio-service-7105684685514338722` | `af250f121447` | `eb5a1616147d` | 1 | 4 | 4 files changed, 132 insertions(+), 3 deletions(-) | retained-pending-decision |
 | `maintenance-cleanup-todos-13252880406077690334` | `e0d33e0075eb` | `0e72de37b363` | 1 | 3 | 3 files changed, 9 insertions(+), 19 deletions(-) | retained-pending-decision |
-| `maintenance-fix-verification-870040479274439439` | `473727655c45` | `0e72de37b363` | 1 | 1 | 1 file changed, 1 insertion(+), 1 deletion(-) | retained-pending-decision |
-| `maintenance-fix-verification-script-10796663856295131595` | `917616c83bcd` | `0e72de37b363` | 1 | 1 | 1 file changed, 1 insertion(+), 1 deletion(-) | retained-pending-decision |
+| `maintenance-fix-verification-870040479274439439` | `473727655c45` | `0e72de37b363` | 1 | 1 | 1 file changed, 1 insertion(+), 1 deletion(-) | deleted |
+| `maintenance-fix-verification-script-10796663856295131595` | `917616c83bcd` | `0e72de37b363` | 1 | 1 | 1 file changed, 1 insertion(+), 1 deletion(-) | deleted |
 | `maintenance-reactive-ui-and-cleanup-4445906571412925044` | `1a85ef385394` | `9aa17c569d1f` | 1 | 4 | 4 files changed, 17 insertions(+), 23 deletions(-) | retained-pending-decision |
-| `maintenance-reactivity-cleanup-4749837984488329422` | `aeefebe677dd` | `0e72de37b363` | 1 | 4 | 4 files changed, 104 insertions(+), 22 deletions(-) | retained-pending-decision |
+| `maintenance-reactivity-cleanup-4749837984488329422` | `aeefebe677dd` | `0e72de37b363` | 1 | 4 | 4 files changed, 104 insertions(+), 22 deletions(-) | deleted |
 | `maintenance-refactor-battler-ui-12571708989504921944` | `3b0c290911cb` | `1e14a672d7dc` | 1 | 5 | 5 files changed, 55 insertions(+), 16 deletions(-) | retained-pending-decision |
 | `maintenance-refactor-cleanup-2209106276973364194` | `fe9c4acaa796` | `0e72de37b363` | 1 | 3 | 3 files changed, 9 insertions(+), 2 deletions(-) | retained-pending-decision |
 | `maintenance-refactor-reactivity-10656735279742520841` | `814728c74e44` | `0e72de37b363` | 1 | 4 | 4 files changed, 104 insertions(+), 22 deletions(-) | retained-pending-decision |
@@ -88,7 +71,7 @@ The CSV is the detailed inventory: tip SHA, merge-base, tip metadata, branch-onl
 | `maintenance/audio-element-refactor-9755390309044697866` | `edc2789db29e` | `1e14a672d7dc` | 1 | 11 | 11 files changed, 323 insertions(+), 77 deletions(-) | retained-pending-decision |
 | `maintenance/audio-system-3677687844805769385` | `76ff9b221d68` | `eb5a1616147d` | 1 | 10 | 10 files changed, 186 insertions(+), 1 deletion(-) | retained-pending-decision |
 | `maintenance/battle-refactor-audio-2570828225764409497` | `fe3747d9dd11` | `eb5a1616147d` | 1 | 6 | 6 files changed, 113 insertions(+), 13 deletions(-) | retained-pending-decision |
-| `maintenance/fix-verification-script-12902203665249126600` | `d3dbfd16a375` | `0e72de37b363` | 1 | 1 | 1 file changed, 1 insertion(+), 1 deletion(-) | retained-pending-decision |
+| `maintenance/fix-verification-script-12902203665249126600` | `d3dbfd16a375` | `0e72de37b363` | 1 | 1 | 1 file changed, 1 insertion(+), 1 deletion(-) | deleted |
 | `maintenance/reactive-state-events-8749322186825554881` | `1b56e981b2d6` | `1e14a672d7dc` | 1 | 4 | 4 files changed, 66 insertions(+), 4 deletions(-) | retained-pending-decision |
 | `maintenance/summoner-turn-params-1622379730779134202` | `1f2ebc00e036` | `a81bac02cbde` | 1 | 6 | 6 files changed, 144 insertions(+), 2 deletions(-) | retained-pending-decision |
 | `party-menu-summoner-fix-14374155521116181425` | `7f22983f8ac1` | `a158ead5f547` | 1 | 8 | 8 files changed, 9 insertions(+), 400 deletions(-) | retained-pending-decision |
@@ -109,8 +92,23 @@ The CSV is the detailed inventory: tip SHA, merge-base, tip metadata, branch-onl
 | `window-refactor-phase-2-dynamic-height` | `78fe67b60831` | `ba363b2913a2` | 1 | 10 | 10 files changed, 148 insertions(+), 49 deletions(-) | retained-pending-decision |
 | `window-refactor-phase-2-fix-height` | `78a34417ab90` | `ba363b2913a2` | 1 | 10 | 10 files changed, 147 insertions(+), 49 deletions(-) | retained-pending-decision |
 | `xp-calc-fix-1238135631318676896` | `2c4e0aa1cdd1` | `418ba4f3848a` | 1 | 5 | 5 files changed, 103 insertions(+), 9 deletions(-) | retained-pending-decision |
-
-No remote branch is deleted by this baseline record.
+| `feature/map-effects-and-popups-v2` | `73d72c7f5483` | `ba25f1d761a9` | 1 | 13 | 13 files changed, 354 insertions(+), 183 deletions(-) | retained-pending-decision |
+| `feature/scene-transitions-9186627439843748144` | `ce7d9bd61102` | `15565fe7a941` | 1 | 12 | 12 files changed, 264 insertions(+), 25 deletions(-) | retained-pending-decision |
+| `feature/visual-transitions-8417055012383503091` | `bb94e4f84b24` | `15565fe7a941` | 1 | 7 | 7 files changed, 651 insertions(+), 34 deletions(-) | retained-pending-decision |
+| `fix-battle-pacing-13099592463894018345` | `44a1260b8562` | `f528535a263b` | 3 | 3 | 3 files changed, 65 insertions(+), 3 deletions(-) | retained-pending-decision |
+| `fix-fog-of-war-animation` | `020455130119` | `3839ba62430a` | 1 | 1 | 1 file changed, 57 insertions(+), 32 deletions(-) | retained-pending-decision |
+| `fix-fog-wall-displacement` | `da1854b24d35` | `c8d08d016c11` | 1 | 1 | 1 file changed, 1 insertion(+), 1 deletion(-) | retained-pending-decision |
+| `fix-recruit-and-treasure-find` | `274265d55fd6` | `efdeb1912137` | 1 | 2 | 2 files changed, 25 insertions(+), 12 deletions(-) | retained-pending-decision |
+| `fix/explore-effects-and-recruit` | `2fd1ae64ebf9` | `ba25f1d761a9` | 1 | 11 | 11 files changed, 311 insertions(+), 187 deletions(-) | retained-pending-decision |
+| `fix/fog-of-war` | `8cbe0cb3800a` | `699d1a0e2925` | 1 | 3 | 3 files changed, 133 insertions(+), 59 deletions(-) | retained-pending-decision |
+| `fix/shop-ui-persistence-17639534428531026715` | `ce386c76df9b` | `fbe6993bf0a2` | 1 | 1 | 1 file changed, 5 insertions(+), 3 deletions(-) | deleted |
+| `fog-displacement-fix-v2` | `01ae126ac491` | `f1f8d9681951` | 1 | 3 | 3 files changed, 81 insertions(+), 13 deletions(-) | retained-pending-decision |
+| `fog-displacement-fix-v3` | `445f288b30e1` | `f1f8d9681951` | 1 | 3 | 3 files changed, 77 insertions(+), 15 deletions(-) | retained-pending-decision |
+| `fog-of-war-and-fix-spawn` | `f7e1ba10cc28` | `efdeb1912137` | 1 | 5 | 5 files changed, 137 insertions(+), 92 deletions(-) | retained-pending-decision |
+| `fog-of-war-shader-fix` | `57ac2262442b` | `f1f8d9681951` | 1 | 2 | 2 files changed, 59 insertions(+), 1 deletion(-) | retained-pending-decision |
+| `fog-persistence-fix` | `af2ebc1e9d04` | `699d1a0e2925` | 1 | 2 | 2 files changed, 186 insertions(+), 97 deletions(-) | retained-pending-decision |
+| `jules-fix-exp-math-5379748466734844540` | `2493299d5a27` | `23cffca33a61` | 3 | 3 | 3 files changed, 107 insertions(+), 26 deletions(-) | retained-pending-decision |
+| `jules-maintenance-audio-11583633844333495691` | `be1f281015bd` | `eb5a1616147d` | 1 | 38 | 38 files changed, 83 insertions(+), 2 deletions(-) | retained-pending-decision |
 
 ## Absorption record
 
@@ -120,10 +118,10 @@ The four duplicate branches `doc-drift-audit-9865479593348390183`, `documentatio
 
 ## Deletion verification
 
-Seven exact branches were deleted in two reviewed batches. The final remote non-main count is 90. `origin/main` was unchanged by deletion and is now recorded at the final audit commit. Recovery bundles: `D:\Github\Sillnight-branch-archives\2026-08-11\sillnight-remote-branches.bundle`, `D:\Github\Sillnight-branch-archives\2026-08-11\sillnight-remote-branches-post-absorption.bundle`, `D:\Github\Sillnight-branch-archives\2026-08-11\sillnight-remote-branches-pre-duplicate-deletion.bundle`, and `D:\Github\Sillnight-branch-archives\2026-08-11\sillnight-remote-branches-final-audit-2026-08-11.bundle`. The final bundle verified as a complete history with 98 refs: current main, current remote branches, and seven deleted-branch archive tags.
+Nine exact branches were deleted in three reviewed batches. The final remote non-main count is 88. `origin/main` was unchanged by deletion and is now recorded at the final audit commit. Recovery bundles: `D:\Github\Sillnight-branch-archives\2026-08-11\sillnight-remote-branches.bundle`, `D:\Github\Sillnight-branch-archives\2026-08-11\sillnight-remote-branches-post-absorption.bundle`, `D:\Github\Sillnight-branch-archives\2026-08-11\sillnight-remote-branches-pre-duplicate-deletion.bundle`, and `D:\Github\Sillnight-branch-archives\2026-08-11\sillnight-remote-branches-final-audit-2026-08-11.bundle`. The final bundle verified as a complete history with 98 refs: current main, current remote branches, and nine deleted-branch archive tags.
 
 No remaining branch is marked deletion-permitted; retained branches require individual product or implementation decisions.
 
 ## Independent gameplay review
 
-Two narrow branches were rejected after current-main code review. `bugfix/recruit-error-fix` patches a legacy recruit modal that has been replaced by `Window_Recruit`, which already calls `Game_Party.addActor(speciesId, level)`. `fix/shop-ui-persistence-17639534428531026715` bypasses the base window show/hide lifecycle and would skip SceneManager registration; the reproducible browser fix remains tracked in Issue #297. Both exact tips remain in the bundle and archive tags and are approved for deletion.
+Two narrow branches were rejected after current-main code review and then deleted in a reviewed batch. `bugfix/recruit-error-fix` patches a legacy recruit modal that has been replaced by `Window_Recruit`, which already calls `Game_Party.addActor(speciesId, level)`. `fix/shop-ui-persistence-17639534428531026715` bypasses the base window show/hide lifecycle and would skip SceneManager registration; the reproducible browser fix remains tracked in Issue #297. Both exact tips remain in the bundle and archive tags.
