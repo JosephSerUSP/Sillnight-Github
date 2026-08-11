@@ -2,7 +2,7 @@
 
 **Repository:** `JosephSerUSP/Sillnight-Github`  
 **Snapshot date:** 2026-08-11  
-**Current main:** `6d0ed7e`
+**Audit reference commit:** `6d0ed7e` (the per-branch inventory commit; verify the live `origin/main` SHA before acting)
 **Remote refs reviewed:** 97 baseline non-`main` branches; 88 remain after nine verified deletions
 **Open pull requests:** 0
 
