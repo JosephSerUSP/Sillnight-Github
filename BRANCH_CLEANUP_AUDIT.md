@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 0.9 seconds
-Output:
 # Branch Cleanup Audit
 
 Baseline: `origin/main` at `b47a38c4d7ce529fddba725dcd6037959545f8f6`.
@@ -12,16 +9,6 @@ Every branch tip is preserved in the external bundle and archive tags documented
 - Deletion gate: `deletion_permitted` remains `false` until the branch has been individually reviewed and its disposition is supported by evidence.
 
 The CSV is the detailed inventory: tip SHA, merge-base, tip metadata, branch-only commit count, merge-base-relative diff summary, changed-path count, content flags, and disposition.
-
-## Absorption record
-
-The three branches below contained the same one-line verification correction: replace the invalid `slime` enemy fixture with the valid `goblin` fixture in `verification/verify_animations.py`.
-
-- `maintenance-fix-verification-870040479274439439` at `473727655c458665ddae585ddd5683492ce11a0c`
-- `maintenance-fix-verification-script-10796663856295131595` at `917616c83bcdd44c781c62af6dfd3148122fcaea`
-- `maintenance/fix-verification-script-12902203665249126600` at `d3dbfd16a375db439599342144c0828cf9f4eed7`
-
-The change was manually ported as focused commit `86e1d14` on `main`. Verification: `git diff --check` passed; a Python runtime was unavailable for bytecode compilation in this environment. The three source branches are classified `absorbed`; their archive tags and bundle entries preserve the original tips.
 
 | Branch | Tip | Merge-base | Branch-only commits | Changed paths | Diff summary | Disposition |
 |---|---|---|---:|---:|---|---|
@@ -123,7 +110,16 @@ The change was manually ported as focused commit `86e1d14` on `main`. Verificati
 | `window-refactor-phase-2-fix-height` | `78a34417ab90` | `ba363b2913a2` | 1 | 10 | 10 files changed, 147 insertions(+), 49 deletions(-) | retained-pending-decision |
 | `xp-calc-fix-1238135631318676896` | `2c4e0aa1cdd1` | `418ba4f3848a` | 1 | 5 | 5 files changed, 103 insertions(+), 9 deletions(-) | retained-pending-decision |
 
-Deletion record: after re-fetching, the three exact verification branches listed above were deleted in one reviewed batch. `origin/main` remained `6cbc777f5e641a8c17b6adf6b9931fc340b266d4`; the remote non-main count changed from 97 to 94 and no other branch was targeted.
+No remote branch is deleted by this baseline record.
 
-Duplicate deletion record: four older branches with byte-for-byte identical complete tip trees were deleted after preserving their exact tips. Retained representatives are `audit-documentation-drift-1279079876786371621`, `documentation-audit-updates-2082069002758705748`, and `maintenance-refactor-reactivity-10656735279742520841`. The remote non-main count is now 90; `origin/main` remained `cd35d00123d1383555a539e12147e4549249c2ef`.
+## Absorption record
 
+The three verification branches `maintenance-fix-verification-870040479274439439`, `maintenance-fix-verification-script-10796663856295131595`, and `maintenance/fix-verification-script-12902203665249126600` contained the same one-line correction: replace the invalid `slime` enemy fixture with `goblin` in `verification/verify_animations.py`. The change was manually ported as focused commit `86e1d14` on `main`; `git diff --check` passed, and no Python runtime was available for bytecode compilation.
+
+The four duplicate branches `doc-drift-audit-9865479593348390183`, `documentation-audit-updates-179830062199797946`, `documentation-audit-updates-9681998856619555653`, and `maintenance-reactivity-cleanup-4749837984488329422` had byte-for-byte identical complete tip trees to retained representatives. They were deleted only after exact tip and archive-tag verification. Retained representatives are `audit-documentation-drift-1279079876786371621`, `documentation-audit-updates-2082069002758705748`, and `maintenance-refactor-reactivity-10656735279742520841`.
+
+## Deletion verification
+
+Seven exact branches were deleted in two reviewed batches. The final remote non-main count is 90. `origin/main` was unchanged by deletion and is now recorded at the final audit commit. Recovery bundles: `D:\Github\Sillnight-branch-archives\2026-08-11\sillnight-remote-branches.bundle`, `D:\Github\Sillnight-branch-archives\2026-08-11\sillnight-remote-branches-post-absorption.bundle`, `D:\Github\Sillnight-branch-archives\2026-08-11\sillnight-remote-branches-pre-duplicate-deletion.bundle`, and `D:\Github\Sillnight-branch-archives\2026-08-11\sillnight-remote-branches-final-audit-2026-08-11.bundle`. The final bundle verified as a complete history with 98 refs: current main, current remote branches, and seven deleted-branch archive tags.
+
+No remaining branch is marked deletion-permitted; retained branches require individual product or implementation decisions.
