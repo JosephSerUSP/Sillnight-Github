@@ -204,11 +204,30 @@ export const BattleManager = {
             ? allUnits.filter(u => u.uid !== summoner.uid)
             : allUnits;
 
-        // TODO: Refactor to sort by Action Speed (asp) per Game Design. Currently using Unit Speed.
-        nonSummonerUnits.sort((a, b) => b.speed - a.speed || Math.random() - 0.5);
-        this.queue = (summoner && summoner.hp > 0)
-            ? [summoner, ...nonSummonerUnits]
-            : nonSummonerUnits;
+        // 1. Plan Actions (Pre-calculate for sorting)
+        nonSummonerUnits.forEach(u => {
+            const isAlly = this.allies.some(a => a.uid === u.uid);
+            const friends = isAlly ? this.allies : this.enemies;
+            const opponents = isAlly ? this.enemies : this.allies;
+            u.makeActions(friends, opponents);
+        });
+
+        // 2. Sort by Action Speed (Primary) and Unit Speed (Secondary)
+        nonSummonerUnits.sort((a, b) => {
+            const aSpeed = (a._currentAction && a._currentAction.item()) ? (a._currentAction.item().speed || 0) : 0;
+            const bSpeed = (b._currentAction && b._currentAction.item()) ? (b._currentAction.item().speed || 0) : 0;
+
+            if (aSpeed !== bSpeed) {
+                return bSpeed - aSpeed; // Higher speed acts first
+            }
+            return b.speed - a.speed || Math.random() - 0.5;
+        });
+
+        // 3. Construct Queue (Summoner Last)
+        this.queue = [...nonSummonerUnits];
+        if (summoner && summoner.hp > 0) {
+             this.queue.push(summoner);
+        }
         this.turnIndex = 0;
 
         this.processNextTurn();
@@ -219,10 +238,6 @@ export const BattleManager = {
      * Executes AI actions or waits for animations.
      */
     processNextTurn() {
-            // Replaces: window.Game.Windows.Party.refresh();
-            // BattleObserver handles Party refresh on events usually,
-            // but we might want to ensure sync here.
-
             if (this.turnIndex >= this.queue.length) {
                 setTimeout(() => this.nextRound(), 1000);
                 return;
@@ -234,70 +249,28 @@ export const BattleManager = {
                 return;
             }
 
+            // Check for Summoner (Player Input)
+            if (unit.isSummoner) {
+                this.requestPlayerTurn();
+                return;
+            }
+
             Services.events.emit('battle:turn_start', { unit });
 
             const isAlly = this.allies.some(a => a.uid === unit.uid);
             const enemies = isAlly ? this.enemies : this.allies;
             const friends = isAlly ? this.allies : this.enemies;
-            const possibleActs = [...unit.acts[0], ...(unit.acts[1] || [])];
-            let chosen = null;
-            if (unit.temperament === 'kind') {
-                const hurt = friends.filter(f => f.hp < f.mhp).sort((a, b) => a.hp - b.hp)[0];
-                if (hurt && hurt.hp < hurt.mhp * 0.6) {
-                    for (const a of possibleActs) {
-                        const skill = Services.get('SkillRegistry').get(a) || Services.get('SkillRegistry').get(a.toLowerCase());
-                        if (skill && skill.category === 'heal') {
-                            // Don't pick revival skills if the target is alive
-                            const isRevive = skill.effects && skill.effects.some(e => e.type === 'revive');
-                            if (isRevive && hurt.hp > 0) continue;
 
-                            chosen = a;
-                            break;
-                        }
-                    }
-                }
-            }
-            if (!chosen) {
-                chosen = possibleActs[Math.floor(Math.random() * possibleActs.length)];
+            // Retrieve pre-calculated action
+            let action = unit._currentAction;
+
+            // Safety fallback if no action (shouldn't happen if makeActions called)
+            if (!action) {
+                 unit.makeActions(friends, enemies);
+                 action = unit._currentAction;
             }
 
-            let actionData = null;
-
-            // Try explicit lookup in registries first
-            const skillRegistry = Services.get('SkillRegistry');
-            const itemRegistry = Services.get('ItemRegistry');
-
-            // Note: chosen is usually an ID string (e.g. 'attack', 'cure')
-            // Registries expect the exact ID.
-            if (skillRegistry.get(chosen)) {
-                actionData = skillRegistry.get(chosen);
-            } else if (itemRegistry.get(chosen)) {
-                actionData = itemRegistry.get(chosen);
-            } else {
-                /**
-                 * @deprecated Fallback for Legacy case-insensitive search.
-                 * TODO: Remove this once all data files are normalized to exact case IDs.
-                 */
-                const chosenLower = chosen.toLowerCase();
-                const allSkillIds = skillRegistry.getAll().map(s => s.id);
-                const skillKey = allSkillIds.find(k => k.toLowerCase() === chosenLower);
-
-                if (skillKey) {
-                    actionData = skillRegistry.get(skillKey);
-                } else {
-                    const allItemIds = itemRegistry.getAll().map(i => i.id);
-                    const itemKey = allItemIds.find(k => k.toLowerCase() === chosenLower);
-                    if (itemKey) {
-                        actionData = itemRegistry.get(itemKey);
-                    } else {
-                        actionData = skillRegistry.get('attack');
-                    }
-                }
-            }
-
-            // Create Game_Action instance
-            const action = new Game_Action(unit);
-            action.setObject(actionData);
+            const actionData = action.item();
 
             if (isAlly) {
                 window.$gameParty?.onAllyAction(unit);
@@ -334,7 +307,9 @@ export const BattleManager = {
                             validEnemies = nonSummonerEnemies;
                         }
                     }
-                    targets = [validEnemies[Math.floor(Math.random() * validEnemies.length)]];
+                    if (validEnemies.length > 0) {
+                         targets = [validEnemies[Math.floor(Math.random() * validEnemies.length)]];
+                    }
                 }
             }
             if (targets.length === 0 || !targets[0]) {

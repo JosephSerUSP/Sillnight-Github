@@ -1,4 +1,5 @@
 import { Game_Battler } from './Game_Battler.js';
+import { Game_Action } from './Game_Action.js';
 import { Services } from '../ServiceLocator.js';
 import { Config } from '../Config.js';
 
@@ -46,6 +47,69 @@ export class Game_Enemy extends Game_Battler {
         }
         this._name = def.name;
         this.recoverAll(); // Sets HP/MP to max
+    }
+
+    /**
+     * Generates actions for the current turn using AI logic.
+     * @param {Array<Game_Battler>} friends - Allies of this unit.
+     * @param {Array<Game_Battler>} opponents - Enemies of this unit.
+     */
+    makeActions(friends, opponents) {
+        this._currentAction = null;
+        // possibleActs logic copied from BattleManager
+        const possibleActs = [...(this.acts[0] || []), ...(this.acts[1] || [])];
+        if (possibleActs.length === 0) {
+            super.makeActions(friends, opponents);
+            return;
+        }
+
+        let chosen = null;
+        if (this.temperament === 'kind' && friends) {
+            const hurt = friends.filter(f => f.hp < f.mhp).sort((a, b) => a.hp - b.hp)[0];
+            if (hurt && hurt.hp < hurt.mhp * 0.6) {
+                const skillRegistry = Services.get('SkillRegistry');
+                for (const a of possibleActs) {
+                    const skill = skillRegistry.get(a) || skillRegistry.get(a.toLowerCase());
+                    if (skill && skill.category === 'heal') {
+                        // Don't pick revival skills if the target is alive
+                        const isRevive = skill.effects && skill.effects.some(e => e.type === 'revive');
+                        if (isRevive && hurt.hp > 0) continue;
+
+                        chosen = a;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!chosen) {
+            chosen = possibleActs[Math.floor(Math.random() * possibleActs.length)];
+        }
+
+        // Create Game_Action
+        const skillRegistry = Services.get('SkillRegistry');
+        const itemRegistry = Services.get('ItemRegistry');
+
+        let actionData = skillRegistry.get(chosen) || itemRegistry.get(chosen);
+
+        // Legacy fallback for case-insensitivity
+        if (!actionData) {
+             const chosenLower = chosen.toLowerCase();
+             const allSkillIds = skillRegistry.getAll().map(s => s.id);
+             const skillKey = allSkillIds.find(k => k.toLowerCase() === chosenLower);
+             if (skillKey) actionData = skillRegistry.get(skillKey);
+             else {
+                 const allItemIds = itemRegistry.getAll().map(i => i.id);
+                 const itemKey = allItemIds.find(k => k.toLowerCase() === chosenLower);
+                 if (itemKey) actionData = itemRegistry.get(itemKey);
+             }
+        }
+
+        if (!actionData) actionData = skillRegistry.get('attack');
+
+        const action = new Game_Action(this);
+        action.setObject(actionData);
+        this._currentAction = action;
     }
 
     /**

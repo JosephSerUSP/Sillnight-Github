@@ -1,4 +1,5 @@
 import { Game_BattlerBase } from './Game_BattlerBase.js';
+import { Game_Action } from './Game_Action.js';
 import { Log } from '../log.js';
 import { Services } from '../ServiceLocator.js';
 import { Config } from '../Config.js';
@@ -120,10 +121,21 @@ export class Game_Battler extends Game_BattlerBase {
     /**
      * Generates actions for the current turn.
      * (Placeholder for AI or input handling).
+     * @param {Array<Game_Battler>} [friends] - Allies of this unit.
+     * @param {Array<Game_Battler>} [opponents] - Enemies of this unit.
      */
-    makeActions() {
+    makeActions(friends, opponents) {
         this._actions = [];
-        // Logic to decide actions (AI or Input placeholder)
+        this._currentAction = null;
+        // Default fallback: Attack if possible, otherwise nothing
+        const skillRegistry = Services.get('SkillRegistry');
+        const attack = skillRegistry.get('attack');
+
+        if (attack) {
+            const action = new Game_Action(this);
+            action.setObject(attack);
+            this._currentAction = action;
+        }
     }
 
     /**
