@@ -120,4 +120,4 @@ The change was manually ported as focused commit `86e1d14` on `main`. Verificati
 | `window-refactor-phase-2-fix-height` | `78a34417ab90` | `ba363b2913a2` | 1 | 10 | 10 files changed, 147 insertions(+), 49 deletions(-) | retained-pending-review |
 | `xp-calc-fix-1238135631318676896` | `2c4e0aa1cdd1` | `418ba4f3848a` | 1 | 5 | 5 files changed, 103 insertions(+), 9 deletions(-) | retained-pending-review |
 
-No remote branch is deleted by this baseline record.
+Deletion record: after re-fetching, the three exact verification branches listed above were deleted in one reviewed batch. `origin/main` remained `6cbc777f5e641a8c17b6adf6b9931fc340b266d4`; the remote non-main count changed from 97 to 94 and no other branch was targeted.
