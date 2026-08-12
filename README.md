@@ -14,11 +14,13 @@ Sillnight is a browser-based 3D dungeon-crawler prototype built with JavaScript,
 
 The game is served as a browser application from `index.html`. The repository currently has targeted verification scripts under `verification/`; run the relevant script after changing game systems. Browser automation is available through the Playwright development dependency.
 
+JavaScript + Three.js is the ratified production substrate for the current architecture cycle. The 2026 substrate experiments are preserved as evidence; current work should evolve the existing runtime rather than pursue an engine migration unless a concrete future limitation reopens that decision.
+
 ## Documentation
 
 - [`documentation/GAME_THESIS_2026.md`](documentation/GAME_THESIS_2026.md) defines the current game/product North Star.
-- [`documentation/SUBSTRATE_EVALUATION_2026.md`](documentation/SUBSTRATE_EVALUATION_2026.md) evaluates the current Three.js runtime against Godot and Defold and defines the evidence gate for any engine migration.
-- [`documentation/SUBSTRATE_SPIKE_SYNTHESIS_2026.md`](documentation/SUBSTRATE_SPIKE_SYNTHESIS_2026.md) synthesizes the implemented substrate experiments, records the modernized-incumbent direction, and defines the fidelity gate for any future migration.
+- [`documentation/SUBSTRATE_EVALUATION_2026.md`](documentation/SUBSTRATE_EVALUATION_2026.md) records the original Three.js/Godot/Defold paper evaluation and the evidence gate used for the experiments.
+- [`documentation/SUBSTRATE_SPIKE_SYNTHESIS_2026.md`](documentation/SUBSTRATE_SPIKE_SYNTHESIS_2026.md) synthesizes the implemented experiments, ratifies the evolved Three.js production path, and records Godot/Defold as suspended learning evidence.
 - [`REFACTOR_PLAN.md`](REFACTOR_PLAN.md) describes current architecture status and remaining gaps.
 - [`documentation/ARCHITECTURE.md`](documentation/ARCHITECTURE.md) describes the implemented architecture.
 - [`documentation/gameDesign.md`](documentation/gameDesign.md) preserves detailed mechanics intent and historical implementation gaps subordinate to the current thesis and newer ratified decisions.
