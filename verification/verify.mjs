@@ -4,7 +4,7 @@ import { mkdir, readFile } from 'node:fs/promises';
 import { extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const repoRoot = resolve(fileURLToPath(new URL('..', import.meta.url)), '..');
+const repoRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const artifactDir = join(repoRoot, 'verification', 'artifacts');
 
 const mimeTypes = new Map([
@@ -69,7 +69,7 @@ async function startStaticServer() {
 }
 
 async function checkDataIntegrity(page) {
-  return page.evaluate(async () => {
+  return page.evaluate(() => {
     const creatures = window.Game.Services.get('CreatureRegistry').getAll();
     const skills = window.Game.Services.get('SkillRegistry');
     const passives = window.Game.Services.get('PassiveRegistry');
