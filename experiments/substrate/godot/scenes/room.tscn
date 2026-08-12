@@ -1,0 +1,67 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Material" path="res://materials/room_fog.tres" id="1_room"]
+[ext_resource type="Material" path="res://materials/room_fog_accent.tres" id="2_accent"]
+
+[sub_resource type="BoxMesh" id="Box_floor"]
+size = Vector3(18, 0.2, 12)
+
+[sub_resource type="BoxMesh" id="Box_wall_long"]
+size = Vector3(18, 3, 0.25)
+
+[sub_resource type="BoxMesh" id="Box_wall_short"]
+size = Vector3(0.25, 3, 12)
+
+[sub_resource type="CylinderMesh" id="Cylinder_column"]
+top_radius = 0.5
+bottom_radius = 0.7
+height = 3.5
+
+[node name="Room" type="Node3D"]
+
+[node name="Floor" type="MeshInstance3D" parent="."]
+mesh = SubResource("Box_floor")
+material_override = ExtResource("1_room")
+position = Vector3(0, -0.1, 0)
+
+[node name="NorthWall" type="MeshInstance3D" parent="."]
+mesh = SubResource("Box_wall_long")
+material_override = ExtResource("2_accent")
+position = Vector3(0, 1.5, -6)
+
+[node name="SouthWall" type="MeshInstance3D" parent="."]
+mesh = SubResource("Box_wall_long")
+material_override = ExtResource("2_accent")
+position = Vector3(0, 1.5, 6)
+
+[node name="WestWall" type="MeshInstance3D" parent="."]
+mesh = SubResource("Box_wall_short")
+material_override = ExtResource("2_accent")
+position = Vector3(-9, 1.5, 0)
+
+[node name="EastWall" type="MeshInstance3D" parent="."]
+mesh = SubResource("Box_wall_short")
+material_override = ExtResource("2_accent")
+position = Vector3(9, 1.5, 0)
+
+[node name="Columns" type="Node3D" parent="."]
+
+[node name="ColumnA" type="MeshInstance3D" parent="Columns"]
+mesh = SubResource("Cylinder_column")
+material_override = ExtResource("1_room")
+position = Vector3(-6.5, 1.75, -3.8)
+
+[node name="ColumnB" type="MeshInstance3D" parent="Columns"]
+mesh = SubResource("Cylinder_column")
+material_override = ExtResource("1_room")
+position = Vector3(6.5, 1.75, -3.8)
+
+[node name="ColumnC" type="MeshInstance3D" parent="Columns"]
+mesh = SubResource("Cylinder_column")
+material_override = ExtResource("1_room")
+position = Vector3(-6.5, 1.75, 3.8)
+
+[node name="ColumnD" type="MeshInstance3D" parent="Columns"]
+mesh = SubResource("Cylinder_column")
+material_override = ExtResource("1_room")
+position = Vector3(6.5, 1.75, 3.8)

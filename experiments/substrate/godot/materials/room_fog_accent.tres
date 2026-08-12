@@ -1,0 +1,14 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://shaders/room_fog.gdshader" id="1_room_fog"]
+
+[resource]
+shader = ExtResource("1_room_fog")
+shader_parameter/base_color = Color(0.52, 0.2, 0.38, 1)
+shader_parameter/fog_color = Color(0.1, 0.03, 0.14, 1)
+shader_parameter/fog_start = 2.5
+shader_parameter/fog_end = 14.0
+shader_parameter/fog_floor = -1.0
+shader_parameter/fog_height = 3.0
+shader_parameter/displacement_strength = 0.1
+shader_parameter/displacement_frequency = 1.7
