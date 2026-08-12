@@ -196,10 +196,18 @@ window.addEventListener('resize', () => {
     Game.TransitionManager.resize();
 });
 
-window.addEventListener('load', async () => {
+const initializeWhenReady = async () => {
     scaleGameContainer();
     await Game.init();
-});
+};
+
+// bootstrap.js loads this module after the runtime boundary is ready. If the
+// document has already completed by then, the load event has already fired.
+if (document.readyState === 'complete') {
+    initializeWhenReady();
+} else {
+    window.addEventListener('load', initializeWhenReady, { once: true });
+}
 
 // Expose Game for inline handlers
 window.Game = Game;
