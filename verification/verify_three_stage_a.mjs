@@ -49,6 +49,7 @@ const assertBuiltOutput = async () => {
   const builtThree = await readFile(join(distRoot, 'vendor', 'three.min.js'));
   const requiredAssets = [
     'src/game/main.js',
+    'src/game/runtime/ThreeRuntime.js',
     'src/libs/effekseer.min.js'
   ];
 
@@ -62,9 +63,26 @@ const assertBuiltOutput = async () => {
   }
 };
 
-await assertBuiltOutput();
+const assertAdapterSources = async () => {
+  const renderManager = await readFile(join(repoRoot, 'src', 'game', 'managers', 'RenderManager.js'), 'utf8');
+  const fogMaterial = await readFile(join(repoRoot, 'src', 'game', 'materials', 'FogMaterial.js'), 'utf8');
+  const adapter = await readFile(join(repoRoot, 'src', 'game', 'runtime', 'ThreeRuntime.js'), 'utf8');
 
-const screenshotDir = await mkdtemp(join(tmpdir(), 'sillnight-stage-a-'));
+  if (!renderManager.includes("from '../runtime/ThreeRuntime.js'")) {
+    throw new Error('RenderManager is not routed through ThreeRuntime.');
+  }
+  if (!fogMaterial.includes("from '../runtime/ThreeRuntime.js'")) {
+    throw new Error('FogMaterial is not routed through ThreeRuntime.');
+  }
+  if (!adapter.includes('globalThis.THREE')) {
+    throw new Error('ThreeRuntime no longer documents/owns the current legacy global boundary.');
+  }
+};
+
+await assertBuiltOutput();
+await assertAdapterSources();
+
+const screenshotDir = await mkdtemp(join(tmpdir(), 'sillnight-three-runtime-'));
 const browser = await chromium.launch({ headless: true });
 
 try {
@@ -89,19 +107,31 @@ try {
       await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'domcontentloaded' });
       await page.waitForFunction(() => window.Game?.ready === true, null, { timeout: 15000 });
 
-      const evidence = await page.evaluate(() => {
+      const evidence = await page.evaluate(async () => {
         const renderer = window.Game.RenderManager.getRenderer();
         const attrs = renderer?.getContextAttributes?.() ?? {};
+        const runtime = await import('/src/game/runtime/ThreeRuntime.js');
+        const fog = await import('/src/game/materials/FogMaterial.js');
+        const probeMaterial = new runtime.THREE.MeshStandardMaterial();
+        const returnedMaterial = fog.modifyMaterialWithFog(probeMaterial, true);
+
         return {
           ready: window.Game?.ready === true,
           revision: window.THREE?.REVISION,
-          isWebGLRenderer: renderer instanceof window.THREE.WebGLRenderer,
+          adapterRevision: runtime.threeRuntimeInfo?.revision,
+          adapterSource: runtime.threeRuntimeInfo?.source,
+          adapterMatchesGlobal: runtime.THREE === window.THREE,
+          rendererUsesAdapterRuntime: renderer instanceof runtime.THREE.WebGLRenderer,
           rendererType: renderer?.constructor?.name,
           canvasWidth: renderer?.domElement?.width,
           canvasHeight: renderer?.domElement?.height,
           antialias: attrs.antialias,
           pixelRatio: renderer?.getPixelRatio?.(),
-          preserveDrawingBuffer: attrs.preserveDrawingBuffer
+          preserveDrawingBuffer: attrs.preserveDrawingBuffer,
+          fogAdapterUsesRuntime: returnedMaterial === probeMaterial
+            && probeMaterial.transparent === true
+            && probeMaterial.extensions?.shaderTextureLOD === true
+            && typeof probeMaterial.onBeforeCompile === 'function'
         };
       });
 
@@ -109,7 +139,11 @@ try {
       const cdnThreeRequests = threeRequests.filter(url => /cdnjs\.cloudflare\.com\/ajax\/libs\/three\.js/i.test(url));
       if (!evidence.ready) throw new Error(`${target.label}: Game.ready is not true.`);
       if (String(evidence.revision) !== '128') throw new Error(`${target.label}: expected THREE.REVISION 128, got ${evidence.revision}`);
-      if (!evidence.isWebGLRenderer) throw new Error(`${target.label}: production renderer is not a THREE.WebGLRenderer (${evidence.rendererType}).`);
+      if (String(evidence.adapterRevision) !== '128') throw new Error(`${target.label}: adapter revision mismatch: ${evidence.adapterRevision}`);
+      if (evidence.adapterSource !== 'legacy-global-adapter') throw new Error(`${target.label}: unexpected adapter source ${evidence.adapterSource}`);
+      if (!evidence.adapterMatchesGlobal) throw new Error(`${target.label}: ThreeRuntime does not reference the production global Three instance.`);
+      if (!evidence.rendererUsesAdapterRuntime) throw new Error(`${target.label}: RenderManager renderer is not owned by the ThreeRuntime adapter instance.`);
+      if (!evidence.fogAdapterUsesRuntime) throw new Error(`${target.label}: FogMaterial adapter probe failed.`);
       if (evidence.canvasWidth !== 480 || evidence.canvasHeight !== 270) {
         throw new Error(`${target.label}: expected 480x270 renderer canvas, got ${evidence.canvasWidth}x${evidence.canvasHeight}`);
       }
@@ -124,7 +158,7 @@ try {
 
       const screenshotPath = join(screenshotDir, `${target.label.replace(/\s+/g, '-')}.png`);
       await page.screenshot({ path: screenshotPath });
-      console.log(`${target.label} Stage A smoke passed:`, { ...evidence, threeRequests, consoleErrors, screenshotPath });
+      console.log(`${target.label} Three runtime boundary smoke passed:`, { ...evidence, threeRequests, consoleErrors, screenshotPath });
       await page.close();
     } finally {
       await new Promise(resolveClose => server.close(resolveClose));

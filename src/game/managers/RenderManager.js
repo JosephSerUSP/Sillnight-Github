@@ -1,3 +1,5 @@
+import { THREE } from '../runtime/ThreeRuntime.js';
+
 export class RenderManager {
     constructor() {
         if (RenderManager.instance) return RenderManager.instance;
