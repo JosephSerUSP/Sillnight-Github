@@ -70,7 +70,7 @@ Run:
 npm run verify:three-stage-a
 ```
 
-The browser smoke boots the **actual Sillnight application** and asserts:
+The browser smoke serves and boots the **actual Sillnight application** from both the source tree and the generated `dist/` tree, then asserts:
 
 - `THREE.REVISION === "128"`;
 - the shared renderer is still a `WebGLRenderer`;
@@ -78,7 +78,11 @@ The browser smoke boots the **actual Sillnight application** and asserts:
 - pixel ratio remains 1;
 - antialiasing remains disabled;
 - `preserveDrawingBuffer` remains enabled;
-- no page errors occur during boot.
+- no page errors occur during boot;
+- the expected local Three.js runtime is requested and no Three.js CDN request is made;
+- `dist/index.html` points to `dist/vendor/three.min.js`, which matches the pinned npm build, and required game assets are present.
+
+The smoke also captures temporary source and built-runtime screenshots for visual sanity inspection without adding evidence files to the repository.
 
 This is intentionally a semantic/runtime smoke rather than a new visual baseline. Stage B should add before/after visual evidence when the Three.js version itself changes.
 
