@@ -319,7 +319,7 @@ export const BattleManager = {
 
             Services.events.emit('battle:action_used', { unit, action: actionData, targets });
 
-            // Use Game_Action to apply effects
+            // Game_Action calculates concrete effect results first.
             const allResults = [];
             targets.forEach(t => {
                 const res = action.apply(t);
@@ -332,22 +332,38 @@ export const BattleManager = {
 
             const script = Data.actionScripts[actionData.script] || Data.actionScripts.attack || [];
 
-            // Apply effects via animation callback
-            const applyResults = () => {
-                allResults.forEach(({ target, value, effect, isCrit, isMiss }) => {
-                    if (!target) return;
-                    this.effectRegistry.apply(effect, unit, target, value, isCrit, isMiss);
-                });
-                // Party refresh handled by observer
-                if (this.allies.every(u => u.hp <= 0) || this.enemies.every(u => u.hp <= 0)) {
-                    this.turnIndex = 999; // End round early
-                }
+            // Resolve authoritative state before presentation starts. Presentation
+            // events remain deferred until the animation's existing apply cue so
+            // damage numbers, death fades, logs, and party refresh preserve their
+            // familiar timing without owning the semantic mutation itself.
+            const presentationEvents = [];
+            allResults.forEach(({ target, value, effect, isCrit, isMiss }) => {
+                if (!target) return;
+                const events = this.effectRegistry.resolve(effect, unit, target, value, isCrit, isMiss);
+                presentationEvents.push(...events);
+            });
+
+            if (this.allies.every(u => u.hp <= 0) || this.enemies.every(u => u.hp <= 0)) {
+                this.turnIndex = 999; // End round early after the current presentation completes.
+            }
+
+            let presentationPublished = false;
+            const publishPresentation = () => {
+                if (presentationPublished) return;
+                presentationPublished = true;
+                this.effectRegistry.publish(presentationEvents);
             };
 
             Systems.Battle3D.playAnim(unit.uid, script, {
                 targets,
-                onApply: applyResults,
-                onComplete: () => setTimeout(() => this.processNextTurn(), 600)
+                onApply: publishPresentation,
+                onComplete: () => {
+                    // A malformed/legacy animation script without an `apply` step
+                    // must not suppress feedback events. Semantic state is already
+                    // committed; this is presentation-only and idempotent.
+                    publishPresentation();
+                    setTimeout(() => this.processNextTurn(), 600);
+                }
             });
     },
 
