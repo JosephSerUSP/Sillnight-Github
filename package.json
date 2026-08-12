@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "verify": "node verification/verify.mjs"
+  },
   "devDependencies": {
     "@playwright/test": "^1.57.0"
   }
