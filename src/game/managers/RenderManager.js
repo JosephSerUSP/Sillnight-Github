@@ -22,6 +22,12 @@ export class RenderManager {
             preserveDrawingBuffer: true // Required for screen capture transitions
         });
 
+        // Stage B upgrades Three.js without intentionally changing Sillnight's
+        // authored color pipeline. Keep the r128-style linear output until a
+        // separate visual decision explicitly adopts modern color management.
+        this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+        this.renderer.toneMapping = THREE.NoToneMapping;
+
         this.renderer.setPixelRatio(1); // Force 1:1 pixel ratio
         this.renderer.setSize(this.width, this.height, false);
         this.renderer.domElement.id = 'shared-canvas-3d';
