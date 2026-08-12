@@ -6,6 +6,8 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const distDir = join(repoRoot, 'dist');
 const sourceIndex = join(repoRoot, 'index.html');
 const threeSource = join(repoRoot, 'node_modules', 'three', 'build', 'three.module.js');
+const packageJson = JSON.parse(await readFile(join(repoRoot, 'package.json'), 'utf8'));
+const threeVersion = packageJson.dependencies?.three ?? 'unknown';
 
 await rm(distDir, { recursive: true, force: true });
 await mkdir(join(distDir, 'vendor'), { recursive: true });
@@ -26,4 +28,4 @@ if (builtIndex.includes('three.min.js')) {
 }
 
 await writeFile(join(distDir, 'index.html'), builtIndex);
-console.log('Built static Sillnight runtime in dist/ with pinned Three.js r128 ESM.');
+console.log(`Built static Sillnight runtime in dist/ with pinned Three.js ${threeVersion} ESM.`);
