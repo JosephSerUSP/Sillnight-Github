@@ -2,6 +2,9 @@ import { resolveAssetPath } from '../core.js';
 import * as Systems from '../systems.js';
 import { Config } from '../Config.js';
 
+// Three r185 uses physically scaled light units; preserve r128-authored values.
+const LEGACY_LIGHT_INTENSITY_SCALE = Math.PI;
+
 /**
  * Handles the 3D visualization of the battle.
  * Exported as `Battle3D` in `src/game/systems.js`.
@@ -50,8 +53,8 @@ export class BattleRenderSystem {
         this.camera = new THREE.PerspectiveCamera(28, aspect, 0.1, 1000);
         this.camera.up.set(0, 0, 1);
 
-        const amb = new THREE.AmbientLight(0xffffff, 0.6);
-        const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+        const amb = new THREE.AmbientLight(0xffffff, 0.6 * LEGACY_LIGHT_INTENSITY_SCALE);
+        const dir = new THREE.DirectionalLight(0xffffff, 0.8 * LEGACY_LIGHT_INTENSITY_SCALE);
         dir.position.set(10, -10, 20);
         this.scene.add(amb);
         this.scene.add(dir);

@@ -55,8 +55,13 @@ const createStaticServer = rootDir => createServer(async (request, response) => 
 const assertStaticContract = async () => {
   const sourceIndex = await readFile(join(repoRoot, 'index.html'), 'utf8');
   const builtIndex = await readFile(join(distRoot, 'index.html'), 'utf8');
-  const sourceThree = await readFile(join(repoRoot, 'node_modules', 'three', 'build', 'three.module.js'));
-  const builtThree = await readFile(join(distRoot, 'vendor', 'three.module.js'));
+  const threeBuildFiles = ['three.module.js', 'three.core.js'];
+  const sourceThree = new Map();
+  const builtThree = new Map();
+  for (const file of threeBuildFiles) {
+    sourceThree.set(file, await readFile(join(repoRoot, 'node_modules', 'three', 'build', file)));
+    builtThree.set(file, await readFile(join(distRoot, 'vendor', file)));
+  }
   const adapter = await readFile(join(repoRoot, 'src', 'game', 'runtime', 'ThreeRuntime.js'), 'utf8');
   const bootstrap = await readFile(join(repoRoot, 'src', 'game', 'bootstrap.js'), 'utf8');
   const renderManager = await readFile(join(repoRoot, 'src', 'game', 'managers', 'RenderManager.js'), 'utf8');
@@ -72,7 +77,11 @@ const assertStaticContract = async () => {
   }
   if (builtIndex.includes('node_modules/three/')) throw new Error('Built index still references node_modules/three/.');
   if (builtIndex.includes('three.min.js')) throw new Error('Built index still references the classic Three.js build.');
-  if (!builtThree.equals(sourceThree)) throw new Error('Built Three ESM module does not match the pinned npm package byte-for-byte.');
+  for (const file of threeBuildFiles) {
+    if (!builtThree.get(file).equals(sourceThree.get(file))) {
+      throw new Error(`Built Three ESM file ${file} does not match the pinned npm package byte-for-byte.`);
+    }
+  }
   if (!adapter.includes("import * as THREE from 'three'")) throw new Error('ThreeRuntime is not backed by the package ESM module.');
   if (!adapter.includes('THREE.ColorManagement.enabled = false')) throw new Error('ThreeRuntime no longer declares the r128 color-management compatibility profile.');
   if (!renderManager.includes('THREE.LinearSRGBColorSpace')) throw new Error('RenderManager no longer declares the r128-compatible linear output color space.');

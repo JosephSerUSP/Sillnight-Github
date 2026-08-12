@@ -6,6 +6,9 @@ import { MaterialFactory } from '../materials/MaterialFactory.js';
 import { Config } from '../Config.js';
 import * as Systems from '../systems.js';
 
+// Three r185 uses physically scaled light units; preserve r128-authored values.
+const LEGACY_LIGHT_INTENSITY_SCALE = Math.PI;
+
 class ParticleSystem {
     constructor(scene) {
         this.scene = scene;
@@ -119,12 +122,13 @@ export class ExploreSystem {
         this.camera = new THREE.PerspectiveCamera(50, aspect, 0.1, 100);
 
         // Light setup
-        this.scene.add(new THREE.AmbientLight(0x222222));
-        const dirLight = new THREE.DirectionalLight(0x555555, 0.6);
+        this.scene.add(new THREE.AmbientLight(0x222222, LEGACY_LIGHT_INTENSITY_SCALE));
+        const dirLight = new THREE.DirectionalLight(0x555555, 0.6 * LEGACY_LIGHT_INTENSITY_SCALE);
         dirLight.position.set(10, 20, 10);
         this.scene.add(dirLight);
 
-        this.playerLight = new THREE.PointLight(0x004444, 1.5, 15);
+        this.playerLight = new THREE.PointLight(0x004444, 1.5 * LEGACY_LIGHT_INTENSITY_SCALE, 15);
+        this.playerLight.decay = 1;
         this.scene.add(this.playerLight);
 
         const geo = new THREE.OctahedronGeometry(0.35);
@@ -172,7 +176,9 @@ export class ExploreSystem {
             if (visuals.backgroundColor !== undefined) this.scene.background = new THREE.Color(visuals.backgroundColor);
             if (visuals.fogColor !== undefined) this.scene.fog.color.setHex(visuals.fogColor);
             if (visuals.fogDensity !== undefined) this.scene.fog.density = visuals.fogDensity;
-            if (visuals.playerLightIntensity !== undefined) this.playerLight.intensity = visuals.playerLightIntensity;
+            if (visuals.playerLightIntensity !== undefined) {
+                this.playerLight.intensity = visuals.playerLightIntensity * LEGACY_LIGHT_INTENSITY_SCALE;
+            }
 
             // Materials
             if (visuals.floorMaterial) {
@@ -200,7 +206,7 @@ export class ExploreSystem {
             this.scene.background = new THREE.Color(0x050510);
             this.scene.fog.color.setHex(0x051015);
             this.scene.fog.density = 0.05;
-            this.playerLight.intensity = 1.5;
+            this.playerLight.intensity = 1.5 * LEGACY_LIGHT_INTENSITY_SCALE;
         }
 
         const mapData = window.$gameMap._data;
