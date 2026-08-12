@@ -1,10 +1,11 @@
 import { chromium } from '@playwright/test';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { extname, join, normalize, resolve } from 'node:path';
+import { extname, normalize, resolve } from 'node:path';
+import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const repoRoot = resolve(fileURLToPath(new URL('..', import.meta.url)), '..');
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const mime = new Map([
   ['.html', 'text/html; charset=utf-8'],
   ['.js', 'text/javascript; charset=utf-8'],
@@ -25,17 +26,18 @@ const server = createServer(async (request, response) => {
     const pathname = decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname);
     const relative = normalize(pathname.replace(/^[/\\]+/, ''));
     const absolute = resolve(repoRoot, relative);
-    const rootPrefix = repoRoot.endsWith('/') || repoRoot.endsWith('\\') ? repoRoot : `${repoRoot}/`;
-    const windowsPrefix = `${repoRoot}\\`;
-    if (absolute !== repoRoot && !absolute.startsWith(rootPrefix) && !absolute.startsWith(windowsPrefix)) {
-      response.writeHead(403).end('Forbidden');
+    const allowed = absolute === repoRoot || absolute.startsWith(`${repoRoot}/`) || absolute.startsWith(`${repoRoot}\\`);
+    if (!allowed) {
+      response.writeHead(403);
+      response.end('Forbidden');
       return;
     }
     const body = await readFile(absolute);
     response.writeHead(200, { 'content-type': mime.get(extname(absolute).toLowerCase()) ?? 'application/octet-stream' });
     response.end(body);
   } catch {
-    response.writeHead(404).end('Not found');
+    response.writeHead(404);
+    response.end('Not found');
   }
 });
 
@@ -52,14 +54,15 @@ try {
 
   const evidence = await page.evaluate(() => {
     const renderer = window.Game.RenderManager.getRenderer();
+    const attrs = renderer?.getContextAttributes?.() ?? {};
     return {
       revision: window.THREE?.REVISION,
       isWebGLRenderer: renderer?.isWebGLRenderer === true,
       canvasWidth: renderer?.domElement?.width,
       canvasHeight: renderer?.domElement?.height,
-      antialias: renderer?.getContextAttributes?.().antialias,
+      antialias: attrs.antialias,
       pixelRatio: renderer?.getPixelRatio?.(),
-      preserveDrawingBuffer: renderer?.getContextAttributes?.().preserveDrawingBuffer
+      preserveDrawingBuffer: attrs.preserveDrawingBuffer
     };
   });
 
