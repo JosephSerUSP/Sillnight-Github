@@ -23,6 +23,7 @@ export class BattleObserver {
         this.bus.on('battle:heal_dealt', (data) => this.onHealDealt(data));
         this.bus.on('battle:state_added', (data) => this.onStateAdded(data));
         this.bus.on('battle:unit_death', (data) => this.onUnitDeath(data));
+        this.bus.on('battle:unit_revived', (data) => this.onUnitRevived(data));
         this.bus.on('battle:victory', (data) => this.onVictory(data));
         this.bus.on('battle:defeat', () => this.onDefeat());
         this.bus.on('battle:log', (msg) => this.onLog(msg));
@@ -87,6 +88,11 @@ export class BattleObserver {
         Log.battle(`> ${unit.name} was defeated!`);
         Systems.Battle3D.playDeathFade(unit.uid);
         if (Systems.Observer) Systems.Observer.fire('onUnitDeath', unit);
+    }
+
+    onUnitRevived({ unit }) {
+        const sprite = Systems.Battle3D.sprites[unit.uid];
+        if (sprite) sprite.visible = true;
     }
 
     onVictory({ xp, gold, party }) {
