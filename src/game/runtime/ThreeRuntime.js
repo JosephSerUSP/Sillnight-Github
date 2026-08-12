@@ -1,21 +1,25 @@
-const THREE = globalThis.THREE;
+import * as THREE from 'three';
 
 if (!THREE || typeof THREE.WebGLRenderer !== 'function') {
-    throw new Error('ThreeRuntime requires the pinned Three.js runtime to be loaded before game modules.');
+    throw new Error('ThreeRuntime requires the pinned Three.js ESM runtime.');
 }
 
-/**
- * Single compatibility boundary for the production Three.js runtime.
- *
- * Stage A still loads r128 as a classic script, so this adapter currently
- * captures that global once and exports it as an explicit module dependency.
- * Renderer/material consumers should import from here instead of reaching for
- * global THREE directly. A later ESM/version migration can then change this
- * boundary without rewriting those consumers again.
- */
+if (globalThis.THREE && globalThis.THREE !== THREE) {
+    throw new Error('Multiple Three.js runtime instances were detected during bootstrap.');
+}
+
+// Temporary compatibility alias for larger presentation systems that still
+// consume ambient THREE. The ESM module above is authoritative; this global is
+// only a bridge and must always point to the exact same module namespace.
+globalThis.THREE = THREE;
+
 export { THREE };
 
 export const threeRuntimeInfo = Object.freeze({
-    source: 'legacy-global-adapter',
+    source: 'package-esm-compatibility-bridge',
+    moduleSpecifier: 'three',
+    compatibilityGlobal: true,
     revision: String(THREE.REVISION)
 });
+
+globalThis.__SILLNIGHT_THREE_RUNTIME__ = threeRuntimeInfo;

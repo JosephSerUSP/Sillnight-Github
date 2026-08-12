@@ -4,9 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stillnight - Full Game (Improved)</title>
-    <!-- Tailwind remains CDN-hosted in Stage A; Three.js is pinned through npm. -->
+    <!-- Tailwind remains CDN-hosted; Three.js is the pinned npm ESM runtime. -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="node_modules/three/build/three.min.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "./node_modules/three/build/three.module.js"
+        }
+    }
+    </script>
     <script src="src/libs/effekseer.min.js"></script>
     <style>
         /* Use the original pixel font to preserve the retro look */
@@ -232,6 +238,6 @@
     </div>
 </div>
 
-<script type="module" src="src/game/main.js"></script>
+<script type="module" src="src/game/bootstrap.js"></script>
 </body>
 </html>

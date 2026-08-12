@@ -5,7 +5,8 @@
   "scripts": {
     "build": "node tools/build.mjs",
     "verify:three-stage-a": "node verification/verify_three_stage_a.mjs",
-    "verify:three-runtime-boundary": "node verification/verify_three_stage_a.mjs"
+    "verify:three-runtime-boundary": "node verification/verify_three_stage_a.mjs",
+    "verify:three-esm-runtime": "node verification/verify_three_esm_runtime.mjs"
   },
   "dependencies": {
     "three": "0.128.0"
