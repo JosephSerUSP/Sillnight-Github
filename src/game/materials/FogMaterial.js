@@ -1,3 +1,4 @@
+import { THREE } from '../runtime/ThreeRuntime.js';
 
 /**
  * Modifies a material to support the Fog of War effect using a texture lookup.
