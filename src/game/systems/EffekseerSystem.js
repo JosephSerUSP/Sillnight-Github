@@ -1,5 +1,6 @@
 import { Data } from '../../assets/data/data.js';
 import { resolveAssetPath } from '../core.js';
+import { THREE } from '../runtime/ThreeRuntime.js';
 
 /**
  * The Effekseer particle system wrapper.
@@ -130,7 +131,7 @@ export class EffekseerSystem {
 
     /**
      * Plays an effect at a specific position.
-     * @param {string} name - The name of the effect to play.
+     * @param {string} name - The name/key of the effect to play.
      * @param {Object} position - The {x, y, z} position to play the effect at.
      * @returns {Promise<Object|null>} A promise resolving to the playing effect handle.
      */
