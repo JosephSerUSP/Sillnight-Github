@@ -2,19 +2,21 @@
 
 **Status:** decision synthesis for #310 and #307  
 **Evidence:** Godot spike #315 / #312, Three.js control #316 / #313, Defold learning track #314  
-**Decision state:** no engine migration approved
+**Decision state:** Three.js ratified as the production substrate for the current architecture cycle
 
 ## Executive conclusion
 
 The substrate spikes produced useful evidence, but they did **not** justify replacing Sillnight's current JavaScript/Three.js runtime.
 
-The strongest current direction is:
+The ratified direction for the current architecture cycle is:
 
-> **Keep the incumbent runtime as the production substrate for now, harvest the portable architectural wins demonstrated by the spikes, and require any future migration candidate to prove visual and interaction fidelity against the actual existing game rather than a primitive substitute.**
+> **Keep JavaScript/Three.js as Sillnight's production substrate, harvest the portable architectural wins demonstrated by the spikes, and suspend engine-migration work unless a concrete future limitation makes reopening the decision worthwhile.**
 
-This is not a permanent declaration that Three.js is the final engine. It changes the burden of proof.
+This is a real decision, not merely a temporary ranking. Production work should proceed assuming Three.js unless a later project need supplies new evidence strong enough to reopen the substrate question.
 
-Godot demonstrated real engine-level advantages in scene/resource lifecycle, 3D primitives, UI layout/focus primitives, shader authoring, and headless project loading. The Three.js control demonstrated that the most important architectural improvements under discussion — presentation-independent battle semantics, command-to-snapshot presentation, boring data, deterministic tests, one-command verification, and explicit renderer/UI boundaries — do **not** require an engine migration.
+Godot demonstrated real engine-level advantages in scene/resource lifecycle, 3D primitives, UI layout/focus primitives, shader authoring, and headless project loading. It remains useful experimental evidence and a possible future reference point, but it is **suspended as a migration path** rather than kept as an active competing implementation.
+
+The Three.js control demonstrated that the most important architectural improvements under discussion — presentation-independent battle semantics, command-to-snapshot presentation, boring data, deterministic tests, one-command verification, and explicit renderer/UI boundaries — do **not** require an engine migration.
 
 Defold is not promoted. The learning experiment was cut short after crashes and repeated firewall-permission prompts created a poor human-author experience. Because human author experience was an explicit acceptance dimension of #310/#314, this is valid negative evidence rather than an irrelevant environmental inconvenience.
 
@@ -33,7 +35,7 @@ The missing question was:
 
 > **Can the candidate substrate preserve Sillnight's current visual identity, interface density, existing assets, material behavior, dungeon presentation, and interaction feel while still producing a materially better architecture?**
 
-Future migration evidence must treat this as a first-class gate under **visual deliberateness** and **project fit**.
+Any future attempt to reopen engine migration must treat this as a first-class gate under **visual deliberateness** and **project fit**.
 
 A candidate does not earn migration merely by producing a cleaner primitive demo.
 
@@ -63,9 +65,9 @@ Useful engine advantages demonstrated by the spike include:
 - headless project import/load, script parsing, semantic assertions, and scene smoke checks;
 - an editor that can author normal scene/resource state without requiring that gameplay truth live in the scene tree.
 
-These are real advantages. They remain relevant if a later fidelity-constrained Godot spike is warranted.
+These are real advantages and should remain documented as reference material.
 
-### Godot costs and unresolved migration debt
+### Why Godot is suspended rather than selected
 
 The spike did **not** demonstrate:
 
@@ -83,7 +85,9 @@ The spike did **not** demonstrate:
 
 The report also confirms that deliberate UI grammar remains project-owned even with Godot primitives. The engine improves the primitives; it does not decide Sillnight's interface system for us.
 
-Therefore Godot remains a **serious candidate with unproven migration value**, not the selected runtime.
+Most importantly, the Three control demonstrated that the architectural corrections motivating the migration study are available without giving up the existing game. Paying migration debt is therefore not justified by the evidence gathered.
+
+**Godot status: `SUSPENDED THOUGHT EXPERIMENT`.** Preserve #315 as evidence; do not spend additional migration effort unless a concrete limitation of the evolved Three.js production path reopens the case.
 
 ## What the Three.js control actually proved
 
@@ -105,7 +109,7 @@ shared/boring authored data
 
 No DOM event, animation callback, render loop, timeout, or VFX completion owns semantic battle resolution.
 
-That is the central architectural correction Sillnight needs, and it is substrate-independent.
+That is the central architectural correction Sillnight needs, and it can be implemented inside the production stack.
 
 The control also demonstrated:
 
@@ -122,7 +126,7 @@ The control also demonstrated:
 
 ### Portable wins to harvest into production
 
-The following should be treated as **PORT BACK** rather than as disposable experiment code:
+The following are **PORT BACK** work, not disposable experiment findings:
 
 1. **Pure battle-domain authority**
    - Battle state and semantic resolution must stop depending on Battle3D animation callbacks or UI timing.
@@ -134,14 +138,14 @@ The following should be treated as **PORT BACK** rather than as disposable exper
    - Renderer, DOM, audio, and animation observe those results.
 
 3. **Deterministic fixture-first verification**
-   - Domain behavior should be testable in Node without browser rendering.
+   - Domain behavior should be testable without browser rendering wherever practical.
    - Seeded/deterministic behavior should become an architectural capability, not an afterthought.
 
 4. **One documented verification entrypoint**
    - Combine fast semantic/data checks with targeted browser/runtime smoke.
    - Stop accumulating unrelated one-off verification scripts without a maintained entrypoint.
 
-5. **Package-managed modern Three.js control path**
+5. **Package-managed modern Three.js**
    - Production should no longer preserve Three r128/CDN loading merely because it is old.
    - Any upgrade should remain on `WebGLRenderer` first unless a separate WebGPU/TSL decision is justified.
 
@@ -154,13 +158,13 @@ The following should be treated as **PORT BACK** rather than as disposable exper
 
 8. **Small application lifecycle rather than manager sprawl**
    - Three.js does not prescribe this boundary, so Sillnight must.
-   - The cost is acceptable only if the owned substrate remains deliberately small and game-specific.
+   - The owned substrate should remain deliberately small and game-specific.
 
-## True engine advantages versus portable architecture
+## Portable architecture versus engine infrastructure
 
 A useful distinction after the spikes is:
 
-### Portable architecture — can improve current Sillnight now
+### Portable architecture — improve current Sillnight now
 
 - pure deterministic battle/domain layer;
 - forecast/semantic-step API;
@@ -176,7 +180,7 @@ A useful distinction after the spikes is:
 
 None of these requires Godot.
 
-### Godot-specific or engine-level advantages
+### Godot-specific or engine-level advantages — preserved as reference evidence
 
 - built-in editor scene/resource authoring;
 - engine-owned scene lifecycle;
@@ -185,17 +189,15 @@ None of these requires Godot.
 - direct spatial shader model rather than built-in-material string injection;
 - engine-level import/resource pipeline;
 - engine-level export/build ecosystem;
-- fewer categories of generic runtime infrastructure for Sillnight to own.
+- fewer categories of generic runtime infrastructure for a game to own.
 
-These advantages are meaningful only if their benefit exceeds migration debt and does not damage project identity or agent/Git operability.
+These are not dismissed. They simply do not currently outweigh migration debt and loss of continuity with an already-working Sillnight presentation.
 
-## Current migration debt
+## Future migration burden of proof
 
-A migration from the current game is not a greenfield engine choice.
+The substrate question is closed for ordinary production planning, but it is not metaphysically permanent.
 
-A replacement substrate must pay for translation of things that already exist and already work artistically.
-
-At minimum, any future migration candidate must demonstrate:
+If a concrete future limitation reopens it, a replacement substrate must demonstrate at minimum:
 
 - actual current Sillnight textures/models/sprites/effects rather than primitive stand-ins;
 - representative current dungeon scene fidelity;
@@ -205,11 +207,10 @@ At minimum, any future migration candidate must demonstrate:
 - representative fog/material fidelity;
 - asset-import ergonomics for the real repository;
 - no hidden loss of agent/Git/headless operability;
-- credible migration sequencing that does not require a long period where the game regresses visually/functionally.
+- credible migration sequencing that does not require a long period where the game regresses visually/functionally;
+- a concrete blocker or leverage gain large enough to justify reopening the decision in the first place.
 
-This is the **fidelity-constrained migration gate**.
-
-Until a candidate clears it, migration remains unapproved.
+Until then, no second generic Godot spike is warranted.
 
 ## Defold decision
 
@@ -227,11 +228,11 @@ Reasons:
 
 No claim is made that Defold is generally unstable or unsuitable for other projects. This is a Sillnight-specific decision from the experiment actually experienced.
 
-## Modernized-incumbent path
+## Ratified evolved-Three.js path
 
-The incumbent should now be judged as:
+The production substrate should now be understood as:
 
-> **Current Sillnight visual/content identity + selectively harvested architecture from the experiments.**
+> **Current Sillnight visual/content identity + selectively harvested architecture from the experiments + a modernized Three.js/tooling boundary.**
 
 The desired direction is:
 
@@ -266,9 +267,9 @@ Every production change should preserve working game identity unless the change 
 
 Use the spike-proven domain/presentation boundary as the starting point.
 
-The decision should converge on a presentation-independent battle session/engine that produces deterministic semantic results before presentation replay.
+Converge on a presentation-independent battle session/engine that produces deterministic semantic results before presentation replay.
 
-The first migration slice should preserve current battle visuals while moving one bounded semantic path out of animation/render callbacks.
+The first production slice should preserve current battle visuals while moving one bounded semantic path out of animation/render callbacks.
 
 Do not rewrite battle presentation merely to prove the architecture.
 
@@ -316,36 +317,32 @@ Near-term questions:
 - add browser smoke for representative current visuals;
 - avoid a general plugin framework unless repeated concrete consumers justify it.
 
-## Required next evidence before substrate decision
+## Current execution order
 
-Do not perform another generic engine demo.
+The substrate decision no longer blocks production architecture work.
 
-The next substrate decision should occur only after:
+Preferred order:
 
-1. portable architecture wins have been incorporated or concretely planned for current Sillnight;
-2. current Three.js production architecture has been reevaluated after those improvements;
-3. the project owner has reviewed #315/#316 reports and evidence;
-4. if Godot still appears materially superior, a second **fidelity-constrained** Godot spike uses real Sillnight assets and representative interface/material behavior;
-5. fresh-agent/Jules testing is applied only to candidates still seriously under consideration.
+1. **#290** — move one real battle semantic path out of presentation timing while preserving visuals;
+2. **#303** — make extracted semantics first-class verification inputs and establish the maintained verification entrypoint;
+3. **#304** — modernize/package/isolate the Three.js renderer boundary against real Sillnight visuals;
+4. **#293** — ratify the DOM UI grammar and ownership model as production screens are touched.
 
-This avoids comparing a cleaned-up Godot prototype against an intentionally stale incumbent architecture.
+These can overlap where dependencies are clear, but they should land as small production PRs rather than a second rewrite campaign.
 
 ## Decision status
 
-- **Current Sillnight / Three.js:** `EVOLVE` — leading production path for now.
-- **Godot:** `INVESTIGATE` — serious candidate, but migration value unproven until fidelity gate.
+- **Current Sillnight / JavaScript + Three.js:** `KEEP + EVOLVE` — ratified production substrate for the current architecture cycle.
+- **Godot:** `SUSPENDED THOUGHT EXPERIMENT` — preserve #315 as evidence; no active migration work.
 - **Defold:** `KEEP AS LEARNING RESULT / DO NOT PROMOTE`.
-- **Immediate migration:** `REJECT / NOT APPROVED`.
+- **Engine migration:** `REJECT / NOT APPROVED`; reopen only for a concrete future blocker or leverage gain.
 - **Portable spike architecture:** `PORT BACK` selectively through focused production issues/PRs.
 
-## Stop condition for this synthesis
+## Stop condition
 
-This document does not select a permanent engine.
+The substrate investigation is complete for the current architecture cycle when:
 
-Its job is complete when:
-
-- the substrate experiments are no longer interpreted as a binary migration contest;
-- portable architectural wins are routed into production issues;
-- Defold's stop is recorded without forcing parity;
-- future migration evidence must preserve actual Sillnight identity;
-- #307 can make its eventual substrate decision against a modernized incumbent rather than prototype ancestry.
+- #315/#316 remain preserved as experimental evidence rather than production branches;
+- #310 records the Three.js decision and closes;
+- the portable wins are routed into production issues;
+- normal development proceeds without repeatedly reopening the engine question absent new evidence.
