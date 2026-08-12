@@ -1,4 +1,5 @@
 import { Data } from '../../assets/data/data.js';
+import { THREE } from '../runtime/ThreeRuntime.js';
 import { modifyMaterialWithFog } from './FogMaterial.js';
 import { modifyMaterialPearlescent } from './PearlescentMaterial.js';
 
