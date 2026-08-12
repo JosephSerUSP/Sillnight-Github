@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sillnight — Three.js control substrate</title>
+  </head>
+  <body>
+    <main id="control-shell">
+      <section class="world-frame" aria-label="Low-resolution Three.js dungeon room">
+        <div id="world-surface"></div>
+        <div class="world-caption">
+          <span class="eyebrow">THREE.JS CONTROL / WEBGL</span>
+          <span>ROOM 01 · FOG STUDY</span>
+        </div>
+      </section>
+
+      <aside class="control-panel" aria-label="Battle forecast control">
+        <header class="panel-heading">
+          <div>
+            <span class="eyebrow">DISCIPLINED CONTROL</span>
+            <h1>Autonomous exchange</h1>
+          </div>
+          <span id="stage-badge" class="stage-badge">INITIAL</span>
+        </header>
+
+        <section class="panel-section formation-section" aria-labelledby="formation-title">
+          <div class="section-heading">
+            <h2 id="formation-title">Formation state</h2>
+            <span id="formation-note">Front/back behavior is authored data</span>
+          </div>
+          <div class="formation-grid">
+            <div class="formation-row">
+              <span class="row-label">FRONT</span>
+              <div id="front-slots" class="slot-list"></div>
+            </div>
+            <div class="formation-row">
+              <span class="row-label">BACK</span>
+              <div id="back-slots" class="slot-list"></div>
+            </div>
+          </div>
+          <div id="enemy-line" class="enemy-line"></div>
+        </section>
+
+        <section class="panel-section forecast-section" aria-labelledby="forecast-title">
+          <div class="section-heading">
+            <h2 id="forecast-title">Projected exchange</h2>
+            <span id="forecast-note">Resolved by domain, replayed by view</span>
+          </div>
+          <ol id="forecast-list" class="forecast-list"></ol>
+        </section>
+
+        <section class="panel-section intervention-section" aria-labelledby="intervention-title">
+          <div class="section-heading">
+            <h2 id="intervention-title">Summoner intervention</h2>
+            <span id="inventory-note">Small Potion ×1</span>
+          </div>
+          <div class="intervention-actions">
+            <button id="swap-button" type="button">Swap Nurse ↔ Pixie</button>
+            <button id="potion-button" type="button">Use Small Potion on Nurse</button>
+            <button id="resolve-button" type="button" class="primary-action">Resolve locked forecast</button>
+          </div>
+        </section>
+
+        <section class="transcript-section" aria-labelledby="transcript-title">
+          <div class="section-heading">
+            <h2 id="transcript-title">Semantic boundary</h2>
+            <span id="semantic-status">Awaiting intervention</span>
+          </div>
+          <p id="transcript-summary">No animation or timer owns the battle state. The presentation is observing a pure fixture result.</p>
+        </section>
+      </aside>
+    </main>
+    <script type="module" src="/src/app.js"></script>
+  </body>
+</html>

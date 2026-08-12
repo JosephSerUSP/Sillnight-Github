@@ -1,0 +1,21 @@
+{
+  "name": "sillnight-three-substrate-control",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "test": "node test/fixture.test.js",
+    "build": "vite build",
+    "smoke": "node scripts/smoke.mjs",
+    "verify": "npm run test && npm run build && npm run smoke"
+  },
+  "dependencies": {
+    "three": "0.185.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.57.0",
+    "vite": "8.1.5"
+  }
+}
