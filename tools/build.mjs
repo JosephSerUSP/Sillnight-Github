@@ -5,12 +5,17 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const distDir = join(repoRoot, 'dist');
 const sourceIndex = join(repoRoot, 'index.html');
-const threeSource = join(repoRoot, 'node_modules', 'three', 'build', 'three.module.js');
+const threeBuildDir = join(repoRoot, 'node_modules', 'three', 'build');
+const threeBuildFiles = ['three.module.js', 'three.core.js'];
+const packageJson = JSON.parse(await readFile(join(repoRoot, 'package.json'), 'utf8'));
+const threeVersion = packageJson.dependencies?.three ?? 'unknown';
 
 await rm(distDir, { recursive: true, force: true });
 await mkdir(join(distDir, 'vendor'), { recursive: true });
 await cp(join(repoRoot, 'src'), join(distDir, 'src'), { recursive: true });
-await copyFile(threeSource, join(distDir, 'vendor', 'three.module.js'));
+for (const file of threeBuildFiles) {
+  await copyFile(join(threeBuildDir, file), join(distDir, 'vendor', file));
+}
 
 const index = await readFile(sourceIndex, 'utf8');
 const builtIndex = index.replace(
@@ -26,4 +31,4 @@ if (builtIndex.includes('three.min.js')) {
 }
 
 await writeFile(join(distDir, 'index.html'), builtIndex);
-console.log('Built static Sillnight runtime in dist/ with pinned Three.js r128 ESM.');
+console.log(`Built static Sillnight runtime in dist/ with pinned Three.js ${threeVersion} ESM.`);
