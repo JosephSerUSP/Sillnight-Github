@@ -1,4 +1,14 @@
 {
+  "name": "sillnight",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "verify:three-stage-a": "node verification/verify_three_stage_a.mjs"
+  },
+  "dependencies": {
+    "three": "0.128.0"
+  },
   "devDependencies": {
     "@playwright/test": "^1.57.0"
   }
