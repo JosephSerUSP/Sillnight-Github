@@ -8,7 +8,8 @@
     "verify:three-runtime-boundary": "node verification/verify_three_stage_a.mjs",
     "verify:three-esm-runtime": "node verification/verify_three_esm_runtime.mjs",
     "verify:three-r185-upgrade": "node verification/verify_three_esm_runtime.mjs",
-    "verify:three-explicit-consumers": "node verification/verify_three_explicit_consumers.mjs"
+    "verify:three-explicit-consumers": "node verification/verify_three_explicit_consumers.mjs",
+    "verify:three-explicit-scene-renderers": "node verification/verify_three_explicit_scene_renderers.mjs"
   },
   "dependencies": {
     "three": "0.185.1"

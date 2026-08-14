@@ -5,6 +5,7 @@ import { modifyMaterialWithFog } from '../materials/FogMaterial.js';
 import { MaterialFactory } from '../materials/MaterialFactory.js';
 import { Config } from '../Config.js';
 import * as Systems from '../systems.js';
+import { THREE } from '../runtime/ThreeRuntime.js';
 
 // Three r185 uses physically scaled light units; preserve r128-authored values.
 const LEGACY_LIGHT_INTENSITY_SCALE = Math.PI;
