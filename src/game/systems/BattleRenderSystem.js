@@ -1,6 +1,7 @@
 import { resolveAssetPath } from '../core.js';
 import * as Systems from '../systems.js';
 import { Config } from '../Config.js';
+import { THREE } from '../runtime/ThreeRuntime.js';
 
 // Three r185 uses physically scaled light units; preserve r128-authored values.
 const LEGACY_LIGHT_INTENSITY_SCALE = Math.PI;
@@ -287,7 +288,7 @@ export class BattleRenderSystem {
 
     /**
      * Dims all sprites except the specified one.
-     * @param {string} exceptUid - The UID of the unit to keep bright.
+     * @param {string} exceptUid - The unit ID.
      */
     dimOthers(exceptUid) {
         Object.values(this.sprites).forEach(sprite => {
