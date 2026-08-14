@@ -288,7 +288,7 @@ export class BattleRenderSystem {
 
     /**
      * Dims all sprites except the specified one.
-     * @param {string} exceptUid - The unit ID.
+     * @param {string} exceptUid - The UID of the unit to keep bright.
      */
     dimOthers(exceptUid) {
         Object.values(this.sprites).forEach(sprite => {
